@@ -3,7 +3,15 @@ Atlas-based processing pipeline for structural and functional MRI mouse data
 
 ****************************************************************************
 ------------
-2 REFERENCES
+1 MANUAL
+------------
+
+------------
+2 CITATION and LICENCE
+------------
+
+------------
+3 REFERENCES
 ------------
 AIDA
 [1] in prep
@@ -29,7 +37,7 @@ DSIstudio
 
 ****************************************************************************
 ------------
-3 CONTACT
+4 CONTACT
 ------------
 Niklas Pallast (niklas.pallast@uk-koeln.de) and
 Markus Aswendt (markus.aswendt@uk-koeln.de)
