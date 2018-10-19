@@ -17,9 +17,9 @@ AIDA
 [1] in prep
 
 Niftyreg
-[1] Ourselin, et al. (2001). Reconstructing a 3D structure from serial
+1. Ourselin, et al. (2001). Reconstructing a 3D structure from serial
 histological sections. Image and Vision Computing, 19(1-2), 25–31.
-[2] Modat, et al. (2014). Global image registration using a symmetric block-
+2. Modat, et al. (2014). Global image registration using a symmetric block-
 matching approach. Journal of Medical Imaging, 1(2), 024003–024003.
 [3] Rueckert, et al.. (1999). Nonrigid registration using free-form
 deformations: Application to breast MR images. IEEE Transactions on Medical
