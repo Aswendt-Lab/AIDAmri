@@ -5,8 +5,6 @@ Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
 """
-
-
 from __future__ import print_function
 
 import os
