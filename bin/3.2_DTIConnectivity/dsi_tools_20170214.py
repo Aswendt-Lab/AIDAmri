@@ -50,8 +50,6 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     """
     perform seed-based fiber-tracking
     """
-
-
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
