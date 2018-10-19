@@ -5,7 +5,7 @@ Atlas-based processing pipeline for structural and functional MRI mouse data
 ------------
 1 MANUAL
 ------------
-https://github.com/maswendt/AIDA/blob/master/manual.pdf
+[link to Manual] (https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 ------------
 2 EXAMPLE FILES
 ------------
