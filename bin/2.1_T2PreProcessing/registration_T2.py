@@ -112,10 +112,12 @@ if __name__ == "__main__":
                         default=3)
     parser.add_argument('-g', '--template', help='file name:Templates for Allen Brain', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib//NP_template_sc0.nii.gz')
-    parser.add_argument('-t','--allenBrain_template', help='file name:Templates of Allen Brain',  nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/average_template_50.nii')
+    parser.add_argument('-t','--allenBrain_template', help='file name:Templates of Allen Brain', nargs='?', type=str,
+                        default=os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
     parser.add_argument('-a','--allenBrain_anno', help='file name:Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annotation_50CHANGEDanno.nii')
+                        default=os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz')
     parser.add_argument('-f', '--allenBrain_annorsfMRI', help='file name:Annotations of Allen Brain', nargs='?',
                         type=str,
                         default=os.path.abspath(

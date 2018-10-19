@@ -213,7 +213,8 @@ if __name__ == "__main__":
                         default=0)
     parser.add_argument('-o','--outfile', help='file name')
     parser.add_argument('-a', '--allenBrain_anno', help='file name:Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir,os.pardir))+'/lib/average_template_50.nii')
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir,
+                                                             os.pardir)) + '/lib/average_template_50.nii.gz')
 
 
 
@@ -238,8 +239,10 @@ if __name__ == "__main__":
     thres = args.threshold
     study = args.studyname
     labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir,os.pardir))+'/lib/ABALabelIDs.mat'
-    araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir,os.pardir))+'/lib/annotation_50CHANGEDanno.nii'
-    incidenceMask = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir,os.pardir))+'/lib/MPI_maskBIG_for_incidence2.nii'
+    araDataTemplate = os.path.abspath(
+        os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz'
+    incidenceMask = os.path.abspath(
+        os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + '/lib/MPI_maskBIG_for_incidence2.nii.gz'
 
     path = os.path.join(inputFile,study)
     regMR_list = findBETData(path)

@@ -1,10 +1,14 @@
 """
 Created on 10/08/2017
+
 @author: Niklas Pallast
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
+
 """
+
+
 from __future__ import print_function
 
 import os
@@ -46,6 +50,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     """
     perform seed-based fiber-tracking
     """
+
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 

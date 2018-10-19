@@ -199,7 +199,7 @@ if __name__ == "__main__":
                         default=0)
     parser.add_argument('-a', '--allenBrain_anno', help='file name:Annotations of Allen Brain', nargs='?', type=str,
                         default=os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii')
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
 
     inputFile = None
     allenBrain_template = None
