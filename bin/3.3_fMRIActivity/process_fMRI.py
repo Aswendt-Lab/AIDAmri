@@ -274,6 +274,10 @@ if __name__ == "__main__":
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt')
     args = parser.parse_args()
 
+    TR = 2.84
+    cutOff_sec = 100
+    FWHM = 3.0
+
     labels = args.labels
     labelNames = args.labelNames
     labels2000 = args.labels2000
@@ -285,7 +289,7 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory of file %s is not in directory." % (input, args.file,))
 
     mcfFile_name = startProcess(input)
-    rgr_file,srgr_file,sfrgr_file = regress.startRegression(mcfFile_name)
+    rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR)
 
 
     atlasPath = os.path.dirname(input)

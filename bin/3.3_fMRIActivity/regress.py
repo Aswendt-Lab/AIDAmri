@@ -214,7 +214,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     return output_file,maskFile
 
 
-def startRegression(input_File):
+def startRegression(input_File, FWHM, cutOff_sec, TR):
     # generate folder regr images
     print("Regression \33[5m...\33[0m (wait!)", end="\r")
     origin_Path = os.path.dirname(os.path.dirname(input_File))
@@ -268,14 +268,13 @@ def startRegression(input_File):
     # get mean of masked regr-Dataset
     mean_func = getMean(thresRegr_file,'mean_func')
 
-    FWHM = 3.0
-    #sigma = FWHM/(2 * np.sqrt(2 * np.log(2)))
+    # FWHM = 3.0
+    # sigma = FWHM/(2 * np.sqrt(2 * np.log(2))) = 1.27
     srgr_file = applySusan(thresRegr_file,meanintensity,FWHM,mean_func)
 
     # apply mask on srgr_file
     smmothSRegr_file = applyMask(srgr_file,mask,'_smooth')
     inscalefactor = 10000.0/meanintensity
-
 
     # multiply image with inscalefactor
     intnormSrgr_file = mathOperation(smmothSRegr_file,inscalefactor)
@@ -284,7 +283,8 @@ def startRegression(input_File):
     tempMean  =  getMean(intnormSrgr_file,'tempMean')
 
     # filter image cut-off frequency 0.01 Hz
-    highpass = 17.6056338028
+    highpass = (cutOff_sec / 2.0 * TR)
+    #highpass = 17.6056338028
     #lowpass = 2.20070422535
     filtered_image = filterFSL(intnormSrgr_file,highpass,tempMean)
 
