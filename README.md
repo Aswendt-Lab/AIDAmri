@@ -5,13 +5,21 @@ Atlas-based processing pipeline for structural and functional MRI mouse data
 ------------
 1 MANUAL
 ------------
+[Link to Manual](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
+------------
+2 EXAMPLE FILES
+------------
+Mouse MRI data (acquired with Bruker 9.4T - cryo coil setup): adult C57BL7/6 mouse, 
+T2-weighted, anatomical scan
+DTI, structural connectivty scan
+rs-fMRI, functional connectivity scan
 
 ------------
-2 CITATION and LICENCE
+3 CITATION and LICENCE
 ------------
 
 ------------
-3 REFERENCES
+4 REFERENCES
 ------------
 AIDA
 1. in prep
@@ -37,7 +45,7 @@ DSIstudio
 
 ****************************************************************************
 ------------
-4 CONTACT
+5 CONTACT
 ------------
 Niklas Pallast (niklas.pallast@uk-koeln.de) and
 Markus Aswendt (markus.aswendt@uk-koeln.de)
