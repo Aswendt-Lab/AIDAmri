@@ -283,7 +283,7 @@ def startRegression(input_File):
     # mean of scaled Dataset
     tempMean  =  getMean(intnormSrgr_file,'tempMean')
 
-    # filter image
+    # filter image cut-off frequency 0.01 Hz
     highpass = 17.6056338028
     #lowpass = 2.20070422535
     filtered_image = filterFSL(intnormSrgr_file,highpass,tempMean)
