@@ -275,7 +275,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     TR = 2.84
-    cutOff_sec = 100
+    cutOff_sec = 100.0
     FWHM = 3.0
 
     labels = args.labels
