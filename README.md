@@ -1,7 +1,6 @@
 # AIDA
 Atlas-based processing pipeline for structural and functional MRI mouse data
 
-****************************************************************************
 ------------
 1 MANUAL
 ------------
@@ -10,9 +9,9 @@ Atlas-based processing pipeline for structural and functional MRI mouse data
 2 EXAMPLE FILES
 ------------
 Mouse MRI data (acquired with Bruker 9.4T - cryo coil setup): adult C57BL7/6 mouse, 
-T2-weighted, anatomical scan
-DTI, structural connectivty scan
-rs-fMRI, functional connectivity scan
+T2-weighted (anatomical scan),
+DTI (structural connectivty scan),
+rs-fMRI (functional connectivity scan).
 
 ------------
 3 CITATION and LICENCE
