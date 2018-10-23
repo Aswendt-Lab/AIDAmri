@@ -16,9 +16,89 @@ import re
 import sys
 import time
 import glob
+import nibabel as nii
+import numpy as np
+import nipype.interfaces.fsl as fsl
 
 import shutil
 import subprocess
+
+
+def scaleBy10(input_path, inv):
+    data = nii.load(input_path)
+    imgTemp = data.get_data()
+    if inv is False:
+        scale = np.eye(4) * 10
+        scale[3][3] = 1
+        scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
+        fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
+        nii.save(scaledNiiData, fslPath)
+        return fslPath
+    elif inv is True:
+        scale = np.eye(4) / 10
+        scale[3][3] = 1
+        unscaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
+        hdrOut = unscaledNiiData.header
+        hdrOut.set_xyzt_units('mm')
+
+        # hdrOut['sform_code'] = 1
+        nii.save(unscaledNiiData, input_path)
+        return input_path
+    else:
+        sys.exit("Error: inv - parameter should be a boolean.")
+
+
+def findSlicesData(path, pre):
+    regMR_list = []
+    fileALL = glob.iglob(path + '/' + pre + '*.nii.gz', recursive=True)
+    for filename in fileALL:
+        regMR_list.append(filename)
+    regMR_list.sort()
+    return regMR_list
+
+
+def fsl_SeparateSliceMoCo(input_file, par_folder):
+    # scale Nifti data by factor 10
+    dataName = os.path.basename(input_file).split('.')[0]
+    fslPath = scaleBy10(input_file, inv=False)
+    mySplit = fsl.Split(in_file=fslPath, dimension='z', out_base_name=dataName)
+    print(mySplit.cmdline)
+    mySplit.run()
+    os.remove(fslPath)
+
+    # sparate ref and src volume in slices
+    sliceFiles = findSlicesData(os.getcwd(), dataName)
+    # refFiles = findSlicesData(os.getcwd(),'ref')
+    print('For all slices ... ')
+
+    # start to correct motions slice by slice
+    for i in range(len(sliceFiles)):
+        slc = sliceFiles[i]
+        # ref = refFiles[i]
+        # take epi as ref
+        output_file = os.path.join(par_folder, os.path.basename(slc))
+        myMCFLIRT = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
+        print(myMCFLIRT.cmdline)
+        myMCFLIRT.run()
+        os.remove(slc)
+        # os.remove(ref)
+
+    # merge slices to a single volume
+
+    mcf_sliceFiles = findSlicesData(par_folder, dataName)
+    output_file = os.path.join(os.path.dirname(input_file),
+                               os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
+    myMerge = fsl.Merge(in_files=mcf_sliceFiles, dimension='z', merged_file=output_file)
+    print(myMerge.cmdline)
+    myMerge.run()
+
+    for slc in mcf_sliceFiles: os.remove(slc)
+
+    # unscale result data by factor 10ˆ(-1)
+    output_file = scaleBy10(output_file, inv=True)
+
+    return output_file
+
 
 def make_dir(dir_out, dir_sub):
     dir_out = os.path.normpath(os.path.join(dir_out, dir_sub))

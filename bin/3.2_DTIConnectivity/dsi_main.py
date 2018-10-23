@@ -13,6 +13,7 @@ import argparse
 import os
 import glob
 import dsi_tools_20170214
+import shutil
 
 if __name__ == '__main__':
     # default dsi studio directory
@@ -33,11 +34,19 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--b_table', default=b_table, help='b-table in input directory: %s' % (b_table,))
     args = parser.parse_args()
 
+
     dir_cur = os.path.dirname(args.dir_in)
-    dir_mask = glob.glob(os.path.join(dir_cur,'DSI_studio','*BetMask_scaled.nii.gz'))[0]
+    dsi_path = os.path.join(dir_cur, 'DSI_studio')
+    mcf_path = os.path.join(dir_cur, 'mcf_Folder')
+    dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz'))[0]
     dir_out = args.dir_in
 
-    dsi_tools_20170214.srcgen(dsi_studio, args.dir_in, dir_mask, dir_out, args.b_table)
+    if os.path.exists(mcf_path):
+        shutil.rmtree(mcf_path)
+    os.mkdir(mcf_path)
+    dir_in = dsi_tools_20170214.fsl_SeparateSliceMoCo(args.dir_in, mcf_path)
+
+    dsi_tools_20170214.srcgen(dsi_studio, dir_in, dir_mask, dir_out, args.b_table)
     dir_in = os.path.join(dir_cur,'fib_map')
 
     dir_out = os.path.dirname(args.dir_in)

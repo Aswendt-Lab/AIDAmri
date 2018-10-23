@@ -285,7 +285,6 @@ def startRegression(input_File, FWHM, cutOff_sec, TR):
     # filter image cut-off frequency 0.01 Hz
     highpass = (cutOff_sec / (2.0 * TR))
     #highpass = 17.6056338028
-    #lowpass = 2.20070422535
     filtered_image = filterFSL(intnormSrgr_file,highpass,tempMean)
 
     sys.stdout = sys.__stdout__
