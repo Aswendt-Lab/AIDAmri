@@ -34,25 +34,29 @@ def run_MICO(IMGdata,outputPath):
 
     vol = data.get_data()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
+    ImgMe = np.mean(vol)
+    if ImgMe > 10000:
+        nCvalue = 1000
+    elif ImgMe > 1000:
+        nCvalue = 10
+    else:
+        nCvalue = 1
 
     bar = progressbar.ProgressBar()
     for idx in bar(range(vol.shape[2])):
         #ImgMe = np.mean(vol,3)
         #Img = ImgMe[:,:,idx]/10
-        Img = vol[:, :, idx,0]/10
+
+        if np.size(vol.shape) == 4:
+            Img = vol[:, :, idx, 0] / nCvalue
+        else:
+            Img = vol[:, :, idx] / nCvalue
 
         iterNum = 50
         N_region = 1
         q = 1
         A = 1
         Img_original = Img
-
-        # num_iter = 10
-        # delta_t = 1 / 21
-        # kappa = 12
-        # option = 2
-        # print('Preprocessing image please wait . . .')
-        # Img = anisodiff.applyFilter(Img, num_iter, delta_t, kappa, option)
 
         nrow = Img.shape[0]
         ncol = Img.shape[1]
