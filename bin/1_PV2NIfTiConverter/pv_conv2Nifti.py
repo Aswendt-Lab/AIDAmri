@@ -268,7 +268,7 @@ if __name__ == "__main__":
             if 'VisuAcqEchoTime' in img.visu_pars:
 
                 echoTime = img.visu_pars['VisuAcqEchoTime']
-                echoTime = np.fromstring(echoTime, dtype=int, sep=' ')
+                echoTime = np.fromstring(echoTime, dtype=float, sep=' ')
                 if len(echoTime) > 3:
                     mapT2.getT2mapping(resPath,args.model,args.upLim,args.snrLim,args.snrMethod,echoTime)
 
