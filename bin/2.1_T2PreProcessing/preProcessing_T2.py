@@ -22,6 +22,8 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     imgTemp = data.get_data()
     scale = np.eye(4)* 10
     scale[3][3] = 1
+
+    # this have to be adapted in the case the output image is not RAS orientated - Siding from feed to nose
     imgTemp = np.flip(imgTemp,2)
     #imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp, 2)
