@@ -17,6 +17,8 @@ rs-fMRI (functional connectivity scan).
 3 CITATION and LICENCE
 ------------
 
+GNU General Public License v3.0
+
 ------------
 4 REFERENCES
 ------------
