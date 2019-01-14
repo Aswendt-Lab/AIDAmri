@@ -12,7 +12,6 @@ import os,sys
 import nibabel as nii
 import glob
 import numpy as np
-import scipy.io as sc
 import scipy.ndimage as ndimage
 import progressbar
 import  getHeatmap as gHm
@@ -68,17 +67,6 @@ def findIncData(path):
         regMR_list.append(filename)
 
     return regMR_list
-
-
-
-def findIncData(path):
-    regMR_list = []
-
-    for filename in glob.iglob(path + '/T2w/*IncidenceData_mask.nii.gz', recursive=False):
-        regMR_list.append(filename)
-
-    return regMR_list
-
 
 
 if __name__ == "__main__":
