@@ -248,7 +248,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Registration Allen Brain to DTI')
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--inputVolume', help='file name of DTI data after preprocessing', required=True)
+    requiredNamed.add_argument('-i', '--inputVolume', help='path to the BET file of DTI data after preprocessing',
+                               required=True)
 
     parser.add_argument('-r', '--referenceDay', help='Refernce Stroke mask (for example: P5)', nargs='?', type=str,
                         default=None)

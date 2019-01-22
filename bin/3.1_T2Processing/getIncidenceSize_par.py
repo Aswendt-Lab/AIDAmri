@@ -193,8 +193,10 @@ def findRegisteredAnno(path):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
-    parser.add_argument('-i','--inputFile', help='file name:Brain extracted input data')
+    parser = argparse.ArgumentParser(description='Calculate an incidence sizes of parental regions')
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument('-i', '--inputFile', help='file name:Brain extracted input data')
+
     parser.add_argument('-t', '--threshold', help='threshold for stroke values ',  nargs='?', type=int,
                         default=0)
     parser.add_argument('-a', '--allenBrain_anno', help='file name:Annotations of Allen Brain', nargs='?', type=str,

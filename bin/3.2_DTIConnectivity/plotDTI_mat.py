@@ -109,9 +109,9 @@ def matrixMaker(inputPath):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Visulize mat file of DTI ')
-    parser.add_argument('-i', '--inputMat', help='file name:fMRI mat-File')
-
+    parser = argparse.ArgumentParser(description='Visualize mat file of DTI ')
+    requiredNamed = parser.add_argument_group('required named arguments')
+    requiredNamed.add_argument('-i', '--inputMat', help='file name:fMRI mat-File')
     args = parser.parse_args()
 
     inputPath = None

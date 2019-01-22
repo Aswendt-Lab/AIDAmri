@@ -103,7 +103,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Preprocessing of DTI Data')
 
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i','--input', help='file name of data',required=True)
+    requiredNamed.add_argument('-i', '--input', help='path the the raw NIfTI DTI file', required=True)
 
     parser.add_argument('-f', '--frac', help='fractional intensity threshold - default=0.3  smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
     parser.add_argument('-r', '--radius', help='head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)

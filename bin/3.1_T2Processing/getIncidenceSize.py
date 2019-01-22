@@ -17,48 +17,9 @@ import scipy.io as sc
 import scipy.ndimage as ndimage
 
 
-def find_nearest(array,value):
-    idx = (np.abs(array-value)).argmin()
-    return array[idx]
-
-def thresholdingSlc(volumeMR,maskImg,thres):
-    volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.2, 1.2, 1))
-
-
-    volumeMR = volumeMR * maskImg[:, :, :, 0]
-
-    scaledNiiData = nii.Nifti1Image(volumeMR, np.eye(4))
-    hdrIn = scaledNiiData.header
-    hdrIn.set_xyzt_units('mm')
-    output_file = os.path.join(outfile,'maskedVolume.nii.gz')
-    nii.save(scaledNiiData, output_file)
-
-    for i in range(len(volumeMR[1,1,:])-1):
-        voSlc = volumeMR[:,:,i]
-
-        uvalues = voSlc >= thres
-        voSlc[uvalues] = 0
-        zvalues = voSlc != 0
-        thresF = np.mean(voSlc[zvalues]) + 1.5*np.std(voSlc[zvalues])
-
-
-        bvalues = voSlc < thresF
-        voSlc[bvalues] = 0
-        voSlc[bvalues] = 0
-        fvalues = voSlc >= thresF
-        voSlc[fvalues] = 1
-        volumeMR[:, :, i] = voSlc
-
-    fvalues = volumeMR == 1
-    return volumeMR,fvalues
-
-
-
 def thresholding(volumeMR,maskImg,thres,k):
     volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
     zvalues = volumeMR != 0
-
-
 
     if k==1:
         volumeMR = volumeMR * maskImg[:, :, :]#, 0]
@@ -77,10 +38,6 @@ def thresholding(volumeMR,maskImg,thres,k):
 
 
 def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incidenceMask ,thres, outfile, labels):
-
-
-
-
 
     araDataTemplate  = nii.load(araDataTemplate)
     realAraImg = araDataTemplate.get_data()
@@ -153,11 +110,6 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     o.close()
 
 
-
-
-
-
-
 def findIncData(path):
     regMR_list = []
 
@@ -195,8 +147,10 @@ def findRegisteredAnno(path):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
-    parser.add_argument('-i','--inputFile', help='file name:Brain extracted input data')
+    parser = argparse.ArgumentParser(description='Calculate an Incidence sizes of regions')
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument('-i', '--inputFile', help='file name:Brain extracted input data')
+
     parser.add_argument('-t', '--threshold', help='threshold for stroke values ',  nargs='?', type=int,
                         default=0)
     parser.add_argument('-a', '--allenBrain_anno', help='file name:Annotations of Allen Brain', nargs='?', type=str,

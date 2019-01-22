@@ -12,33 +12,29 @@ import os,sys
 import nibabel as nii
 import glob
 import numpy as np
-import scipy.ndimage as ndimage
 import progressbar
-import  getHeatmap as gHm
+import matplotlib.pyplot as plt
 
 
-def find_nearest(array,value):
-    idx = (np.abs(array-value)).argmin()
-    return array[idx]
+def heatMap(incidenceMap, araVol):
+    fig = plt.figure(frameon=False)
+    im = []
+    for i in range(12):
+        t = 1 + i
+        fig.add_subplot(3, 4, t)
+        plt.imshow(np.transpose(incidenceMap[:, :, t * 16]), cmap='gnuplot')
 
-
-def thresholding(volumeMR,maskImg,thres):
-    volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
-    zvalues = volumeMR != 0
-
-
-    if thres == 0:
-        thres = np.mean(volumeMR[zvalues]) + 2*np.std(volumeMR[zvalues])
-
-    bvalues = volumeMR < thres
-    volumeMR[bvalues] = 0
-
-    fvalues = volumeMR >= thres
-    volumeMR[fvalues] = 1
-
-    fvalues = volumeMR == 1
-    return volumeMR,fvalues
-
+        if i == 8:
+            im = plt.imshow(np.transpose(incidenceMap[:, :, t * 16]), cmap='gnuplot')
+            plt.imshow(np.transpose(araVol[:, :, t * 16]), alpha=0.55, cmap='gray')
+        else:
+            plt.imshow(np.transpose(incidenceMap[:, :, t * 16]), cmap='gnuplot')
+            plt.imshow(np.transpose(araVol[:, :, t * 16]), alpha=0.55, cmap='gray')
+        plt.axis('off')
+    fig.subplots_adjust(right=0.8)
+    cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
+    fig.colorbar(im, cax=cbar_ax)
+    plt.show()
 
 def incidenceMap2(path_listInc, araTemplate):
     araDataTemplate = nii.load(araTemplate)
@@ -57,7 +53,7 @@ def incidenceMap2(path_listInc, araTemplate):
 
         overlazedInciedences = overlazedInciedences + volumeMRI
 
-    gHm.heatMap(incidenceMap=overlazedInciedences, araVol=realAraImg)
+    heatMap(incidenceMap=overlazedInciedences, araVol=realAraImg)
 
 
 def findIncData(path):
@@ -65,18 +61,16 @@ def findIncData(path):
 
     for filename in glob.iglob(path + '/T2w/*IncidenceData_mask.nii.gz', recursive=False):
         regMR_list.append(filename)
-
     return regMR_list
-
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
-    parser.add_argument('-i','--inputFile', help='file name:Brain extracted input data')
-    parser.add_argument('-s', '--studyname', help='prefix of the study in the input folder - for exmpale MA_30584')
-    parser.add_argument('-t', '--threshold', help='threshold for stroke values ',  nargs='?', type=int,
-                        default=0)
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument('-i', '--inputFile', help='file name:Brain extracted input data')
+    requiredNamed.add_argument('-s', '--studyname', help='prefix of the study in the input folder - for exmpale S*')
+
     parser.add_argument('-a', '--allenBrainTemplate', help='file name:Annotations of Allen Brain', nargs='?', type=str,
                         default=os.path.abspath(
                             os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')

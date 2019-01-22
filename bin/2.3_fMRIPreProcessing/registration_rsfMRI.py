@@ -92,7 +92,7 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--inputVolume', help='file name of DTI data after preprocessing', required=True)
 
-    parser.add_argument('-r', '--referenceDay', help='Refernce Stroke mask (for example: P5)', nargs='?', type=str,
+    parser.add_argument('-r', '--referenceDay', help='Refernce Stroke mask', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitedAnno', help='Splited annotations atlas', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')

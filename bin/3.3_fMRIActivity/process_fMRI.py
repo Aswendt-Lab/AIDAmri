@@ -261,27 +261,22 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser(description='Process fMRI data')
-
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i','--input', help='file name of data',required=True)
-    parser.add_argument('-l','--labels',help='labels for fMRI',
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annotation_50CHANGEDanno_label_IDs.txt')
-    parser.add_argument('-n', '--labelNames', help='labels names for fMRI',
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.txt')
-    parser.add_argument('-s', '--labels2000', help='labels for fMRI',
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs+2000.txt')
-    parser.add_argument('-t', '--labelNames2000', help='labels names for fMRI',
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt')
+    requiredNamed.add_argument('-i', '--input', help='path the the RAW data of rsfMRI NIfTI file', required=True)
+
     args = parser.parse_args()
 
     TR = 2.84
     cutOff_sec = 100.0
     FWHM = 3.0
 
-    labels = args.labels
-    labelNames = args.labelNames
-    labels2000 = args.labels2000
-    labelNames2000 = args.labelNames2000
+    labels = os.path.abspath(
+        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs.txt'
+    labelNames = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume.nii.txt'
+    labels2000 = os.path.abspath(
+        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs+2000.txt'
+    labelNames2000 = os.path.abspath(
+        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt'
     input = None
     if args.input is not None and args.input is not None:
         input = args.input

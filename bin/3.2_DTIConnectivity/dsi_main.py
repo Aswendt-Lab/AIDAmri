@@ -27,10 +27,10 @@ if __name__ == '__main__':
     # default connectivity directory relative to input directory
     dir_con = r'connectivity'
 
+    parser = argparse.ArgumentParser(description='Get connectivity of DTI dataset')
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument('-i', '--dir_in', help='path the the raw NIfTI DTI file', required=True)
 
-
-    parser = argparse.ArgumentParser(description='dsi_srcgen')
-    parser.add_argument('-i', '--dir_in', help='input directory')
     parser.add_argument('-b', '--b_table', default=b_table, help='b-table in input directory: %s' % (b_table,))
     args = parser.parse_args()
 

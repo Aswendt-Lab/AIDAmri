@@ -71,8 +71,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Calculate SNR')
-    parser.add_argument('-i', '--inputData', help='file name:folder of all files of one study')
-    parser.add_argument('-s', '--studyPrefix', help='file name:first letter of files in input data')
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument('-i', '--inputData', help='file name:folder of all files of one study')
+    requiredNamed.add_argument('-s', '--studyPrefix', help='file name:first letter of files in input data')
 
     args = parser.parse_args()
 
