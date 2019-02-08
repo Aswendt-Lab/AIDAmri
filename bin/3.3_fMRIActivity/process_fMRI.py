@@ -28,7 +28,7 @@ def copyAtlasOfData(path,post,labels):
     else:
         fileALL = fileALL[0]
 
-    print("Copy Atlas Data an generate seed ROIs")
+    print("Copy Atlas Data and generate seed ROIs")
     #pathfMRI = os.path.join(os.path.dirname(path),'fMRI')
     outputRois = create_seed_rois.startSeedPoint(in_atlas=os.path.join(path, os.path.basename(fileALL)),in_labels=labels)
     return outputRois

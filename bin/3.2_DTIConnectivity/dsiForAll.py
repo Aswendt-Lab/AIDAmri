@@ -8,7 +8,7 @@ Neuroimaging & Neuoengineering, Cologne
 
 
 import glob
-import os,sys
+import os
 
 
 def findRegisteredData(path):
