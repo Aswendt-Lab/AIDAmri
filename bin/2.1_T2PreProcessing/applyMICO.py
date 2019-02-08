@@ -104,8 +104,8 @@ def run_MICO(IMGdata,outputPath):
                         img_bc = Img /b # bias field corrected image
                         smV = img_bc < 0
                         img_bc[smV] = 0
-                        smV = img_bc > 1200
-                        img_bc[smV] = 0
+                        # smV = img_bc > 1200
+                        # img_bc[smV] = 0
 
 
 
