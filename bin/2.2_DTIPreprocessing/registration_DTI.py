@@ -171,7 +171,8 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     # Allen Brain
     outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii.gz')
-    outputAnnorsfMRIScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_rsfMRI_scaled.nii.gz')
+    outputAnnorsfMRIScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
+        0] + 'Anno_rsfMRISplit_scaled.nii.gz')
     outputAllenBScaled = os.path.join(outfileDSI,
                                       os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii.gz')
 
