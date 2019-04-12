@@ -105,12 +105,12 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         outputMaskScaled = os.path.join(outfileDSI,
                                         os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.nii.gz')
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
-
+        # uperPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
+        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
         scale = np.eye(4) * 10
         scale[3][3] = 1
         unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
+
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
@@ -137,8 +137,8 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         outputMaskScaled = os.path.join(outfileDSI,
                                         os.path.basename(inputVolume).split('.')[0] + 'rsfMRI_Mask_scaled.nii.gz')
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
+        # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
+        #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
 
         scale = np.eye(4) * 10
         scale[3][3] = 1
@@ -157,11 +157,13 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     outputMaskScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Mask_scaled.nii.gz')
     dataMask = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_mask.nii.gz'))
     imgMask = dataMask.get_data()
+
     imgMask = np.flip(imgMask, 2)
     imgMask = np.rot90(imgMask, 2)
-    imgMask = np.flip(imgMask, 0)
+    #imgMask = np.flip(imgMask, 0)
     scale = np.eye(4) * 10
     scale[3][3] = 1
+
     unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine * scale)
     hdrOut = unscaledNiiDataMask.header
     hdrOut.set_xyzt_units('mm')
@@ -193,12 +195,12 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     imgTempAllen = np.flip(imgTempAllen, 2)
     imgTempAnno = np.flip(imgTempAnno, 2)
     imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 2)
-    imgTempAllen = np.rot90(imgTempAllen, 2)
-    imgTempAnno = np.rot90(imgTempAnno, 2)
-    imgTempAnnorsfMRI = np.rot90(imgTempAnnorsfMRI, 2)
-    imgTempAllen = np.flip(imgTempAllen, 0)
-    imgTempAnno = np.flip(imgTempAnno, 0)
-    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 0)
+    # imgTempAllen = np.rot90(imgTempAllen, 2)
+    # imgTempAnno = np.rot90(imgTempAnno, 2)
+    # imgTempAnnorsfMRI = np.rot90(imgTempAnnorsfMRI, 2)
+    # imgTempAllen = np.flip(imgTempAllen, 0)
+    # imgTempAnno = np.flip(imgTempAnno, 0)
+    #imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 0)
     scale = np.eye(4) * 10
     scale[3][3] = 1
 
