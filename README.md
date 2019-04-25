@@ -14,7 +14,7 @@ DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
 
 ------------
-3 CITATION and LICENCE
+3 LICENCE
 ------------
 
 GNU General Public License v3.0
@@ -44,10 +44,9 @@ FSL
 DSIstudio
 1. Yeh, Fang-Cheng, et al. "Deterministic diffusion fiber tracking improved by quantitative anisotropy." (2013): e80713. PLoS ONE 8(11)
 
-****************************************************************************
 ------------
 5 CONTACT
 ------------
 Niklas Pallast (niklas.pallast@uk-koeln.de) and
 Markus Aswendt (markus.aswendt@uk-koeln.de)
-10/2018
+Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
