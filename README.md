@@ -2,16 +2,18 @@
 Atlas-based processing pipeline for structural and functional MRI mouse data
 
 [<h2>MANUAL</h2>](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
-<hr />
 <h2><b>EXAMPLE FILES</b></h2>
 Mouse MRI data (acquired with Bruker 9.4T - cryo coil setup): adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
-<hr />
+<h2><b>CONTACT</h2></b>
+Niklas Pallast (niklas.pallast@uk-koeln.de) and
+Markus Aswendt (markus.aswendt@uk-koeln.de)
+
+Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 <h2><b>LICENCE</h2></b>
 GNU General Public License v3.0
-<hr />
 <h2><b>REFERENCES</h2></b>
 AIDA<i>mri
 <p>under review
@@ -35,9 +37,3 @@ FSL
 DSIstudio
 1. [Yeh, Fang-Cheng, et al. Deterministic diffusion fiber tracking improved by quantitative anisotropy. (2013): e80713. PLoS ONE 8(11)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0080713)
 
-<hr />
-<h2><b>CONTACT</h2></b>
-Niklas Pallast (niklas.pallast@uk-koeln.de) and
-Markus Aswendt (markus.aswendt@uk-koeln.de)
-
-Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
