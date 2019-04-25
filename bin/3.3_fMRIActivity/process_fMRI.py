@@ -258,17 +258,21 @@ def startProcess(Rawfile_name):
 
 if __name__ == "__main__":
 
+    TR = 2.84
+    cutOff_sec = 100.0
+    FWHM = 3.0
 
     import argparse
     parser = argparse.ArgumentParser(description='Process fMRI data')
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--input', help='path the the RAW data of rsfMRI NIfTI file', required=True)
 
+    parser.add_argument('-t', '--TR', default=TR, help='current TR value')
+    parser.add_argument('-c', '--cutOff_sec', default=cutOff_sec, help=' high-pass filter cutoff sec')
+    parser.add_argument('-f', '--FWHM', default=FWHM, help='Full width at half maximum')
+    parser.add_argument('-s', '--slice_time', action='store_true', help='fast detection')
     args = parser.parse_args()
 
-    TR = 2.84
-    cutOff_sec = 100.0
-    FWHM = 3.0
 
     labels = os.path.abspath(
         os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs.txt'
@@ -284,7 +288,7 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory of file %s is not in directory." % (input, args.file,))
 
     mcfFile_name = startProcess(input)
-    rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR)
+    rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, args.slice_time)
 
 
     atlasPath = os.path.dirname(input)

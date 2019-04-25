@@ -181,6 +181,15 @@ def mathOperation(input_file,scale_factor):
     myMath.run()
     return output_file
 
+
+def fsl_slicetimeCorrector(input_file, TR):
+    output_file = os.path.join(os.path.dirname(input_file),
+                               os.path.basename(input_file).split('.')[0]) + '_st.nii.gz'
+    st = fsl.SliceTimer(in_file=input_file, time_repetition=TR, out_file=output_file)
+    st.run()
+    return output_file
+
+
 def filterFSL(input_file,highpass,tempMean):
     outputSFRGR = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('SRGR')[0])+'SFRGR.nii.gz'
     myHP = fsl.TemporalFilter(in_file = input_file,highpass_sigma=highpass, args='-add '+tempMean,out_file=outputSFRGR)
@@ -214,7 +223,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     return output_file,maskFile
 
 
-def startRegression(input_File, FWHM, cutOff_sec, TR):
+def startRegression(input_File, FWHM, cutOff_sec, TR, sl):
     # generate folder regr images
     print("Regression \33[5m...\33[0m (wait!)", end="\r")
     origin_Path = os.path.dirname(os.path.dirname(input_File))
@@ -229,6 +238,11 @@ def startRegression(input_File, FWHM, cutOff_sec, TR):
 
     # delete the first slides
     input_File5Sub = delete5Slides(input_File, regr_Path)
+
+    # perform slice time correction
+    if sl == True:
+        input_File5Sub = fsl_slicetimeCorrector(input_File5Sub, TR)
+
 
     # proof regression files
     txtregr_Path = os.path.join(origin_Path, 'txtRegrPython')
