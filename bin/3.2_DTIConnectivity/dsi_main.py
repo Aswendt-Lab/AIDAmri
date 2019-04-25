@@ -64,7 +64,7 @@ if __name__ == '__main__':
     dir_seeds = glob.glob(os.path.join(dir_cur, 'DSI_studio', '*Anno_scaled.nii.gz'))[0]
     dsi_tools_20170214.connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con)
 
-    dir_seeds = glob.glob(os.path.join(dir_cur, 'DSI_studio', '*Anno_rsfMRI_scaled.nii.gz'))[0]
+    dir_seeds = glob.glob(os.path.join(dir_cur, 'DSI_studio', '*Anno_rsfMRISplit_scaled.nii.gz'))[0]
     dsi_tools_20170214.connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con)
 
     # rename files to reduce path length

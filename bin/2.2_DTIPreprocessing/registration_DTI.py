@@ -159,7 +159,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     imgMask = dataMask.get_data()
 
     imgMask = np.flip(imgMask, 2)
-    imgMask = np.rot90(imgMask, 2)
+    # imgMask = np.rot90(imgMask, 2)
     #imgMask = np.flip(imgMask, 0)
     scale = np.eye(4) * 10
     scale[3][3] = 1
@@ -173,15 +173,14 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii.gz')
     outputAnnorsfMRIScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
         0] + 'Anno_rsfMRISplit_scaled.nii.gz')
-    outputAllenBScaled = os.path.join(outfileDSI,
-                                      os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii.gz')
+    outputAllenBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii.gz')
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
     dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii.txt')
     shutil.copyfile(src_file, dst_file)
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_rsfMRI_scaled.nii.txt')
+    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_rsfMRISplit_scaled.nii.txt')
     shutil.copyfile(src_file, dst_file)
 
 
