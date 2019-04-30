@@ -13,7 +13,7 @@ import os
 
 def findRegisteredData(path):
     regMR_list = []
-    fileALL = glob.iglob(path + '/P0_Baseline/SS*/DTI/*.1.nii.gz', recursive=True)
+    fileALL = glob.iglob(path + '/P0_Baseline/S*/DTI/*.1.nii.gz', recursive=True)
     for filename in fileALL:
         regMR_list.append(filename)
 
