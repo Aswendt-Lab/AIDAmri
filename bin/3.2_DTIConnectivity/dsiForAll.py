@@ -22,7 +22,7 @@ def findRegisteredData(path):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Exponential curve fitting function  ')
+    parser = argparse.ArgumentParser(description='Bash proscessing of all data')
     parser.add_argument('-p','--pathData', help='file name:Brain extracted input data')
 
     args = parser.parse_args()
