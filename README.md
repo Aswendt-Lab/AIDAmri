@@ -1,3 +1,7 @@
+[1.2]: http://i.imgur.com/wWzX9uB.png
+[1]: http://www.twitter.com/AswendtMarkus
+<!--social icon from https://github.com/carlsednaoui/gitsocial -->
+
 <h1>AIDA<i>mri</i></h1>
 Atlas-based processing pipeline for structural and functional MRI mouse data
 
@@ -7,13 +11,10 @@ Mouse MRI data (acquired with Bruker 9.4T - cryo coil setup): adult C57BL7/6 mou
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
-<h2><b>CONTACT</h2></b>
+
+[<h2><b>CONTACT</h2></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-und-neuroengineering/)
 Niklas Pallast (niklas.pallast@uk-koeln.de) and 
-Markus Aswendt (markus.aswendt@uk-koeln.de)
-
-[![Twitter](http://i.imgur.com/tXSoThF.png)](https://twitter.com/AswendtMarkus)
-
-<!--social icon from https://github.com/carlsednaoui/gitsocial -->
+Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
 
 Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 <h2><b>LICENCE</h2></b>
