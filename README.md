@@ -5,21 +5,21 @@
 <h1>AIDA<i>mri</i></h1>
 Atlas-based processing pipeline for structural and functional MRI mouse data
 
-[<h2>MANUAL</h2>](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
-<h2>EXAMPLE FILES</h2>
-[Mouse MRI data](https://doi.org/10.12751/g-node), acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
+[MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
+
+[<h3>EXAMPLE FILES</h3>](https://doi.org/10.12751/g-node)
+Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
 
-[<h2><b>CONTACT</h2></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-und-neuroengineering/)
+[<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-und-neuroengineering/)
 Niklas Pallast (niklas.pallast@uk-koeln.de) and 
 Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
 
 Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-<h2><b>LICENSE</h2></b>
-GNU General Public License v3.0
-
+<h3><b>LICENSE</h3></b>
+GNU General Public License v3.0 
 <details>
 <summary>REFERENCES</summary></b>
 
@@ -42,3 +42,6 @@ units. Computer Methods And Programs In Biomedicine,98(3), 278–284.](https://w
 + DSIstudio
     + [Yeh, Fang-Cheng, et al. Deterministic diffusion fiber tracking improved by quantitative anisotropy. (2013): e80713. PLoS ONE 8(11)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0080713)
 </details>
+
+
+
