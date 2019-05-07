@@ -8,8 +8,12 @@ T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
 <h2><b>CONTACT</h2></b>
-Niklas Pallast (niklas.pallast@uk-koeln.de) and
+Niklas Pallast (niklas.pallast@uk-koeln.de) and 
 Markus Aswendt (markus.aswendt@uk-koeln.de)
+
+[![Twitter](http://i.imgur.com/tXSoThF.png)](https://twitter.com/AswendtMarkus)
+
+<!--social icon from https://github.com/carlsednaoui/gitsocial -->
 
 Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 <h2><b>LICENCE</h2></b>
