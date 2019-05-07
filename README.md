@@ -18,7 +18,8 @@ Niklas Pallast (niklas.pallast@uk-koeln.de) and
 Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
 
 Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-<h3><b>LICENSE</h3></b>
+
+LICENSE
 GNU General Public License v3.0 
 <details>
 <summary>REFERENCES</summary></b>
