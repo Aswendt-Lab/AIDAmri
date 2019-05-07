@@ -20,8 +20,8 @@ Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms:
 <h2><b>LICENSE</h2></b>
 GNU General Public License v3.0
 
-<h2><details>
-<summary>REFERENCES</summary></h2>
+<details>
+<summary>REFERENCES</summary></b>
 
 + AIDAmri
     + under review
