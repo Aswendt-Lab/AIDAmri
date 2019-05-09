@@ -65,8 +65,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     # Some sclaed data for DSI Studio
     outfileDSI = os.path.join(os.path.dirname(inputVolume), 'DSI_studio')
-    if not os.path.exists(outfileDSI):
-        os.makedirs(outfileDSI)
+    if os.path.exists(outfileDSI):
+        shutil.rmtree(outfileDSI)
+    os.makedirs(outfileDSI)
     outputRefStrokeMaskAff = None
     if refStroke_mask is not None and len(refStroke_mask) > 0 and os.path.exists(refStroke_mask):
         refMatrix = find_RefAff(inputVolume)[0]
