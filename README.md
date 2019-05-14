@@ -2,7 +2,7 @@
 [1]: http://www.twitter.com/AswendtMarkus
 <!--social icon from https://github.com/carlsednaoui/gitsocial -->
 
-<h1>AIDA<i>mri</i></h1>
+<img align="left" src="https://github.com/maswendt/AIDAmri/blob/master/logo.png"><h1>AIDA<i>mri</i></h1>
 Atlas-based processing pipeline for structural and functional MRI mouse data
 
 [MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
