@@ -7,7 +7,7 @@ Software of Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and
 
 [MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 <br/>
-[<h3><b>EXAMPLE FILES</h3></b>](https://doi.org/10.12751/g-node)
+[<h3><b>EXAMPLE FILES</h3></b>](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
 Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
