@@ -94,7 +94,7 @@ def rawCheck_cmd():
     postVal.set(0)
     deavitvateProcLabel(True)
     dataPrefix.set("1_PV2NIfTiConverter")
-    commandPrefix.set(os.path.join(dataPrefix.get(), "pv_conv2Nifti.py -i "))
+    commandPrefix.set("pv_conv2Nifti.py -i ")
     fullComand = pythonPrefix + commandPrefix.get() + filenameStr.get()
     codetxt.set(fullComand)
 
