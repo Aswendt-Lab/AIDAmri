@@ -270,7 +270,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--TR', default=TR, help='current TR value')
     parser.add_argument('-c', '--cutOff_sec', default=cutOff_sec, help=' high-pass filter cutoff sec')
     parser.add_argument('-f', '--FWHM', default=FWHM, help='Full width at half maximum')
-    parser.add_argument('-s', '--slice_time', action='store_true', help='fast detection')
+    parser.add_argument('-s', '--slice_time', action='store_true', help='perform a slice time correction')
     args = parser.parse_args()
 
 

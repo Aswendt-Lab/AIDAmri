@@ -36,7 +36,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     jac = 0.3
     # minimum defomraiton field in mm
     if opt == 1:
-        s = [2, 1, 1]
+        s = [1, 1, 2]
     elif opt == 2:  s = [2,2,2]
     elif opt == 3:  s = [3,3,3]
     else:           s = [5,5,5]

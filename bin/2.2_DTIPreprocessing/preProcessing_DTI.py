@@ -27,6 +27,7 @@ def applyBET(input_file,frac,radius,outputPath):
     imgTemp = np.flip(imgTemp, 2)
 
     # imgTemp = np.rot90(imgTemp,2)
+    # imgTemp = np.rot90(imgTemp,2)
     # imgTemp = np.flip(imgTemp, 0)
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header

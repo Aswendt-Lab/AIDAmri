@@ -10,53 +10,68 @@ University Hospital Cologne
 
 import sys,os
 import glob
+import shutil as sh
 
-def regABA2rsfMRI(inputVolume,T2data, brain_template,brain_anno, splitedAnno,splitedAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
+
+def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno, splitedAnno_rsfMRI, anno_rsfMRI,
+                  bsplineMatrix, dref, outfile):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
 
-    os.system(
+    if dref:
+        pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*T2w.nii.gz', recursive=False)
+        sh.copy(pathT2[0], outputT2w)
+    else:
+        os.system(
         'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff)  # + ' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
-
-    # resample Annotation
-    outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
-    os.system(
+        #  resample Annotation
+        outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
+        os.system(
         'reg_resample -ref ' + inputVolume + ' -flo ' + brain_anno +
         ' -cpp ' + outputAff + ' -inter 0 -res ' + outputAnno)
 
     # resample splited  Annotation
     outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
-    os.system(
+    if dref:
+        pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*AnnoSplit.nii.gz', recursive=False)
+        sh.copy(pathT2[0], outputAnnoSplit)
+    else:
+        os.system(
         'reg_resample -ref ' + brain_anno + ' -flo ' + splitedAnno +
         ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit)
-    os.system(
+        os.system(
         'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit +
         ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit)
 
     # resample splited rsfMRI Annotation
     outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_rsfMRI.nii.gz')
-    os.system(
+    if dref:
+        pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*AnnoSplit_rsfMRI.nii.gz', recursive=False)
+        sh.copy(pathT2[0], outputAnnoSplit_rsfMRI)
+    else:
+        os.system(
         'reg_resample -ref ' + brain_anno + ' -flo ' + splitedAnno_rsfMRI +
         ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
-    os.system(
+        os.system(
         'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit_rsfMRI +
         ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
 
     # resample rsfMRI Annotation
     outputAnno_rsfMRI = os.path.join(outfile,
                                           os.path.basename(inputVolume).split('.')[0] + '_Anno_rsfMRI.nii.gz')
-    os.system(
+    if dref:
+        pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*Anno_rsfMRI.nii.gz', recursive=False)
+        sh.copy(pathT2[0], outputAnno_rsfMRI)
+    else:
+        os.system(
         'reg_resample -ref ' + brain_anno + ' -flo ' + anno_rsfMRI +
         ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnno_rsfMRI)
-    os.system(
+        os.system(
         'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnno_rsfMRI +
         ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnno_rsfMRI)
-
-
-
-    # resample in-house developed tempalate
-    outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
-    os.system(
+        # resample in-house developed tempalate
+        outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
+        os.system(
         'reg_resample -ref ' + inputVolume + ' -flo ' + brain_template +
         ' -cpp ' + outputAff + ' -res ' + outputTemplate)
 
@@ -91,7 +106,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Registration of T2 dataset and Allen Brain Atlas to rsfMRI')
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--inputVolume', help='file name of DTI data after preprocessing', required=True)
-
+    parser.add_argument('-d', '--dtiasRef', action='store_true', help='use DTI as reference if data quality is low')
     parser.add_argument('-r', '--referenceDay', help='Refernce Stroke mask', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitedAnno', help='Splited annotations atlas', nargs='?', type=str,
@@ -191,7 +206,8 @@ if __name__ == "__main__":
     if not os.path.exists(anno_rsfMRI):
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
-    output = regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno,splitedAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
+    output = regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno, splitedAnno_rsfMRI,
+                           anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile)
     print(output + '...DONE!')
     sys.stdout = sys.__stdout__
     print('rsfMRI Registration  \033[0;30;42m COMPLETED \33[0m')

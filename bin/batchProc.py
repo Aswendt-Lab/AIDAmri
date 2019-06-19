@@ -13,7 +13,10 @@ import os
 
 def findData(path, data, post):
     regMR_list = []
-    fullString = os.path.join(path, data, post)
+    if post is not None:
+        fullString = os.path.join(path, data, post)
+    else:
+        fullString = os.path.join(path, data)
     fileALL = glob.iglob(fullString, recursive=True)
     for filename in fileALL:
         regMR_list.append(filename)
@@ -27,7 +30,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--folder',
                         help='parent folder of dataset e.g. /Volumes/AG_Aswendt_Projects/TVA_GFAP_Vimentin_Göteborg/MRI/proc_data/P1/GFAP_Vim/GV*')
     parser.add_argument('-d', '--dataType', help='folder of data e.g. DTI, T2, or fMRI')
-    parser.add_argument('-p', '--postfix', help='postfix of filename e.g. *Bet.nii.gz or *1.nii.gz')
+    parser.add_argument('-p', '--postfix', help='postfix of filename e.g. *Bet.nii.gz or *1.nii.gz', default=None)
     parser.add_argument('-c', '--command',
                         help='full path to the python command e.g. /Users/aswendtm/AIDA/bin/2.1_T2PreProcessing/registration_T2.py')
 
