@@ -110,17 +110,17 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     output_file =  os.path.join(outfile,os.path.basename(path_listMR[fileIndex]).split('.')[0]+ 'Anno_parmask.nii.gz')
     nii.save(scaledNiiData, output_file)
 
-
+    ref_Image = fValues_Anno
     fValues_Anno = np.unique(fValues_Anno)
     nullValues = np.argwhere(fValues_Anno<=0.0)
     fValues_Anno = np.delete(fValues_Anno, nullValues)
 
+    regionAffectPercent = np.zeros(np.size(fValues_Anno))
+    for i in range(np.size(fValues_Anno)):
+        regionAffectPercent[i] = (np.sum(ref_Image == fValues_Anno[i]) / np.sum(volumeAnno == fValues_Anno[i])) * 100
+
     labCounterList = np.isin(labMat[:, 0], fValues_Anno)
     labMat = labMat[labCounterList,0]
-    matFile['ABALabelIDs'] = labMat
-    sc.savemat(os.path.join(outfile, 'labelCount_Partenal.mat'), matFile)
-
-
     labCounterColor = np.isin(realAraImg, fValues_Anno)
     coloredAraLabels[labCounterColor] = realAraImg[labCounterColor]
     xdim = np.size(coloredAraLabels, 0)
@@ -143,13 +143,25 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.txt').readlines()
     o=open(os.path.join(outfile, 'affectedRegions_Parental.txt'), 'w')
     o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n"  % (((strokeVolumeInCubicMM/brainVolumeInCubicMM)*100),strokeVolumeInCubicMM,))
+    matIndex = 0
+    labelNamesAffected = ["" for x in range(np.size(fValues_Anno))]
+    labelNames = ["" for x in range(np.size(lines))]
     for i in range(len(lines)):
+        labelNames[i] = lines[i].split('\t')[1]
         if  np.isin(int(lines[i].split('\t')[0]),labMat):
-            #o.write(lines[i].split('	')[0] + '	L_' + lines[i].split('	')[1])
-            o.write(lines[i])
+            o.write(lines[i][:-1] + "\t %0.2f %%\n" % regionAffectPercent[matIndex])
+            labelNamesAffected[matIndex] = lines[i].split('\t')[1]
+            matIndex = matIndex + 1
+
             #o.write(str(int(lines[i].split('	')[0]) + 2000) + '	R_' + lines[i].split('	')[1])
     o.close()
-
+    labMat = np.stack((labMat, regionAffectPercent))
+    matFile['ABLAbelsIDsParental'] = labMat
+    matFile['ABANamesPar'] = labelNamesAffected
+    matFile['ABAlabels'] = labelNames
+    matFile['volumePer'] = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
+    matFile['volumeMM'] = strokeVolumeInCubicMM
+    sc.savemat(os.path.join(outfile, 'labelCount_par.mat'), matFile)
 
 
 

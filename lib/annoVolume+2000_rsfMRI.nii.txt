@@ -15,9 +15,7 @@
 354	L_Medulla
 361	L_Primary_somatosensory_area,_trunk
 369	L_Primary_somatosensory_area,_upper_limb
-375	L_Ammon's_horn
 378	L_Supplemental_somatosensory_area
-467	L_Hypothalamic_medial_zone
 485	L_Striatum_dorsal_region
 493	L_Striatum_ventral_region
 519	L_Cerebellar_nuclei
@@ -29,7 +27,6 @@
 698	L_Olfactory_areas
 703	L_Cortical_subplate
 714	L_Orbital_area
-726	L_Dentate_gyrus
 771	L_Pons
 776	L_corpus_callosum
 784	L_corticospinal_tract
@@ -67,9 +64,7 @@
 2354	R_Medulla
 2361	R_Primary_somatosensory_area,_trunk
 2369	R_Primary_somatosensory_area,_upper_limb
-2375	R_Ammon's_horn
 2378	R_Supplemental_somatosensory_area
-2467	R_Hypothalamic_medial_zone
 2485	R_Striatum_dorsal_region
 2493	R_Striatum_ventral_region
 2519	R_Cerebellar_nuclei
@@ -81,7 +76,6 @@
 2698	R_Olfactory_areas
 2703	R_Cortical_subplate
 2714	R_Orbital_area
-2726	R_Dentate_gyrus
 2771	R_Pons
 2776	R_corpus_callosum
 2784	R_corticospinal_tract

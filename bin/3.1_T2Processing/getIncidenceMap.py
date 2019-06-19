@@ -17,26 +17,25 @@ import matplotlib.pyplot as plt
 
 
 def heatMap(incidenceMap, araVol):
-    fig = plt.figure(frameon=False)
-    im = []
-    for i in range(12):
-        t = 1 + i
-        fig.add_subplot(3, 4, t)
-        plt.imshow(np.transpose(incidenceMap[:, :, t * 16]), cmap='gnuplot')
+    maxV = int(np.max(incidenceMap))
+    fig, axes = plt.subplots(nrows=3, ncols=4)
+    t = 1
+    for ax in axes.flat:
+        im = ax.imshow(np.transpose(np.round(incidenceMap[:, :, t * 16])), cmap='gnuplot', vmin=0, vmax=maxV)
+        ax.imshow(np.transpose(araVol[:, :, t * 16]), alpha=0.55, cmap='gray')
+        ax.axis('off')
+        t = t + 1
 
-        if i == 8:
-            im = plt.imshow(np.transpose(incidenceMap[:, :, t * 16]), cmap='gnuplot')
-            plt.imshow(np.transpose(araVol[:, :, t * 16]), alpha=0.55, cmap='gray')
-        else:
-            plt.imshow(np.transpose(incidenceMap[:, :, t * 16]), cmap='gnuplot')
-            plt.imshow(np.transpose(araVol[:, :, t * 16]), alpha=0.55, cmap='gray')
-        plt.axis('off')
+
     fig.subplots_adjust(right=0.8)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
-    fig.colorbar(im, cax=cbar_ax)
+    bounds = np.linspace(0, maxV, maxV + 1)
+    cbar = fig.colorbar(im, cax=cbar_ax, format='%1i', ticks=bounds)
+    cbar.ax.tick_params(labelsize=14)
     plt.show()
 
-def incidenceMap2(path_listInc, araTemplate):
+
+def incidenceMap2(path_listInc, araTemplate, inputFile):
     araDataTemplate = nii.load(araTemplate)
     realAraImg = araDataTemplate.get_data()
     overlazedInciedences = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
@@ -52,7 +51,10 @@ def incidenceMap2(path_listInc, araTemplate):
         volumeMRI[fvalues] = 1
 
         overlazedInciedences = overlazedInciedences + volumeMRI
-
+    # uncomment the following lines to save incidence map
+    # overlayNII = nii.Nifti1Image(overlazedInciedences, araDataTemplate.affine)
+    # output_file = os.path.join(inputFile, 'incMap.nii.gz')
+    # nii.save(overlayNII, output_file)
     heatMap(incidenceMap=overlazedInciedences, araVol=realAraImg)
 
 
@@ -98,5 +100,5 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' has no masked strokes." % (studyname,))
 
     print("'%i' folders are part of the incidence map." % (len(regInc_list),))
-    incidenceMap2(regInc_list, allenBrainTemplate)
+    incidenceMap2(regInc_list, allenBrainTemplate, inputFile)
     sys.exit(0)
