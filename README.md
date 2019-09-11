@@ -24,8 +24,7 @@ GNU General Public License v3.0
 <details>
 <summary>REFERENCES</summary></b>
 
-+ AIDAmri
-    + under review
++ AIDA<i>mri [Pallast, N., et al. "Processing pipeline for Atlas-based Imaging Data Analysis (AIDA) of structural and functional mouse brain MRI" Frontiers in Neuroinformatics, 2019](https://www.frontiersin.org/articles/10.3389/fninf.2019.00042/full)
 + Niftyreg
     + [Ourselin, et al. (2001). Reconstructing a 3D structure from serial
 histological sections. Image and Vision Computing, 19(1-2), 25–31.](https://www.sciencedirect.com/science/article/pii/S0262885600000524)
