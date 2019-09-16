@@ -36,7 +36,7 @@ class Bruker2Nifti:
 
         self.acqp = pB.parsePV(os.path.join(rawfolder, study, expno, 'acqp'))
         self.method = pB.parsePV(os.path.join(rawfolder, study, expno, 'method'))
-
+        self.subject = pB.parsePV(os.path.join(rawfolder, study, 'subject'))
         # get header information
         datadir = os.path.join(rawfolder, study, expno, 'pdata', procno)
         #self.d3proc = pB.parsePV(os.path.join(datadir, 'd3proc'))   # removed for PV6
@@ -254,6 +254,7 @@ if __name__ == "__main__":
     procno ='1'
     study=input_folder.split('/')[len(input_folder.split('/'))-1]
     print(study)
+    img = []
     for expno in np.sort(listOfScans):
         path = os.path.join(input_folder, expno, 'pdata', procno)
         if not os.path.isdir(path):
@@ -271,7 +272,9 @@ if __name__ == "__main__":
                 echoTime = np.fromstring(echoTime, dtype=float, sep=' ')
                 if len(echoTime) > 3:
                     mapT2.getT2mapping(resPath,args.model,args.upLim,args.snrLim,args.snrMethod,echoTime)
+    pathlog = os.path.dirname(os.path.dirname(resPath))
+    pathlog = os.path.join(pathlog, 'data.log')
 
-
-
-
+    logfile = open(pathlog, 'w')
+    logfile.write(img.subject['coilname'])
+    logfile.close()
