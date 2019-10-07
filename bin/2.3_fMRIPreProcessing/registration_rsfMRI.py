@@ -23,7 +23,7 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno, 
         sh.copy(pathT2[0], outputT2w)
     else:
         os.system(
-        'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff)  # + ' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
+            'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff + ' -rigOnly')  # + -rigOnly' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
         #  resample Annotation
         outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
         os.system(

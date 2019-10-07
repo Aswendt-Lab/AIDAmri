@@ -117,8 +117,8 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 
     regionAffectPercent = np.zeros(np.size(fValues_Anno))
     for i in range(np.size(fValues_Anno)):
-        regionAffectPercent[i] = (np.sum(ref_Image == fValues_Anno[i]) / np.sum(volumeAnno == fValues_Anno[i])) * 100
-
+        regionAffectPercent[i] = (np.sum(ref_Image == fValues_Anno[i]) / np.sum(volumeAnno == fValues_Anno[i])) * 200
+        regionAffectPercent[regionAffectPercent > 100] = 100
     labCounterList = np.isin(labMat[:, 0], fValues_Anno)
     labMat = labMat[labCounterList,0]
     labCounterColor = np.isin(realAraImg, fValues_Anno)

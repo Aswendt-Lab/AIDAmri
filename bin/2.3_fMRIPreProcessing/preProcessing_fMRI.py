@@ -113,7 +113,9 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--input', help='path the the RAW data of rsfMRI NIfTI file', required=True)
 
-    parser.add_argument('-f', '--frac', help='fractional intensity threshold - default=0.3  smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
+    parser.add_argument('-f', '--frac',
+                        help='fractional intensity threshold - default=0.3  smaller values give larger brain outline estimates',
+                        nargs='?', type=float, default=0.15)
     parser.add_argument('-r', '--radius', help='head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
     parser.add_argument('-g', '--vertical_gradient', help='vertical gradient in fractional intensity threshold - default=0.0   positive values give larger brain outline at bottom, smaller at top', nargs='?',
                         type=float,default=0.0)

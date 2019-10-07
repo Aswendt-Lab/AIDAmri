@@ -182,7 +182,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
     os.chdir(dir_in)
 
     cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s'
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --param1=%s --thread_count=%d --check_btable=%d'
+    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --thread_count=%d --check_btable=%d'
 
     file_list = [x for x in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, x)) and re.match(pattern_in, x)]
     file_list.sort()
@@ -200,7 +200,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
 
         # create fib files
         file_msk = os.path.join(dir_msk, pre_msk + filename[:pos] + ext_nii)
-        parameters = (dsi_studio, 'rec', file_src, file_msk, 3, '0.006', '8', 2, 0)
+        parameters = (dsi_studio, 'rec', file_src, file_msk, 3, '16', 2, 0)
         print("%d of %d:" % (index + 1, len(file_list)), cmd_rec % parameters)
         subprocess.call(cmd_rec % parameters)
 
@@ -257,7 +257,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     os.chdir(os.path.dirname(dir_in))
 
     cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s'
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --param1=%s --check_btable=%d --half_sphere=%d'
+    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --check_btable=%d --half_sphere=%d'
 
     # create source files
     filename = os.path.basename(dir_in)
@@ -271,7 +271,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '0.006', '8', 0, 1)
+    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '16', 0, 1)
     print("Generate fib-File %s:" % cmd_rec % parameters)
     os.system(cmd_rec % parameters)
 
@@ -324,7 +324,7 @@ def tracking(dsi_studio, dir_in):
     os.chdir(os.path.dirname(dir_in))
 
     # qa threshold for 60/65 = 0.05; for Alzheimer: 0.03
-    cmd_trk = r'%s --action=%s --source=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
+    cmd_trk = r'%s --action=%s --source=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --smoothing=%s --min_length=%s --max_length=%s'
 
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     #parameters = (dsi_studio, 'trk', file_fib, 1000000, 0, '.5', '55', 0, '.02', '.1', '5.0', '120.0')
