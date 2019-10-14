@@ -100,7 +100,7 @@ class Bruker2Nifti:
 
         if "Localizer" in self.acqp['ACQ_protocol_name']:
             procfolder = os.path.join(self.procfolder, self.study, "Localizer")
-        elif "DTI" in self.acqp['ACQ_protocol_name']:
+        elif "DTI" in self.acqp['ACQ_protocol_name'] or "Diffusion" in self.acqp['ACQ_protocol_name']:
             procfolder = os.path.join(self.procfolder, self.study, "DTI")
         elif "fMRI" in self.acqp['ACQ_protocol_name']:
             procfolder = os.path.join(self.procfolder, self.study, "fMRI")
