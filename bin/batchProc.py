@@ -13,11 +13,16 @@ import os
 
 def findData(path, data, post):
     regMR_list = []
-    if post is not None:
+    if post is not None and data is not None:
         fullString = os.path.join(path, data, post)
-    else:
+        fileALL = glob.iglob(fullString, recursive=True)
+    elif data is not None:
         fullString = os.path.join(path, data)
-    fileALL = glob.iglob(fullString, recursive=True)
+        fileALL = glob.iglob(fullString, recursive=True)
+    else:
+        fullString = os.path.join(path)
+        fileALL = glob.iglob(fullString, recursive=False)
+
     for filename in fileALL:
         regMR_list.append(filename)
 
