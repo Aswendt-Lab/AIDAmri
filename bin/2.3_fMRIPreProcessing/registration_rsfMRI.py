@@ -14,7 +14,7 @@ import shutil as sh
 
 
 def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno, splitedAnno_rsfMRI, anno_rsfMRI,
-                  bsplineMatrix, dref, outfile):
+                  bsplineMatrix, dref, outfile, rig_only):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
 
@@ -22,9 +22,12 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno, 
         pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*T2w.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputT2w)
     else:
-        os.system(
-            'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff)  # + -rigOnly' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
-        #  resample Annotation
+        if rig_only:
+            os.system(
+                'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff + ' -rigOnly' + ' -nac')
+        else:
+            os.system(
+                'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff)
         outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
         os.system(
         'reg_resample -ref ' + inputVolume + ' -flo ' + brain_anno +
@@ -105,7 +108,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Registration of T2 dataset and Allen Brain Atlas to rsfMRI')
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--inputVolume', help='file name of DTI data after preprocessing', required=True)
+    requiredNamed.add_argument('-i', '--inputVolume', help='file name of fMRI data after preprocessing', required=True)
     parser.add_argument('-d', '--dtiasRef', action='store_true', help='use DTI as reference if data quality is low')
     parser.add_argument('-r', '--referenceDay', help='Refernce Stroke mask', nargs='?', type=str,
                         default=None)
@@ -115,6 +118,7 @@ if __name__ == "__main__":
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
     parser.add_argument('-a', '--anno_rsfMRI', help='Annotations atlas for rsfMRI', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
+    parser.add_argument('-p', '--rig_only', action='store_false', help='avoid just a rigid transformation')
 
 
 
@@ -207,7 +211,7 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
     output = regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitedAnno, splitedAnno_rsfMRI,
-                           anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile)
+                           anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile, args.rig_only)
     print(output + '...DONE!')
     sys.stdout = sys.__stdout__
     print('rsfMRI Registration  \033[0;30;42m COMPLETED \33[0m')

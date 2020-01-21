@@ -20,7 +20,7 @@ import nibabel as nii
 
 
 def snrCalclualtor(input_file, method):
-    fileSNR = open(os.path.join(os.path.dirname(input_file),'snr.txt'), 'w')
+    fileSNR = open(os.path.join(os.path.dirname(input_file), os.path.basename(input_file) + 'snr.txt'), 'w')
 
     data = nii.load(input_file)
     imgData = data.get_data()

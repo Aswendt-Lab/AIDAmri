@@ -10,6 +10,7 @@ University Hospital Cologne
 
 
 import sys, os
+
 import nipype.interfaces.fsl as fsl
 import nibabel as nii
 import numpy as np
@@ -258,7 +259,7 @@ def startProcess(Rawfile_name):
 
 if __name__ == "__main__":
 
-    TR = 2.84
+    TR = 1.42
     cutOff_sec = 100.0
     FWHM = 3.0
 
@@ -270,7 +271,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--TR', default=TR, help='current TR value')
     parser.add_argument('-c', '--cutOff_sec', default=cutOff_sec, help=' high-pass filter cutoff sec')
     parser.add_argument('-f', '--FWHM', default=FWHM, help='Full width at half maximum')
-    parser.add_argument('-s', '--slice_time', action='store_true', help='perform a slice time correction')
+    parser.add_argument('-s', '--slice_time', action='store_false', help='avoid a slice time correction')
     args = parser.parse_args()
 
 
