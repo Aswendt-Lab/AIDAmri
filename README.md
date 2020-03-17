@@ -5,9 +5,9 @@
 <img align="left" src="https://github.com/maswendt/AIDAmri/blob/master/logo.png"><h1>AIDA<i>mri</i></h1>
 Software of Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 
-[MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
+=> [MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 <br/>
-
+<br/>
 <h3><b>ARA CREATOR</h3></b>
 Matlab script to generate a custom version of the Allen Mouse Brain Atlas. 
 
