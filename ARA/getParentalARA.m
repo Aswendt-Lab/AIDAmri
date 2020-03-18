@@ -1,5 +1,5 @@
-%% Method generate a Atlas with all parental Regions of the given xml_file
-% getParentalARA('/Volumes/AG_Aswendt_Share/Scratch/Asw_fMRI2AllenBrain_Data/annotation_50CHANGEDanno_label_IDs_valid.xlsx','/Users/pallastn/ImageProcessing/MatLabEvaluation/Tools/ARA/annotation.nii')
+%% Method generate a atlas with all parental regions of the given xlsx file
+% getParentalARA('./annotation_label_IDs_valid.xlsx','./annotation/annotation.nii.gz')
 function getParentalARA(xml_file,atlasNii_file)
 addpath('./AllenBrainAPI-master/');
 labelsStrArray = char(readXML_Lables(xml_file));
@@ -12,21 +12,19 @@ for label_idx = 1:length(labelsStrArray)
         continue
     end
     childIDs = childTable.id;
-   
     parentalID = name2structureID(labelsStrArray(label_idx,:));
     for child_idx = 1:length(childIDs)
         parentalAtlasVolume(atlasData.img==childIDs(child_idx)) = parentalID;
     end
     
 end
-% change large Values
-parentalAtlasVolume(atlasData.img==182305689)= 1098;
-%splitDataset
 
+% change large annotation value of Primary somatosensory area, unassigned   
+parentalAtlasVolume(parentalAtlasVolume==182305689)= 1098;
 
-fileName = strsplit(atlasNii_file,'.');
-output_file = [fileName{1} '_parent.' fileName{2}];
-parentalAtlasVolume = flip(parentalAtlasVolume,3);
+file=dir(atlasNii_file);
+fileName = strsplit(string(file.name),'.');
+output_file = [fileName{1} '_parent.' fileName{2} '.' fileName{3}];
 atlasData.img = parentalAtlasVolume;
 save_nii(atlasData,output_file);
 end

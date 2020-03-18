@@ -29,6 +29,9 @@ def snrCalclualtor(input_file, method):
     #ny = imgData.shape[1] # Images size in y - direction
     ns = imgData.shape[2] # Number of slices
 
+    if len(imgData.shape) == 4:
+        imgData = np.mean(imgData, 3)
+
     noiseSNR = np.zeros(ns)
 
     imgData = np.ndarray.astype(imgData,'float64')
@@ -60,9 +63,9 @@ def snrCalclualtor(input_file, method):
     fileSNR.close()
 
 
-def findRegisteredData(path):
+def findRegisteredData(path, option):
     regMR_list = []
-    for filename in glob.iglob(path + '*/T2w/*1.nii.gz', recursive=True):
+    for filename in glob.iglob(path + '*/' + option + '/*1.nii.gz', recursive=True):
         regMR_list.append(filename)
 
     return regMR_list
@@ -73,6 +76,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Calculates SNR and generates snr.txt in T2w files')
     parser.add_argument('-p', '--pathData', help='src path to all processed files')
     parser.add_argument('-f', '--filePrefix', help='file prefix in src path')
+    parser.add_argument('-o', '--option', help='choose scan folder (T2w,DTI,fMRI)', default='T2w', type=str)
     parser.add_argument('-m', '--SNRmethod', help='1: Brummer(default) 2:Chang 3:Sijbers', nargs='?', type=int,
                         default=1)
 
@@ -80,7 +84,7 @@ if __name__ == "__main__":
 
     pathData = args.pathData + '/' + args.filePrefix
 
-    listMr = findRegisteredData(pathData)
+    listMr = findRegisteredData(pathData, args.option)
     method = args.SNRmethod
 
     for i in listMr:

@@ -32,13 +32,12 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Batch proscessing of all data')
-    parser.add_argument('-f', '--folder',
-                        help='parent folder of dataset e.g. /Volumes/AG_Aswendt_Projects/TVA_GFAP_Vimentin_Göteborg/MRI/proc_data/P1/GFAP_Vim/GV*')
-    parser.add_argument('-d', '--dataType', help='folder of data e.g. DTI, T2, or fMRI')
-    parser.add_argument('-p', '--postfix', help='postfix of filename e.g. *Bet.nii.gz or *1.nii.gz', default=None)
     parser.add_argument('-c', '--command',
                         help='full path to the python command e.g. /Users/aswendtm/AIDA/bin/2.1_T2PreProcessing/registration_T2.py')
-
+    parser.add_argument('-f', '--folder',
+                        help='parent folder of dataset e.g. /Volumes/AG_Aswendt_Projects/TVA_GFAP_Vimentin_Goeteborg/MRI/proc_data/P1/GFAP_Vim/GV*')
+    parser.add_argument('-d', '--dataType', help='folder of data e.g. DTI, T2w, or fMRI')
+    parser.add_argument('-p', '--postfix', help='postfix of filename e.g. *Bet.nii.gz or *1.nii.gz', default=None)
     args = parser.parse_args()
 
     pathData = args.folder
@@ -48,11 +47,12 @@ if __name__ == "__main__":
     cmd_path = os.path.dirname(args.command)
 
     listMr = findData(pathData, dataType, postfix)
-    print(listMr)
+    for x in range(len(listMr)):
+        print(listMr[x])
     os.chdir(cmd_path)
     for i in listMr:
-        print('python ' + command + ' -i ' + i)
+        print('python ' + command + ' -i ' + i)  # + ' -d')
 
-        os.system('python ' + command + ' -i ' + i)
+        os.system('python ' + command + ' -i ' + i)  # + ' -d')
 
     os.chdir(os.path.dirname(cmd_path))
