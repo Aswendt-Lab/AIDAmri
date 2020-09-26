@@ -28,7 +28,13 @@ GNU General Public License v3.0
 <details>
 <summary>REFERENCES</summary></b>
 
-+ AIDA<i>mri [Pallast, N., et al. "Processing pipeline for Atlas-based Imaging Data Analysis (AIDA) of structural and functional mouse brain MRI" Frontiers in Neuroinformatics, 2019](https://www.frontiersin.org/articles/10.3389/fninf.2019.00042/full)
++ AIDA<i>mri
+    + [Pallast, N., et al. "Processing pipeline for Atlas-based Imaging Data Analysis (AIDA) of structural and functional mouse brain MRI" Frontiers in Neuroinformatics, 2019](https://www.frontiersin.org/articles/10.3389/fninf.2019.00042/full)
++ Brain Connectivity Toolbox
+    + [M. Rubinov and O. Sporns (2010). Complex Network Measures of Brain Connectivity: Uses 
+and Interpretations. NeuroImage 52 (3), 1059–69.](https://www.sciencedirect.com/science/article/abs/pii/S105381190901074X)
++ Allen Mouse Brain Reference Atlas
+    + [Wang et al. (2020). The Allen Mouse Brain Common Coordinate Framework: A 3D Reference Atlas. Cell 181 (4), 936-953.](https://pubmed.ncbi.nlm.nih.gov/32386544/)
 + Niftyreg
     + [Ourselin, et al. (2001). Reconstructing a 3D structure from serial
 histological sections. Image and Vision Computing, 19(1-2), 25–31.](https://www.sciencedirect.com/science/article/pii/S0262885600000524)
