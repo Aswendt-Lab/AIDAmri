@@ -1,1 +1,0 @@
-/Applications/dsi_studio.app/Contents/MacOS/dsi_studio
