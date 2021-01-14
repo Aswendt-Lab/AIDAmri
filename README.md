@@ -3,7 +3,7 @@
 <!--social icon from https://github.com/carlsednaoui/gitsocial -->
 
 <img align="left" src="https://github.com/maswendt/AIDAmri/blob/master/AIDA_Logo.png" width="120">
-<h1>AIDA<i>mri</i></h1>
+<h1>AIDA<i>mri</i></h1> => [MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 
 => [MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
