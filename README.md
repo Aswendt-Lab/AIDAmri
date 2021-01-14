@@ -3,10 +3,10 @@
 <!--social icon from https://github.com/carlsednaoui/gitsocial -->
 
 <img align="left" src="https://github.com/maswendt/AIDAmri/blob/master/AIDA_Logo.png" width="120">
-<h1>AIDA<i>mri</i></h1> =>[MANUAL][(https://github.com/maswendt/AIDA/blob/master/manual.pdf)]
+
+[<h1>AIDAmri</h1>Manual](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 
-=> [MANUAL](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 <br/>
 <br/>
 <h3><b>ARA CREATOR</h3></b>
