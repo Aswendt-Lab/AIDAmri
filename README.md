@@ -8,8 +8,6 @@
 <br/>
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
-[<h3><b>MANUAL</h3></b>]
-
 <h3><b>ARA CREATOR</h3></b>
 Matlab script to generate a custom version of the Allen Mouse Brain Atlas. 
 
@@ -18,6 +16,8 @@ Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mous
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
+
+[<h3><b>MANUAL</h3></b>](https://github.com/maswendt/AIDAmri/blob/master/manual.pdf)
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-und-neuroengineering/)
 Niklas Pallast and Markus Aswendt (contact: markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
