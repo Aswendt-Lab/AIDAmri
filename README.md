@@ -4,7 +4,8 @@
 
 <img align="left" src="https://github.com/maswendt/AIDAmri/blob/master/AIDA_Logo.png" width="120">
 
-<h1>AIDAmri</h1> [<h1> => Manual</h1>](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
+<h1>AIDAmri</h1>
+[<h2> => Manual</h2>](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 
 <br/>
