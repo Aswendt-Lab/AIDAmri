@@ -1,0 +1,1 @@
+python DTIdata_extract.py testdata/SP_V1_1_1_1_1_20171013_135404.10.1.nii.src.gz.dti.fib.gz.ad.nii.gz testdata/SP_V1_1_1_1_1_20171013_135404SmoothMicoBiasBetrsfMRI_Mask_scaled.nii.gz -t acronym_rsfMRI.txt

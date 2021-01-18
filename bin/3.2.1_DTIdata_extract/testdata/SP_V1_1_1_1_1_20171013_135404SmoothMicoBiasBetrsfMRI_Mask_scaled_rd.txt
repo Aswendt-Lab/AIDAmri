@@ -1,0 +1,24 @@
+RD values for 22 given regions:
+
+31	ACA	0.43
+44	ILA	0.39
+95	AI	0.35
+254	RSP	0.40
+329	SSp-bfd	0.50
+337	SSp-ll	0.48
+345	SSp-m	0.45
+353	SSp-n	0.49
+361	SSp-tr	0.47
+369	SSp-ul	0.48
+378	SSs	0.47
+485	STRd	0.36
+677	VISC	0.37
+714	ORB	0.42
+776	cc	0.41
+972	PL	0.39
+985	MOp	0.48
+991	mfbs	0.43
+993	MOs	0.48
+1057	GU	0.46
+1080	HIP	0.37
+1098	SSp-u	0.48
