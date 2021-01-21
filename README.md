@@ -8,6 +8,7 @@
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
 <br/>
+<br/>
 [Manual v1.1](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 <br/>
 <br/>
