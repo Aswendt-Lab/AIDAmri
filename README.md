@@ -8,7 +8,6 @@
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
 <br/>
-<br/>
 [Manual v1.1](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 <br/>
 <br/>
@@ -59,6 +58,3 @@ units. Computer Methods And Programs In Biomedicine,98(3), 278–284.](https://w
 + DSIstudio
     + [Yeh, Fang-Cheng, et al. Deterministic diffusion fiber tracking improved by quantitative anisotropy. (2013): e80713. PLoS ONE 8(11)](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0080713)
 </details>
-
-
-
