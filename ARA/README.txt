@@ -1,6 +1,6 @@
 Here you will find all the tools to create the AIDAmri parental atlas. Therefore two files are necessary: 
 
-1. The original annotations of the Allen Brain Institute. These can be downloaded using AllenSDK using the download_ARA.py tool. This program can be run without input values. The files annotation.nii.gz and template.nii.gz are generated automatically.
+1. The original annotations of the Allen Brain Institute. These can be downloaded using AllenSDK using the download_ARA.py tool. This program can be executed without input values. The files annotation.nii.gz and template.nii.gz are generated automatically.
 
 2. An xlsx file according to annotation_label_IDs_valid.xlsx. This file was created manually using AllenBrainAPI-master. The file has only been added for the sake of completeness and is not part of its own development. The implementation comes from https://github.com/SainsburyWellcomeCentre/AllenBrainAPI. Here are more details on how to use AllenBrianAPI-master.
 
