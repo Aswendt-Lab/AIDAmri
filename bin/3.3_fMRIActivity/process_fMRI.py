@@ -182,9 +182,9 @@ def copyRawPhysioData(file_name,i32_Path):
         relatedPhysioData.append(filename)
 
     if len(relatedPhysioData)>1:
-        sys.exit("Error: '%s' has no unique physio data for scan %s." % (physioPath, scanNo,))
+        sys.exit("Warning: '%s' has no unique physio data for scan %s." % (physioPath, scanNo,))
     if len(relatedPhysioData) is 0:
-        print("Warning: '%s' has no related physio data for scan %s." % (physioPath, scanNo,))
+        print("Error: '%s' has no related physio data for scan %s." % (physioPath, scanNo,))
         return []
 
     physioFile_name = relatedPhysioData[0]
@@ -250,6 +250,8 @@ def startProcess(Rawfile_name):
     # get Regression Values
     if len(relatedPhysioFolder) is not 0:
         getSingleRegTable.getRegrTable(os.path.dirname(Rawfile_name),relatedPhysioFolder,par_Path)
+    else:
+        print("Error: Processing not possible, because either there is no folder called Physio or the related physio data for the scan is missing there.")
 
     sys.stdout = sys.__stdout__
     print('fMRI Processing  \033[0;30;42m COMPLETED \33[0m')
@@ -264,8 +266,8 @@ if __name__ == "__main__":
 
     import argparse
     parser = argparse.ArgumentParser(description='Process fMRI data')
-    requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--input', help='Path the the RAW data of rsfMRI NIfTI file', required=True)
+    requiredNamed = parser.add_argument_group('required arguments')
+    requiredNamed.add_argument('-i', '--input', help='Path to the RAW data of rsfMRI NIfTI file', required=True)
 
     parser.add_argument('-t', '--TR', default=TR, help='Current TR value')
     parser.add_argument('-c', '--cutOff_sec', default=cutOff_sec, help='High-pass filter cutoff sec')

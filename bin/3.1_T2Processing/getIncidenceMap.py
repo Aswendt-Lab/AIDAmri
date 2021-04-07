@@ -69,9 +69,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
-    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed = parser.add_argument_group('required arguments')
     requiredNamed.add_argument('-i', '--inputFile', help='File: Brain extracted input data')
-    requiredNamed.add_argument('-s', '--studyname', help='Prefix of the study in the input folder - for exmpale S*')
+    requiredNamed.add_argument('-s', '--studyname', help='Prefix of the study in the input folder - for example "Mouse"*')
 
     parser.add_argument('-a', '--allenBrainTemplate', help='File: Annotations of Allen Brain', nargs='?', type=str,
                         default=os.path.abspath(

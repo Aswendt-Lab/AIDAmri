@@ -112,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--deformationStrength', help='integer: 1 - very strong deformation, 2 - strong deformation, 3 - medium deformation, 4 - weak deformation ', nargs='?', type=int,
                         default=3)
     parser.add_argument('-g', '--template', help='File: Templates for Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib//NP_template_sc0.nii.gz')
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0.nii.gz')
     parser.add_argument('-t','--allenBrain_template', help='File: Templates of Allen Brain', nargs='?', type=str,
                         default=os.path.abspath(
                             os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
