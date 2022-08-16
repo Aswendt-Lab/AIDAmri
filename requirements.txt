@@ -1,0 +1,10 @@
+numpy
+scipy
+lmfit==1.0.3
+nibabel
+nipype==1.1.2
+progressbar33==2.4
+seaborn==0.11.2
+matplotlib
+scikit-build
+opencv-python
