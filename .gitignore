@@ -33,7 +33,7 @@ MANIFEST
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-
+buildlog.txt
 # Unit test / coverage reports
 htmlcov/
 .tox/
@@ -101,3 +101,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# tmp files
+*.csv\#
