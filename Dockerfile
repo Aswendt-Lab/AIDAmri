@@ -42,8 +42,7 @@ RUN pip install --upgrade pip &&\
 # installation of FSL 5.0.11 with modified installer 
 # (disabling interactive allocation query)
 COPY fslinstaller_mod.py ./
-#RUN python3 fslinstaller_mod.py -V 5.0.11
-RUN python3 fslinstaller_mod.py
+RUN python3 fslinstaller_mod.py -V 5.0.11
 
 # Configure environment
 ENV FSLDIR=/usr/local/fsl
@@ -71,7 +70,7 @@ RUN export PATH && export LD_LIBRARY_PATH
 
 WORKDIR /aida
 # download DSI studio
-RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2022.08.03/dsi_studio_ubuntu_1804.zip &&\
+RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2021.12.03/dsi_studio_ubuntu_1804.zip &&\
 	unzip dsi_studio_ubuntu_1804.zip -d dsi_studio_ubuntu_1804 &&\
 	rm dsi_studio_ubuntu_1804.zip
 

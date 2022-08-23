@@ -18,7 +18,7 @@ import shutil
 if __name__ == '__main__':
     # default dsi studio directory
     f = open(os.path.join(os.getcwd(), "dsi_studioPath.txt"), "r")
-    dsi_studio = f.read()
+    dsi_studio = f.read().split("\n")[0]
     f.close()
 
     #dsi_studio = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir,os.pardir))+'/lib/dsi_studio'
@@ -45,7 +45,6 @@ if __name__ == '__main__':
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
     file_in = dsi_tools_20170214.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-
     dsi_tools_20170214.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
     file_in = os.path.join(file_cur,'fib_map')
 

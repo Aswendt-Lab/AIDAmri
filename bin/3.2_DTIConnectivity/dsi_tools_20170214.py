@@ -94,7 +94,7 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
 
     for slc in mcf_sliceFiles: os.remove(slc)
 
-    # unscale result data by factor 10ˆ(-1)
+    # unscale result data by factor 10**(-1)
     output_file = scaleBy10(output_file, inv=True)
 
     return output_file
@@ -145,7 +145,6 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
 
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
-
     cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s'
 
 
@@ -212,8 +211,8 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
 
     for index, filename in enumerate(file_list):
         #file_fib = os.path.join(dir_in, filename)
-        #parameters = (dsi_studio, 'exp', file_fib, 'fa0,gfa,nqa0')
-        parameters = (dsi_studio, 'exp', filename, 'fa0,gfa,nqa0')
+        #parameters = (dsi_studio, 'exp', file_fib, 'fa')
+        parameters = (dsi_studio, 'exp', filename, 'fa')
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
@@ -282,7 +281,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     # # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib+'/*fib.gz')[0]
-    parameters = (dsi_studio, 'exp', file_fib, 'fa0,gfa')
+    parameters = (dsi_studio, 'exp', file_fib, 'fa')
     print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
@@ -308,7 +307,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     os.system(cmd_exp % parameters)
 
     #move_files(dir_fib, dir_gfa, '/*gfa.nii.gz')
-    move_files(dir_fib, dir_qa, '/*fa0.nii.gz')
+    move_files(dir_fib, dir_qa, '/*fa.nii.gz')
     move_files(dir_fib, dir_qa, '/*md.nii.gz')
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
     move_files(dir_fib, dir_qa, '/*rd.nii.gz')
@@ -324,10 +323,10 @@ def tracking(dsi_studio, dir_in):
     os.chdir(os.path.dirname(dir_in))
 
     # qa threshold for 60/65 = 0.05; for Alzheimer: 0.03
-    cmd_trk = r'%s --action=%s --source=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
+    cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
 
     filename = glob.glob(dir_in+'/*fib.gz')[0]
-    parameters = (dsi_studio, 'trk', filename, 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
+    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
     print("Track neuronal pathes %s:" % cmd_trk % parameters)
     os.system(cmd_trk % parameters)
 
