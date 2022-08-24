@@ -153,7 +153,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     file_seeds = dir_seeds
     #parameters = (dsi_studio, 'ana', file_fib, file_trk, file_seeds, 'qa,count', 'pass,end')
 
-    parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, 'qa,count', 'pass,end')
+    parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, 'fa,count', 'pass,end')
     print("Analize matrix: %s:" % cmd_ana % parameters)
     os.system(cmd_ana % parameters)
     #move_files(dir_in, dir_con, re.escape(filename) + '\.' + re.escape(pre_seeds) + '.*(?:\.pass\.|\.end\.)')
@@ -306,7 +306,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
-    #move_files(dir_fib, dir_gfa, '/*gfa.nii.gz')
+#    move_files(dir_fib, dir_qa, '/*qa.nii.gz')
     move_files(dir_fib, dir_qa, '/*fa.nii.gz')
     move_files(dir_fib, dir_qa, '/*md.nii.gz')
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
@@ -329,6 +329,26 @@ def tracking(dsi_studio, dir_in):
     parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
     print("Track neuronal pathes %s:" % cmd_trk % parameters)
     os.system(cmd_trk % parameters)
+
+###########
+### NEW CODE
+def qualitycheck(dsi_studio, dir_in):
+    """
+    Check quality for source (SRC) files
+    """
+    if not os.path.exists(dir_in):
+        sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
+    
+    # change to input directory
+    os.chdir(os.path.dirname(dir_in))
+    src_dir = os.path.join(os.getcwd(), 'src')
+    cmd_qc = r'%s --action=%s --source=%s'
+
+    filename = glob.glob(src_dir+'/*src.gz')[0]
+    parameters = (dsi_studio, 'qc', filename)
+    print("Quality check %s:" % cmd_qc %parameters)
+    os.system(cmd_qc % parameters)
+############
 
 if __name__ == '__main__':
     pass

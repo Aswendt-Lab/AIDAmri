@@ -48,6 +48,15 @@ if __name__ == '__main__':
     dsi_tools_20170214.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
+    ############
+    ### NEW CODE
+    print("\n#########\n########\n########")
+    print(dsi_tools_20170214.qualitycheck(dsi_studio, file_in))
+    print("\n%%%%%%%%%\n%%%%%%%%\n%%%%%%%%")
+    ###
+    ############
+
+
     dir_out = os.path.dirname(args.file_in)
     dsi_tools_20170214.tracking(dsi_studio, file_in)
     dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii.gz'))
