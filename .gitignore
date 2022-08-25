@@ -96,6 +96,13 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
+# TeX
+*manual.tex
+*manual.aux
+*manual.log
+*manual.out
+*.synctex.gz
+
 # mkdocs documentation
 /site
 
