@@ -1,8 +1,35 @@
-sudo docker build -f Dockerfile -t aidamri:dev .
-sudo docker run \
+#!/bin/bash
+SRCPATH=${@: -1}
+dockerrun()
+{
+if [ "$bflag" == 'b' ]; then
+	docker build -t aidamri:dev -f Dockerfile .
+fi
+docker run \
 -dit --rm \
 --name aidamri \
---mount type=bind,source=$1,target=$2 \
+--mount type=bind,source=$SRCPATH,target=/aida/mountdata \
 aidamri:dev
+if [ "$aflag" == 'a' ]; then
+	docker attach aidamri
+fi
+}
 
-sudo docker attach aidamri
+
+while getopts ":ba" opt; do
+  case $opt in
+    b)
+		bflag='b'
+    	;;
+	a)
+		aflag='a'
+		;;
+    \?)
+    	echo "Invalid option: -$OPTARG" >&2
+		exit 1
+		;;
+  esac
+done
+
+
+dockerrun
