@@ -17,7 +17,7 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
 
-<h3><b>ARA CREATOR</h3></b>
+[<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
 Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
 
 [<h3><b>EXAMPLE FILES</h3></b>](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
@@ -26,11 +26,11 @@ T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
 
-[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)]
+[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)
 Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate set-up manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
-Niklas Pallast and Markus Aswendt (contact: markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
+Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
 
 Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 ___
