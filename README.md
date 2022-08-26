@@ -11,9 +11,9 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 [Manual v1.1](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 <br/>
 <br/>
-[Information about Version 1.1.1](https://github.com/maswendt/AIDAmri/releases/tag/v1.1.1)
+[Information about Version 1.1.1 (Docker pre-release)](https://github.com/maswendt/AIDAmri/releases/tag/1.1.1)
 <br/>
-[Information about Version 1.1](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
+[Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
 
@@ -25,6 +25,9 @@ Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mous
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
+
+[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)]
+Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate set-up manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
 Niklas Pallast and Markus Aswendt (contact: markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
