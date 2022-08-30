@@ -8,17 +8,15 @@
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
 <br/>
-[Manual v1.1](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
-<br/>
-<br/>
+[<h3><b>Manual v1.1</h3></b>](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 [Information about Version 1.1.1 (Docker pre-release)](https://github.com/maswendt/AIDAmri/releases/tag/1.1.1)
 <br/>
 [Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
 
-[<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
-Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
+[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)
+Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate set-up manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
 
 [<h3><b>EXAMPLE FILES</h3></b>](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
 Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
@@ -26,21 +24,23 @@ T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
 
-[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)
-Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate set-up manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
+[<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
+Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
 Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
 
-Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter room: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 ___
-LICENSE
-GNU General Public License v3.0 
+<h3><b>LICENSE/CITATION</h3></b>
+GNU General Public License v3.0 (https://www.gnu.org/licenses/gpl-3.0.en.html)
+
+If you use our software or modify parts of it and use it in other ways, please cite: 
+
+Pallast N, Diedenhofen M, Blaschke S, Wieters F, Wiedermann D, Hoehn M, Fink GR, Aswendt M. Processing Pipeline for Atlas-Based Imaging Data Analysis of Structural and Functional Mouse Brain MRI (AIDAmri). Front Neuroinform. 2019 Jun 4;13:42.[doi: 10.3389/fninf.2019.00042.](https://doi.org/10.3389/fninf.2019.00042)
 <details>
 <summary>REFERENCES</summary></b>
 
-+ AIDA<i>mri
-    + [Pallast, N., et al. "Processing pipeline for Atlas-based Imaging Data Analysis (AIDA) of structural and functional mouse brain MRI" Frontiers in Neuroinformatics, 2019](https://www.frontiersin.org/articles/10.3389/fninf.2019.00042/full)
 + Brain Connectivity Toolbox
     + [M. Rubinov and O. Sporns (2010). Complex Network Measures of Brain Connectivity: Uses 
 and Interpretations. NeuroImage 52 (3), 1059–69.](https://www.sciencedirect.com/science/article/abs/pii/S105381190901074X)
