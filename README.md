@@ -33,11 +33,15 @@ Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
 Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter room: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 ___
 <h3><b>LICENSE/CITATION</h3></b>
-GNU General Public License v3.0 (https://www.gnu.org/licenses/gpl-3.0.en.html)
-
+GNU General Public License v3.0
+<br/>
+<br/>
 If you use our software or modify parts of it and use it in other ways, please cite: 
-
+<br/>
+<br/>
 Pallast N, Diedenhofen M, Blaschke S, Wieters F, Wiedermann D, Hoehn M, Fink GR, Aswendt M. Processing Pipeline for Atlas-Based Imaging Data Analysis of Structural and Functional Mouse Brain MRI (AIDAmri). Front Neuroinform. 2019 Jun 4;13:42.[doi: 10.3389/fninf.2019.00042.](https://doi.org/10.3389/fninf.2019.00042)
+<br/>
+<br/>
 <details>
 <summary>REFERENCES</summary></b>
 
