@@ -14,7 +14,7 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 
 [<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)
 Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
-As long as the Docker release is not final and you encounter an issue with the installation of NiftyReg, use the pre-compiled version here and only adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). 
+As long as the Docker release is not final and you encounter an issue with the installation of NiftyReg, use the [pre-compiled version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip) and only adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). 
 
 <h3><b>EXAMPLE FILES</h3></b>
 
