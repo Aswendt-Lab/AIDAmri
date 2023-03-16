@@ -12,9 +12,10 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 
 [**Link**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 
-[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)
-Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
-As long as the Docker release is not final and you encounter an issue with the installation of NiftyReg, use the [pre-compiled version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip) and only adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). 
+<h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
+
+We are in the process of moving the installation into a Docker container. There is a pre-lease [dockerdev branch](https://github.com/aswendtlab/AIDAmri/tree/dockerdev). A separate manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
+As long as the Docker release is not final and you encounter an issue with the installation of NiftyReg or any pip/conda packages, use the [yml file](https://github.com/Aswendt-Lab/AIDAmri/blob/master/aidamri_v1.1.yml) which includes everyting necessary to install the Anaconda environment (conda env create -f aidamri._v1.1.yml). In addition, we provide a [pre-compiled NiftyReg version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip). Simply unpack and adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). This should work for a variety of MacOS and Linux versions. 
 
 <h3><b>EXAMPLE FILES</h3></b>
 
