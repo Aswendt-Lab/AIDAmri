@@ -168,7 +168,6 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     # Mask
     outputMaskScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
     dataMask = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_mask.nii.gz'))
     imgMask = dataMask.get_data()
 
