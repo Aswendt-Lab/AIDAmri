@@ -6,6 +6,17 @@ Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
 
+Documentation preface, added 23/05/09 by Victor Vera Frazao:
+This document is currently in revision for improvement and fixing.
+Specifically changes are made to allow compatibility of the pipeline with Ubuntu 18.04 systems 
+and Ubuntu 18.04 Docker base images, respectively, as well as adapting to appearent changes of 
+DSI-Studio that were applied since the AIDAmri v.1.1 release. As to date the DSI-Studio version 
+used is the 2022/08/03 Ubuntu 18.04 release.
+All changes and additional documentations within this script carry a signature with the writer's 
+initials (e.g. VVF for Victor Vera Frazao) and the date at application, denoted after '//' at 
+the end of the comment line. If code segments need clearance the comment line will be prefaced 
+by '#?'. Changes are prefaced by '#>' and other comments are prefaced ordinalrily 
+by '#'.
 """
 from __future__ import print_function
 
@@ -38,7 +49,7 @@ if __name__ == '__main__':
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
-    dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz'))[0]
+    dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii'))[0]
     dir_out = args.file_in
 
     if os.path.exists(mcf_path):
@@ -48,31 +59,22 @@ if __name__ == '__main__':
     dsi_tools_20170214.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
-    ############
-    ### NEW CODE
-    print("\n#########\n########\n########")
-    print(dsi_tools_20170214.qualitycheck(dsi_studio, file_in))
-    print("\n%%%%%%%%%\n%%%%%%%%\n%%%%%%%%")
-    ###
-    ############
-
-
     dir_out = os.path.dirname(args.file_in)
     dsi_tools_20170214.tracking(dsi_studio, file_in)
-    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii.gz'))
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii')) #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
     if len(dir_seeds)>0:
-        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii.gz'))[0]
+        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
         dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
-        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*rsfMRI_Mask_scaled.nii.gz'))[0]
+        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*rsfMRI_Mask_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
         dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
 
 
-    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_scaled.nii.gz'))[0]
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
     dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
-    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_rsfMRISplit_scaled.nii.gz'))[0]
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_rsfMRISplit_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
     dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
     # rename files to reduce path length

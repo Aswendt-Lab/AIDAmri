@@ -6,6 +6,17 @@ Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
 
+Documentation preface, added 23/05/09 by Victor Vera Frazao:
+This document is currently in revision for improvement and fixing.
+Specifically changes are made to allow compatibility of the pipeline with Ubuntu 18.04 systems 
+and Ubuntu 18.04 Docker base images, respectively, as well as adapting to appearent changes of 
+DSI-Studio that were applied since the AIDAmri v.1.1 release. As to date the DSI-Studio version 
+used is the 2022/08/03 Ubuntu 18.04 release.
+All changes and additional documentations within this script carry a signature with the writer's 
+initials (e.g. VVF for Victor Vera Frazao) and the date at application, denoted after '//' at 
+the end of the comment line. If code segments need clearance the comment line will be prefaced 
+by '#?'. Changes are prefaced by '#>' and other comments are prefaced ordinalrily 
+by '#'.
 """
 
 
@@ -101,6 +112,9 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
 
 
 def make_dir(dir_out, dir_sub):
+    """
+    Creates new directory.
+    """
     dir_out = os.path.normpath(os.path.join(dir_out, dir_sub))
     if not os.path.exists(dir_out):
         print("Create directory \"%s\"" % (dir_out,))
@@ -130,7 +144,6 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     """
     perform seed-based fiber-tracking
     """
-
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
@@ -151,15 +164,19 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     file_trk = glob.glob(dir_in+'/*trk.gz')[0]
     file_seeds = dir_seeds
-    #parameters = (dsi_studio, 'ana', file_fib, file_trk, file_seeds, 'qa,count', 'pass,end')
 
-    parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, 'fa,count', 'pass,end')
-    print("Analize matrix: %s:" % cmd_ana % parameters)
-    os.system(cmd_ana % parameters)
+    #> Fixing connectivity calculation being interrupted due to lack of connectivity values // VVF 23/05/09
+    connect_vals = ['qa', 'count']
+    for i in connect_vals:
+        parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, i, 'pass,end')
+        #parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, 'fa,count', 'pass,end')
+        os.system(cmd_ana % parameters)
+
     #move_files(dir_in, dir_con, re.escape(filename) + '\.' + re.escape(pre_seeds) + '.*(?:\.pass\.|\.end\.)')
     move_files(os.path.dirname(file_trk), dir_con, '/*.txt')
     move_files(os.path.dirname(file_trk), dir_con, '/*.mat')
 
+#? Function (mapsgen(args)) seems to be unused and remains at that state. Can it be savely removed? // VVF 23/05/09
 def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
     pre_msk = 'bet.bin.'
 
@@ -306,7 +323,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
-#    move_files(dir_fib, dir_qa, '/*qa.nii.gz')
+    move_files(dir_fib, dir_qa, '/*qa.nii.gz')
     move_files(dir_fib, dir_qa, '/*fa.nii.gz')
     move_files(dir_fib, dir_qa, '/*md.nii.gz')
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
@@ -329,26 +346,6 @@ def tracking(dsi_studio, dir_in):
     parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
     print("Track neuronal pathes %s:" % cmd_trk % parameters)
     os.system(cmd_trk % parameters)
-
-###########
-### NEW CODE
-def qualitycheck(dsi_studio, dir_in):
-    """
-    Check quality for source (SRC) files
-    """
-    if not os.path.exists(dir_in):
-        sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
-    
-    # change to input directory
-    os.chdir(os.path.dirname(dir_in))
-    src_dir = os.path.join(os.getcwd(), 'src')
-    cmd_qc = r'%s --action=%s --source=%s'
-
-    filename = glob.glob(src_dir+'/*src.gz')[0]
-    parameters = (dsi_studio, 'qc', filename)
-    print("Quality check %s:" % cmd_qc %parameters)
-    os.system(cmd_qc % parameters)
-############
 
 if __name__ == '__main__':
     pass
