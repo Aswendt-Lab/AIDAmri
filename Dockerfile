@@ -70,9 +70,9 @@ RUN export PATH && export LD_LIBRARY_PATH
 
 WORKDIR /aida
 # download DSI studio
-RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2021.12.03/dsi_studio_ubuntu_1804.zip &&\
-	unzip dsi_studio_ubuntu_1804.zip -d dsi_studio_ubuntu_1804 &&\
-	rm dsi_studio_ubuntu_1804.zip
+RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2022.08.03/dsi_studio_ubuntu1804.zip &&\
+	unzip dsi_studio_ubuntu1804.zip -d dsi_studio_ubuntu1804 &&\
+	rm dsi_studio_ubuntu1804.zip
 
 # copy bin/ and lib/ from AIDAmri into image
 COPY bin/ bin/
