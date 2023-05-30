@@ -43,6 +43,8 @@ if __name__ == '__main__':
     requiredNamed.add_argument('-i', '--file_in', help='path to the raw NIfTI DTI file (ends with *1.nii.gz)', required=True)
 
     parser.add_argument('-b', '--b_table', default=b_table, help='b-table in input directory: %s' % (b_table,))
+
+    parser.add_argument('-o', '--optional', nargs = '*', help = 'Optional arguments (e.g. deprecated terminology)') #> New flag for depr. keywords // VVF 23/05/26
     args = parser.parse_args()
 
 
@@ -81,7 +83,7 @@ if __name__ == '__main__':
     confiles = os.path.join(file_cur,dir_con)
     data_list = os.listdir(confiles)
     for filename in data_list:
-        splittedName = filename.split('.src.gz.dti.fib.gz.')
+        splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
         if len(splittedName)>1:
             newName = splittedName[1]
             newName = os.path.join(confiles,newName)
@@ -90,4 +92,26 @@ if __name__ == '__main__':
             oldName = os.path.join(confiles,filename)
             os.rename(oldName,newName)
 
+    # Including optional arguments regarding deprecated terminology
+    if args.optional is not None:
+        file_list = os.listdir(dsi_path)
+        for f in file_list:
+
+            # fa0 was a former term used in earlier DSI-studio versions; the '0' in fa0 referred to the first fiber track. However, DTI can only result in one track, therefore only one fractional anisotropy value per voxel is given, thus the collective values are referred to as fa. With the 'fa0' flag toggled on, the 'fa' data file is renamed to the former naming convention (fa0).
+            if 'fa0' in [s.lower() for s in args.optional] and f.endswith('fa.nii.gz'):
+                newName = f.split('fa.nii.gz')[0] + 'fa0.nii.gz'
+                newName = os.path.join(dsi_path, newName)
+                oldName = os.path.join(dsi_path, f)
+                if os.path.isfile(newName):
+                    os.remove(newName)
+                os.rename(oldName, newName)
+            
+            # Due to changes in ROI annotations the corresponding files are saved as '.nii' files as opposed to '.nii.gz' files in earlier versions of DSI studio. With the 'nii_gz' flag toggled on, the '.nii' files are renamed to '.nii.gz'.
+            if 'nii_gz' in args.optional and f.endswith('.nii'):
+                newName = f + '.gz'
+                newName = os.path.join(dsi_path, newName)
+                oldName = os.path.join(dsi_path, f)
+                if os.path.isfile(newName):
+                    os.remove(newName)
+                os.rename(oldName, newName)
     print('DTI Connectivity  \033[0;30;42m COMPLETED \33[0m')

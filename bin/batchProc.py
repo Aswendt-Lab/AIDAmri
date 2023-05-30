@@ -30,7 +30,7 @@ def findData(projectPath, days, groups):
             fullPath_list.append(os.path.join(checkPath, subject))
     return(fullPath_list)
 
-def executeScripts(fullPath, dataTypeInput):
+def executeScripts(fullPath, dataTypeInput, *optargs):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
@@ -110,10 +110,17 @@ def executeScripts(fullPath, dataTypeInput):
                         print(message)
                         errorList.append(message)
                     currentFile = find("*1.nii.gz", currentPath_wData)
+
+                    # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                     if len(currentFile)>0:
-                        print('Run python 3.2_DTIConnectivity/dsi_main.py -i '+ currentFile[0])
+                        cli_str = r'dsi_main.py -i %s' % currentFile[0]
+                        if len(optargs) > 0:
+                            cli_str += ' -o'
+                            for arg in optargs:
+                                cli_str += ' %s' % arg
+                        print('Run python 3.2_DTIConnectivity/%s' % cli_str)
                         os.chdir(cwd + '/3.2_DTIConnectivity')
-                        os.system('python dsi_main.py -i '+ currentFile[0])
+                        os.system('python %s' % cli_str)
                     os.chdir(cwd)
                 else:
                     message = 'The data folders'' names do not match T2w, fMRI or DTI';
@@ -147,16 +154,27 @@ if __name__ == "__main__":
     requiredNamed.add_argument('-d', '--days', required=True, nargs='+', help='Day names as in the Bruker2NIfTI processed project folder')
     requiredNamed.add_argument('-t', '--dataTypes', required=True, nargs='+', help='Data types to be processed e.g. T2w, DTI and/or fMRI. Multiple specifications are possible.')
 
+    optionalNamed = parser.add_argument_group('optional arguments')
+    optionalNamed.add_argument('-o', '--optional', nargs = '*', help = 'Optional arguments (e.g. deprecated terminology)')
+
     args = parser.parse_args()
     pathToData = args.folder
     groupNames = args.groups
     dayNames = args.days
     dataTypes = args.dataTypes
+    if args.optional is not None:
+        optionals = ' '.join(args.optional)
+    else:
+        optionals = args.optional
     
     print('Entered information:')
     print(groupNames)
     print(dayNames)
     print(dataTypes)
-    
+    print('Optional arguments: [%s]' % optionals)
+
     listMr = findData(pathToData, dayNames, groupNames)
-    executeScripts(listMr, dataTypes)
+    if optionals is not None:
+        executeScripts(listMr, dataTypes, optionals)
+    else:
+        executeScripts(listMr, dataTypes)
