@@ -79,23 +79,18 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
 
     # sparate ref and src volume in slices
     sliceFiles = findSlicesData(os.getcwd(), dataName)
-    # refFiles = findSlicesData(os.getcwd(),'ref')
     print('For all slices ... ')
 
     # start to correct motions slice by slice
     for i in range(len(sliceFiles)):
         slc = sliceFiles[i]
-        # ref = refFiles[i]
-        # take epi as ref
         output_file = os.path.join(par_folder, os.path.basename(slc))
         myMCFLIRT = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
         print(myMCFLIRT.cmdline)
         myMCFLIRT.run()
         os.remove(slc)
-        # os.remove(ref)
 
     # merge slices to a single volume
-
     mcf_sliceFiles = findSlicesData(par_folder, dataName)
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
@@ -103,7 +98,8 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     print(myMerge.cmdline)
     myMerge.run()
 
-    for slc in mcf_sliceFiles: os.remove(slc)
+    for slc in mcf_sliceFiles: 
+        os.remove(slc)
 
     # unscale result data by factor 10**(-1)
     output_file = scaleBy10(output_file, inv=True)
@@ -142,7 +138,7 @@ def move_files(dir_in, dir_out, pattern):
 
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     """
-    perform seed-based fiber-tracking
+    Calculates connectivity data (types: pass and end).
     """
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
@@ -160,24 +156,24 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     os.chdir(os.path.dirname(dir_in))
     cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s'
 
-
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     file_trk = glob.glob(dir_in+'/*trk.gz')[0]
     file_seeds = dir_seeds
 
-    #> Fixing connectivity calculation being interrupted due to lack of connectivity values // VVF 23/05/09
+    # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
     connect_vals = ['qa', 'count']
     for i in connect_vals:
         parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, i, 'pass,end')
-        #parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, 'fa,count', 'pass,end')
         os.system(cmd_ana % parameters)
 
     #move_files(dir_in, dir_con, re.escape(filename) + '\.' + re.escape(pre_seeds) + '.*(?:\.pass\.|\.end\.)')
     move_files(os.path.dirname(file_trk), dir_con, '/*.txt')
     move_files(os.path.dirname(file_trk), dir_con, '/*.mat')
 
-#? Function (mapsgen(args)) seems to be unused and remains at that state. Can it be savely removed? // VVF 23/05/09
 def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
+    """
+    FUNCTION DEPRECATED. REMOVAL PENDING.
+    """
     pre_msk = 'bet.bin.'
 
     ext_src = '.src.gz'
@@ -206,10 +202,8 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
     for index, filename in enumerate(file_list):
         # create source files
         pos = filename.rfind('_')
-        #file_in  = os.path.join(dir_in, filename)
-        #file_src = os.path.join(dir_in, filename[:pos] + ext_src)
+
         file_src = filename[:pos] + ext_src
-        #parameters = (dsi_studio, 'src', file_in, file_src, b_table)
         parameters = (dsi_studio, 'src', filename, file_src, b_table)
         print("%d of %d:" % (index + 1, len(file_list)), cmd_src % parameters)
         subprocess.call(cmd_src % parameters)
@@ -234,18 +228,14 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         subprocess.call(cmd_exp % parameters)
 
 def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
-    #dir_src = r'..\src'
-    #dir_fib = r'..\fib_map'
+    """
+    Sources and creates fib files. Diffusivity and aniosotropy metrics are exported from data.
+    """
     dir_src = r'src'
     dir_fib = r'fib_map'
-    #dir_map = r'maps'
-    #dir_gfa = r'gfa'
     dir_qa  = r'DSI_studio'
     dir_con = r'connectivity'
-
-
     ext_src = '.src.gz'
-
 
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
@@ -261,12 +251,8 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     if not os.path.isfile(b_table):
         sys.exit("File \"%s\" does not exist." % (b_table,))
 
-
-
     dir_src = make_dir(os.path.dirname(dir_out), dir_src)
     dir_fib = make_dir(os.path.dirname(dir_out), dir_fib)
-    #dir_map = make_dir(os.path.dirname(dir_fib), dir_map)
-    #dir_gfa = make_dir(os.path.dirname(dir_map), dir_gfa)
     dir_qa  = make_dir(os.path.dirname(dir_out), dir_qa)
 
     # change to input directory
@@ -278,9 +264,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     # create source files
     filename = os.path.basename(dir_in)
     pos = filename.rfind('.')
-    #file_in  = os.path.join(dir_in, filename)
     file_src = os.path.join(dir_src, filename[:pos] + ext_src)
-    #parameters = (dsi_studio, 'src', file_in, file_src, b_table)
     parameters = (dsi_studio, 'src', filename, file_src, b_table)
     print("Generate src-File %s:" % cmd_src % parameters)
     os.system(cmd_src % parameters)
@@ -291,32 +275,31 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     print("Generate fib-File %s:" % cmd_rec % parameters)
     os.system(cmd_rec % parameters)
 
-
     # move fib to corresponding folders
     move_files(dir_src, dir_fib, '/*fib.gz')
 
-    # # extracts maps: 2 ways:
+    # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib+'/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'fa')
     print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
-    # # extracts maps: 2 ways:
+    # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'md')
     print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
-    # # extracts maps: 2 ways:
+    # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'ad')
     print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
-    # # extracts maps: 2 ways:
+    # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'rd')
@@ -331,7 +314,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
 def tracking(dsi_studio, dir_in):
     """
-    perform seed-based fiber-tracking
+    Performs seed-based fiber-tracking.
     """
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))

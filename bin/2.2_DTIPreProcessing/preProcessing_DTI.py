@@ -10,15 +10,17 @@ University Hospital Cologne
 
 
 import nipype.interfaces.fsl as fsl
-import os,sys
+import os, sys
 import nibabel as nii
 import numpy as np
 import applyMICO
 import cv2
 
 # 1) Process MRI
-def applyBET(input_file,frac,radius,outputPath):
-
+def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str:
+    """
+    Performs brain extraction via the FSL Brain Extraction Tool (BET). Requires an appropriate input file (input_file), the fractional intensity threshold (frac), the head radius (radius) and the output path (output_path).
+    """
     # scale Nifti data by factor 10
     data = nii.load(input_file)
     imgTemp = data.get_data()
@@ -26,23 +28,20 @@ def applyBET(input_file,frac,radius,outputPath):
     scale[3][3] = 1
     imgTemp = np.flip(imgTemp, 2)
 
-    # imgTemp = np.rot90(imgTemp,2)
-    # imgTemp = np.rot90(imgTemp,2)
-    # imgTemp = np.flip(imgTemp, 0)
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
     print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
-    fslPath = os.path.join(os.getcwd(),'fslScaleTemp.nii.gz')
-    nii.save(scaledNiiData, fslPath)
+    fsl_path = os.path.join(os.getcwd(),'fslScaleTemp.nii.gz')
+    nii.save(scaledNiiData, fsl_path)
 
     # extract brain
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+    myBet = fsl.BET(in_file=fsl_path, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
     myBet.run()
-    os.remove(fslPath)
+    os.remove(fsl_path)
 
 
     # unscale result data by factor 10ˆ(-1)
@@ -59,7 +58,10 @@ def applyBET(input_file,frac,radius,outputPath):
     print('Brain extraction DONE!')
     return output_file
 
-def smoothIMG(input_file,outputPath):
+def smoothIMG(input_file, output_path):
+    """
+    Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
+    """
     data = nii.load(input_file)
 
     vol = data.get_data()
@@ -70,27 +72,31 @@ def smoothIMG(input_file,outputPath):
     hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0] + 'DN.nii.gz')
-    # hdrOut['sform_code'] = 1
     nii.save(unscaledNiiData, output_file)
     input_file = output_file
-    #output_file =  os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(inputFile).split('.')[0] + 'Smooth.nii.gz')
-    myGauss =  fsl.SpatialFilter(in_file=input_file,out_file=output_file,operation='median',kernel_shape='box',kernel_size=0.1)
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
+    myGauss =  fsl.SpatialFilter(
+        in_file = input_file,
+        out_file = output_file, 
+        operation = 'median',
+        kernel_shape = 'box',
+        kernel_size = 0.1
+    )
     myGauss.run()
     print('Smoothing DONE!')
     return output_file
 
-def thresh(input_file,outputPath):
+def thresh(input_file, output_path):
     #output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0]+ 'Thres.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
     myThres = fsl.Threshold(in_file=input_file,out_file=output_file,thresh=20)#,direction='above')
     myThres.run()
     print('Thresholding DONE!')
     return output_file
 
-def cropToSmall(input_file,outputPath):
+def cropToSmall(input_file,output_path):
     #output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0]  + 'Crop.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
     myCrop = fsl.ExtractROI(in_file=input_file,roi_file=output_file,x_min=40,x_size=130,y_min=50,y_size=110,z_min=0,z_size=12)
     myCrop.run()
     print('Cropping DONE!')
@@ -113,23 +119,23 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # set parameters
-    inputFile = None
+    input_file = None
     if args.input is not None and args.input is not None:
-        inputFile = args.input
+        input_file = args.input
 
-    if not os.path.exists(inputFile):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (inputFile, args.file,))
+    if not os.path.exists(input_file):
+        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
-    outputPath = os.path.dirname(inputFile)
+    output_path = os.path.dirname(input_file)
 
     # 1) Process DTI
     print("DTI Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
 
     # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputFile), 'preprocess.log'), 'w')
+    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
 
     # print parameters
     print("Frac: %s" % frac)
@@ -139,12 +145,12 @@ if __name__ == "__main__":
     # 1) Process MRI
     print('Start Preprocessing ...')
 
-    outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
+    output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
     # intensity correction using non parametric bias field correction algorithm
-    outputMICO = applyMICO.run_MICO(outputSmooth,outputPath)
+    output_mico = applyMICO.run_MICO(output_smooth, output_path)
 
     # get rid of your skull
-    outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,outputPath=outputPath)
+    outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
 
     sys.stdout = sys.__stdout__
     print('DTI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
