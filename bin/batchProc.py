@@ -155,7 +155,7 @@ if __name__ == "__main__":
     requiredNamed.add_argument('-t', '--dataTypes', required=True, nargs='+', help='Data types to be processed e.g. T2w, DTI and/or fMRI. Multiple specifications are possible.')
 
     optionalNamed = parser.add_argument_group('optional arguments')
-    optionalNamed.add_argument('-o', '--optional', nargs = '*', help = 'Optional arguments (e.g. deprecated terminology)')
+    optionalNamed.add_argument('-o', '--optional', nargs = '*', help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.')
 
     args = parser.parse_args()
     pathToData = args.folder

@@ -5,18 +5,6 @@ Created on 10/08/2017
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
-
-Documentation preface, added 23/05/09 by Victor Vera Frazao:
-This document is currently in revision for improvement and fixing.
-Specifically changes are made to allow compatibility of the pipeline with Ubuntu 18.04 systems 
-and Ubuntu 18.04 Docker base images, respectively, as well as adapting to appearent changes of 
-DSI-Studio that were applied since the AIDAmri v.1.1 release. As to date the DSI-Studio version 
-used is the 2022/08/03 Ubuntu 18.04 release.
-All changes and additional documentations within this script carry a signature with the writer's 
-initials (e.g. VVF for Victor Vera Frazao) and the date at application, denoted after '//' at 
-the end of the comment line. If code segments need clearance the comment line will be prefaced 
-by '#?'. Changes are prefaced by '#>' and other comments are prefaced ordinalrily 
-by '#'.
 """
 from __future__ import print_function
 
@@ -32,22 +20,33 @@ if __name__ == '__main__':
     dsi_studio = f.read().split("\n")[0]
     f.close()
 
-    #dsi_studio = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir,os.pardir))+'/lib/dsi_studio'
     # default b-table in input directory
-    b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/DTI_Jones30.txt'
+    b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir)) + '/lib/DTI_Jones30.txt'
+
     # default connectivity directory relative to input directory
     dir_con = r'connectivity'
 
+    # Defining CLI flags
     parser = argparse.ArgumentParser(description='Get connectivity of DTI dataset')
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i', '--file_in', help='path to the raw NIfTI DTI file (ends with *1.nii.gz)', required=True)
-
-    parser.add_argument('-b', '--b_table', default=b_table, help='b-table in input directory: %s' % (b_table,))
-
-    parser.add_argument('-o', '--optional', nargs = '*', help = 'Optional arguments (e.g. deprecated terminology)') #> New flag for depr. keywords // VVF 23/05/26
+    requiredNamed.add_argument('-i',
+                               '--file_in',
+                               help = 'path to the raw NIfTI DTI file (ends with *1.nii.gz)',
+                               required=True
+                               )
+    parser.add_argument('-b',
+                        '--b_table',
+                        default = b_table,
+                        help='b-table in input directory: %s' % (b_table,)
+                        )
+    parser.add_argument('-o',
+                        '--optional',
+                        nargs = '*',
+                        help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
+                        )    
     args = parser.parse_args()
 
-
+    # Preparing directories
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
@@ -61,22 +60,20 @@ if __name__ == '__main__':
     dsi_tools_20170214.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
+    # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
     dsi_tools_20170214.tracking(dsi_studio, file_in)
-    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii')) #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
+
+    # Calculating connectivity
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii'))
     if len(dir_seeds)>0:
-        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
+        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii'))[0]
         dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
-
-        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*rsfMRI_Mask_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
+        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*rsfMRI_Mask_scaled.nii'))[0]
         dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
-
-
-
-    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_scaled.nii'))[0]
     dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
-
-    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_rsfMRISplit_scaled.nii'))[0] #> changed 'nii.gz' to '.nii' to correct ROI label transfer // VVF 23/05/10
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_rsfMRISplit_scaled.nii'))[0]
     dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
     # rename files to reduce path length
