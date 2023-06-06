@@ -14,6 +14,7 @@ import sys
 import numpy as np
 import nibabel as nib
 import scipy.io as io
+import correlate_matrix
 
 from datetime import datetime
 def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
@@ -29,7 +30,10 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     # output data
     sPathOut = os.path.abspath(os.path.join(sPathData, os.pardir, postTxt + os.path.basename(sPathData).split('_')[0]))
     sPathOut = sPathOut + '.txt'
-
+    PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR.' + os.path.basename(sPathData).split('_')[0])) + '.txt'
+    PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP.' + os.path.basename(sPathData).split('_')[0])) + '.txt'
+    PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ.' + os.path.basename(sPathData).split('_')[0])) + '.txt'
+    pcorr_paths = [PcorrR_matrix_path, PcorrP_matrix_path, PcorrZ_matirx_path]
 
     if len(data_shape) != 4:
         sys.exit("Error: data %s has no 4D shape." % (str(data_shape),))
@@ -60,6 +64,10 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     np.savetxt(sPathOut, mT, fmt='%.4f', delimiter=' ')
     matPathOut = os.path.join(os.path.dirname(sPathOut), os.path.basename(sPathOut) + '.mat')
     io.savemat(matPathOut, dict([('matrix', mT),('label',lines)]))
+
+    if postTxt == 'MasksTCsSplit.':
+        correlate_matrix.calculate_p_corr_matrix(mT, lines, pcorr_paths)
+        
     return sPathOut
 
 
