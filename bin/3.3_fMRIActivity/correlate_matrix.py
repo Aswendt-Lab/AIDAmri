@@ -3,10 +3,11 @@ import scipy.io as io
 from scipy.stats import pearsonr
 
 def calculate_p_corr_matrix(data, lines, output_paths):
-    correlation_matrix = np.zeros((98,98))
-    p_value_matrix = np.zeros((98,98))
-    for i in range(98):
-        for j in range(i+1, 98):
+    (rows, cols) = np.shape(data)
+    correlation_matrix = np.zeros((cols,cols))
+    p_value_matrix = np.zeros((cols,cols))
+    for i in range(cols):
+        for j in range(i+1, cols):
             corr_coef, p_value = pearsonr(data[:,i], data[:,j])
             correlation_matrix[i, j] = corr_coef
             correlation_matrix[j, i] = corr_coef
