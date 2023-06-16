@@ -37,9 +37,13 @@ Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
-Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
+Chat with us [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) 
 
-Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter room: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) or join our Open Office Hour - each Thursday 4:30 pm (UTC+2) via Zoom. Register[here](https://uni-koeln.zoom.us/meeting/register/tJYsceyorDoqGdX4H8Z7c86_qxoaq6yOdFGM). 
+or 
+
+join our Open Office Hour - each Thursday 4:30 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor)](https://uni-koeln.zoom.us/meeting/register/tJYsceyorDoqGdX4H8Z7c86_qxoaq6yOdFGM)
+
+For all other inquiries: Markus Aswendt (markus.aswendt@uk-koeln.de
 
 <h3><b>LICENSE/CITATION</h3></b>
 GNU General Public License v3.0
