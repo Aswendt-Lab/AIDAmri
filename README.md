@@ -16,11 +16,18 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 [Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
+<h3><b>Manual v1.1</h3></b>
 
-<h3><b>ARA CREATOR</h3></b>
-Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
+[**Link**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 
-[<h3><b>EXAMPLE FILES</h3></b>](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/)
+<h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
+
+We are in the process of moving the installation into a Docker container. There is a pre-lease [dockerdev branch](https://github.com/aswendtlab/AIDAmri/tree/dockerdev). A separate manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
+As long as the Docker release is not final and you encounter an issue with the installation of NiftyReg or any pip/conda packages, use the [yml file](https://github.com/Aswendt-Lab/AIDAmri/blob/master/aidamri_v1.1.yml) which includes everyting necessary to install the Anaconda environment (conda env create -f aidamri._v1.1.yml). In addition, we provide a [pre-compiled NiftyReg version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip). Simply unpack and adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). This should work for a variety of MacOS and Linux versions. 
+
+<h3><b>EXAMPLE FILES</h3></b>
+
+Download [**here**](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/). 
 Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
@@ -29,18 +36,35 @@ rs-fMRI (functional connectivity scan).
 [<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)]
 Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate set-up manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
 
-[<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
-Niklas Pallast and Markus Aswendt (contact: markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
+[<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
+Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
 
-Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter rooms: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+<h3><b>VERSION HISTORY</h3></b>
+
+[Information about Version 1.1.1 (Docker pre-release)](https://github.com/maswendt/AIDAmri/releases/tag/1.1.1)
+<br/>
+[Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
+<br/>
+[Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
+
+[<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
+Markus Aswendt (markus.aswendt@uk-koeln.de)[![alt text][1.2]][1]
+
+Need help? Chat with us and find answers to FAQs in the AIDA_Tools Gitter room: [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
+<h3><b>LICENSE/CITATION</h3></b>
+GNU General Public License v3.0
+<br/>
+<br/>
+If you use our software or modify parts of it and use it in other ways, please cite: 
+<br/>
+<br/>
+
+*Pallast N, Diedenhofen M, Blaschke S, Wieters F, Wiedermann D, Hoehn M, Fink GR, Aswendt M. Processing Pipeline for Atlas-Based Imaging Data Analysis of Structural and Functional Mouse Brain MRI (AIDAmri). Front Neuroinform. 2019 Jun 4;13:42.[doi: 10.3389/fninf.2019.00042.](https://doi.org/10.3389/fninf.2019.00042)*
 ___
-LICENSE
-GNU General Public License v3.0 
 <details>
 <summary>REFERENCES</summary></b>
 
-+ AIDA<i>mri
-    + [Pallast, N., et al. "Processing pipeline for Atlas-based Imaging Data Analysis (AIDA) of structural and functional mouse brain MRI" Frontiers in Neuroinformatics, 2019](https://www.frontiersin.org/articles/10.3389/fninf.2019.00042/full)
 + Brain Connectivity Toolbox
     + [M. Rubinov and O. Sporns (2010). Complex Network Measures of Brain Connectivity: Uses 
 and Interpretations. NeuroImage 52 (3), 1059–69.](https://www.sciencedirect.com/science/article/abs/pii/S105381190901074X)
