@@ -8,22 +8,19 @@
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
 <br/>
-[Manual v1.1](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
+
+[Information about Version 1.2](https://github.com/maswendt/AIDAmri/releases/tag/v1.2)
 <br/>
-<br/>
-[Information about Version 1.1.1 (Docker pre-release)](https://github.com/maswendt/AIDAmri/releases/tag/1.1.1)
-<br/>
-[Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
+[Information about Version 1.1](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
-<h3><b>Manual v1.1</h3></b>
+<h3><b>Manual v1.2</h3></b>
 
 [**Link**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 
 <h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
 
-We are in the process of moving the installation into a Docker container. There is a pre-lease [dockerdev branch](https://github.com/aswendtlab/AIDAmri/tree/dockerdev). A separate manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
-As long as the Docker release is not final and you encounter an issue with the installation of NiftyReg or any pip/conda packages, use the [yml file](https://github.com/Aswendt-Lab/AIDAmri/blob/master/aidamri_v1.1.yml) which includes everyting necessary to install the Anaconda environment (conda env create -f aidamri._v1.1.yml). In addition, we provide a [pre-compiled NiftyReg version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip). Simply unpack and adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). This should work for a variety of MacOS and Linux versions. 
+We invite you to use our Docker image to install and use AIDAmri. The image does <b>not</b> include the GUI and we stopped support and development of it. However, if you still prefer to use the GUI you may install the software without directly onto your machine. If you encounter an issue with the installation of NiftyReg or any pip/conda packages, use the [yml file](https://github.com/Aswendt-Lab/AIDAmri/blob/master/aidamri_v1.1.yml) which includes everyting necessary to install the Anaconda environment (conda env create -f aidamri._v1.1.yml). In addition, we provide a [pre-compiled NiftyReg version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip). Simply unpack and adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). This should work for a variety of MacOS and Linux versions. 
 
 <h3><b>EXAMPLE FILES</h3></b>
 
@@ -33,8 +30,6 @@ T2-weighted (anatomical scan),
 DTI (structural connectivty scan),
 rs-fMRI (functional connectivity scan).
 
-[<h3><b>DOCKER (PRE-RELEASE)</h3></b>](https://github.com/aswendtlab/AIDAmri/tree/dockerdev)]
-Check out the dockerdev branch to use our Dockerfile to easily build the pipeline. A separate set-up manual can be accessed [here](https://github.com/aswendtlab/AIDAmri/blob/dockerdev/Docker_manual.pdf).
 
 [<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
 Matlab script to generate a custom version of the Allen Mouse Brain Atlas.

@@ -3,13 +3,13 @@ SRCPATH=${@: -1}
 dockerrun()
 {
 if [ "$bflag" == 'b' ]; then
-	docker build -t aidamri:dev -f Dockerfile .
+	docker build -t aidamri:latest -f Dockerfile .
 fi
 docker run \
 -dit --rm \
 --name aidamri \
 --mount type=bind,source=$SRCPATH,target=/aida/mountdata \
-aidamri:dev
+aidamri:latest
 if [ "$aflag" == 'a' ]; then
 	docker attach aidamri
 fi
