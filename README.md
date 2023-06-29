@@ -20,14 +20,14 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 
 <h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
 
-We invite you to use our Docker image to install and use AIDAmri. The image does <b>not</b> include the GUI and we stopped support and development of it. However, if you still prefer to use the GUI you may install the software without directly onto your machine. If you encounter an issue with the installation of NiftyReg or any pip/conda packages, use the [yml file](https://github.com/Aswendt-Lab/AIDAmri/blob/master/aidamri_v1.1.yml) which includes everyting necessary to install the Anaconda environment (conda env create -f aidamri._v1.1.yml). In addition, we provide a [pre-compiled NiftyReg version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip). Simply unpack and adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). This should work for a variety of MacOS and Linux versions. 
+We invite you to use our Docker image to install and use AIDAmri. The image does <b>not</b> include the GUI and we stopped support and development of it. However, if you still prefer to use the GUI you may install the software directly onto your machine. If you encounter an issue with the installation of NiftyReg or any pip/conda packages, use the [yml file](https://github.com/Aswendt-Lab/AIDAmri/blob/master/aidamri_v1.1.yml) which includes everything necessary to install the Anaconda environment (conda env create -f aidamri._v1.1.yml). In addition, we provide a [pre-compiled NiftyReg version](https://github.com/Aswendt-Lab/AIDAmri/blob/master/niftyreg-AIDA_verified.zip). Simply unpack and adjust the PATH as explained [here](http://cmictig.cs.ucl.ac.uk/wiki/index.php/NiftyReg_install). This should work for a variety of MacOS and Linux versions. 
 
 <h3><b>EXAMPLE FILES</h3></b>
 
 Download [**here**](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/). 
 Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
-DTI (structural connectivty scan),
+DTI (structural connectivity scan),
 rs-fMRI (functional connectivity scan).
 
 
@@ -49,7 +49,7 @@ or
 
 join our Open Office Hour - each Thursday 4:30 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor)](https://uni-koeln.zoom.us/meeting/register/tJYsceyorDoqGdX4H8Z7c86_qxoaq6yOdFGM)
 
-For all other inquiries: Markus Aswendt (markus.aswendt@uk-koeln.de
+For all other inquiries: Markus Aswendt (markus.aswendt@uk-koeln.de)
 
 <h3><b>LICENSE/CITATION</h3></b>
 GNU General Public License v3.0
