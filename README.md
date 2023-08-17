@@ -43,7 +43,7 @@ Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
-Chat with us [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge) 
+If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 or 
 
