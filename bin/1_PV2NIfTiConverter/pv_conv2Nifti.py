@@ -273,6 +273,12 @@ if __name__ == "__main__":
                 echoTime = np.fromstring(echoTime, dtype=float, sep=' ')
                 if len(echoTime) > 3:
                     mapT2.getT2mapping(resPath,args.model,args.upLim,args.snrLim,args.snrMethod,echoTime)
+    
+        else: 
+            print("The following file does not exist, it will be skipped:")
+            print(os.path.join(path,'2dseq'))
+            continue
+    
     if resPath is not None:
         pathlog = os.path.dirname(os.path.dirname(resPath))
         pathlog = os.path.join(pathlog, 'data.log')
