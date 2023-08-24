@@ -24,7 +24,7 @@ We invite you to use our Docker image to install and use AIDAmri. The image does
 
 <h3><b>EXAMPLE FILES</h3></b>
 
-Download [**here**](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/) (you may need to browse the archive or the repository and directly download the test-data file from there. Do not download the zipped archive). 
+Download [**here**](https://doid.gin.g-node.org/70e11fe472242e2d4f96c53ac9b0a556/) (you may need to browse the archive or the repository and directly download the test-data file from there. Do not download the zipped archive).\
 Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
 DTI (structural connectivity scan),
