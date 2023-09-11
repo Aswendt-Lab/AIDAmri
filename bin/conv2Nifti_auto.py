@@ -41,7 +41,10 @@ def convertToNifti(subjectFolder):
     print('Done')
     
 def moveFolder(newSubjectFolder, destination):
-    shutil.move(newSubjectFolder, destination)
+    try:
+        shutil.move(newSubjectFolder, destination)
+    except FileNotFoundError:
+        print("No File was found to be moved.")
     
 def getGroupName(subjectName):
 # This function finds the index of the subject from the csv-table and
