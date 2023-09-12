@@ -47,8 +47,8 @@ If you encounter problems, report directly in [![Gitter](https://badges.gitter.i
 
 or 
 
-join our Open Office Hour - each Thursday 4:30 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor)](https://uni-koeln.zoom.us/meeting/register/tJYsceyorDoqGdX4H8Z7c86_qxoaq6yOdFGM)
-**There will be no Open Office Hours at the 2023/09/14**
+join our Open Office Hour - each Thursday 4:30 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor)](https://uni-koeln.zoom.us/meeting/register/tJYsceyorDoqGdX4H8Z7c86_qxoaq6yOdFGM)\
+**There will be no Open Office Hours at the 2023/09/14!**
 
 For all other inquiries: Markus Aswendt (markus.aswendt@uk-koeln.de)
 
