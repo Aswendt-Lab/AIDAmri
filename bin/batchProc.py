@@ -30,7 +30,7 @@ def findData(projectPath, days, groups):
             fullPath_list.append(os.path.join(checkPath, subject))
     return(fullPath_list)
 
-def executeScripts(fullPath, dataTypeInput, *optargs):
+def executeScripts(fullPath, dataTypeInput, stc, *optargs):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
@@ -87,9 +87,9 @@ def executeScripts(fullPath, dataTypeInput, *optargs):
                         errorList.append(message)
                     currentFile = find("*1.nii.gz", currentPath_wData)
                     if len(currentFile)>0:
-                        print('Run python 3.3_fMRIActivity/process_fMRI.py -i '+ currentFile[0])
+                        print('Run python 3.3_fMRIActivity/process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
                         os.chdir(cwd + '/3.3_fMRIActivity')
-                        os.system('python process_fMRI.py -i '+ currentFile[0])
+                        os.system('python process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
                     os.chdir(cwd)
                 elif dataFormat == 'DTI':
                     os.chdir(cwd + '/2.2_DTIPreProcessing')
@@ -156,12 +156,18 @@ if __name__ == "__main__":
 
     optionalNamed = parser.add_argument_group('optional arguments')
     optionalNamed.add_argument('-o', '--optional', nargs = '*', help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.')
+    optionalNamed.add_argument('-stc', '--slicetimecorrection', default = "False", type=str,
+                               help='Set True or False if a slice time correction should be performed. Only set true if you converted raw bruker data with conv2nifti.py from aidamri beforehand. Otherwise choose False')
 
     args = parser.parse_args()
     pathToData = args.folder
     groupNames = args.groups
     dayNames = args.days
     dataTypes = args.dataTypes
+    if args.slicetimecorrection is None:
+        stc = False
+    else:
+        stc = args.slicetimecorrection
     if args.optional is not None:
         optionals = ' '.join(args.optional)
     else:
@@ -172,9 +178,10 @@ if __name__ == "__main__":
     print(dayNames)
     print(dataTypes)
     print('Optional arguments: [%s]' % optionals)
+    print('Slice time correction [%s]' % stc)
 
     listMr = findData(pathToData, dayNames, groupNames)
     if optionals is not None:
-        executeScripts(listMr, dataTypes, optionals)
+        executeScripts(listMr, dataTypes, stc, optionals)
     else:
-        executeScripts(listMr, dataTypes)
+        executeScripts(listMr, dataTypes, stc)

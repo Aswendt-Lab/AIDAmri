@@ -14,6 +14,7 @@ import numpy as np
 import nipype.interfaces.fsl as fsl
 import glob
 import shutil
+from pathlib import Path
 
 
 
@@ -182,10 +183,10 @@ def mathOperation(input_file,scale_factor):
     return output_file
 
 
-def fsl_slicetimeCorrector(input_file, TR):
+def fsl_slicetimeCorrector(input_file, costum_timings, slice_order, TR):
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0]) + '_st.nii.gz'
-    st = fsl.SliceTimer(in_file=input_file, time_repetition=TR, out_file=output_file)
+    st = fsl.SliceTimer(in_file=input_file, custom_timings=costum_timings, custom_order=slice_order, time_repetition=TR, out_file=output_file)
     st.run()
     return output_file
 
@@ -223,7 +224,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     return output_file,maskFile
 
 
-def startRegression(input_File, FWHM, cutOff_sec, TR, sl):
+def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, costum_timings = None):
     # generate folder regr images
     print("Regression \33[5m...\33[0m (wait!)", end="\r")
     origin_Path = os.path.dirname(os.path.dirname(input_File))
@@ -236,12 +237,12 @@ def startRegression(input_File, FWHM, cutOff_sec, TR, sl):
     # generatre log-File
     sys.stdout = open(os.path.join(regr_Path,'regress.log'),'w')
 
+    # perform slice time correction
+    if stc:
+        input_File = fsl_slicetimeCorrector(input_File, costum_timings, slice_order, TR)
+
     # delete the first slides
     input_File5Sub = delete5Slides(input_File, regr_Path)
-
-    # perform slice time correction
-    if sl == True:
-        input_File5Sub = fsl_slicetimeCorrector(input_File5Sub, TR)
 
 
     # proof regression files

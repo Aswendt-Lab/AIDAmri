@@ -20,6 +20,8 @@ import getSingleRegTable
 import scipy.misc as mc
 import create_seed_rois
 import fsl_mean_ts
+from pathlib import Path 
+import json
 
 def copyAtlasOfData(path,post,labels):
     fileALL = glob.glob(path + '/*' + post + '.nii.gz')
@@ -193,6 +195,17 @@ def copyRawPhysioData(file_name,i32_Path):
 
     return physioFile_name
 
+def create_txt_file(file, data):
+    import time
+    with open(file, "w") as outfile:
+        for data_point in data:
+            outfile.write(''.join([str(data_point), '\n']))
+
+    time.sleep(1.0)
+
+def delete_txt_file(file):
+    os.remove(file)
+
 def startProcess(Rawfile_name):
     # generate folder for images
     origin_Path = os.path.dirname(Rawfile_name)
@@ -272,10 +285,14 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--TR', default=TR, help='Current TR value')
     parser.add_argument('-c', '--cutOff_sec', default=cutOff_sec, help='High-pass filter cutoff sec')
     parser.add_argument('-f', '--FWHM', default=FWHM, help='Full width at half maximum')
-    parser.add_argument('-s', '--slice_time', action='store_false', help='avoid a slice time correction')
+    parser.add_argument('-stc', '--slicetimecorrection', default="False", type=str, help='choose to perform slice time correction or not')
 
     args = parser.parse_args()
 
+    if args.slicetimecorrection == "True":
+        stc = True
+    else:
+        stc = False
 
     labels = os.path.abspath(
         os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs.txt'
@@ -291,8 +308,42 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input, args.file,))
 
     mcfFile_name = startProcess(input)
-    rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, args.slice_time)
-    print("sfrgr_file",sfrgr_file)
+
+    
+    # if stc is activated find parameters
+    if stc: 
+        print("Performing slice time correction...")
+        # find meta data json file
+        meta_data_file_name = Path(args.input).name.replace(".nii.gz", ".json")
+        meta_data_file = os.path.join(Path(args.input).parent, meta_data_file_name)
+
+        with open(meta_data_file, "r") as infile:
+            meta_data = json.load(infile)
+            
+        TR = meta_data["RepetitionTime"] / 1000
+        slice_order = meta_data["ObjOrderList"]
+        n_slices = meta_data["n_slices"]
+        costum_timings = meta_data["costum_timings"]
+
+        # create costum timings txt file
+        costum_timings_path = os.path.join(Path(meta_data_file).parent, "tcostum.txt")
+        create_txt_file(costum_timings_path, costum_timings)
+        
+        # create slice order txt file
+        slice_order_path = os.path.join(Path(meta_data_file).parent, "slice_order.txt")
+        create_txt_file(slice_order_path, slice_order)
+        
+        rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, stc, slice_order_path, costum_timings_path)
+
+        # delete temp txt files
+        delete_txt_file(costum_timings_path)
+        delete_txt_file(slice_order_path)
+
+    else:
+        rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, stc)
+        print("sfrgr_file",sfrgr_file)
+
+    
 
     atlasPath = os.path.dirname(input)
     roisPath = copyAtlasOfData(atlasPath,'Anno_rsfMRI',labels)

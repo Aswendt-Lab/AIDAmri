@@ -12,12 +12,16 @@ University Hospital Cologne
 from __future__ import print_function
 
 import os
+import time
+import re
 import sys
 import numpy as np
 import nibabel as nib
 import nibabel.nifti1 as nii
 import pv_parseBruker_md_np as pB
 import P2_IDLt2_mapping as mapT2
+import json
+
 
 class Bruker2Nifti:
     def __init__(self, study, expno, procno, rawfolder, procfolder, ftype='NIFTI_GZ'):
@@ -36,6 +40,7 @@ class Bruker2Nifti:
 
         self.acqp = pB.parsePV(os.path.join(rawfolder, study, expno, 'acqp'))
         self.method = pB.parsePV(os.path.join(rawfolder, study, expno, 'method'))
+        self.method_path = os.path.join(rawfolder, study, expno, 'method')
         self.subject = pB.parsePV(os.path.join(rawfolder, study, 'subject'))
         # get header information
         datadir = os.path.join(rawfolder, study, expno, 'pdata', procno)
@@ -90,6 +95,77 @@ class Bruker2Nifti:
         self.hdr = hdr
         self.nim = nim
         self.xml = xml
+
+    def create_slice_timings(self):
+        with open(self.method_path, "r") as method_file:
+            lines = method_file.readlines()
+            interleaved = False
+            repetition_time = None
+            slicepack_delay = None
+            slice_order = None
+            n_slices = None
+            reverse = False
+
+            for idx, line in enumerate(lines):
+                if "RepetitionTime=" in line:
+                    repetition_time = int(float(line.split("=")[1]))
+                    repetition_time = int(repetition_time)
+                if "PackDel=" in line:
+                    slicepack_delay = int(float(line.split("=")[1]))
+                if "ObjOrderScheme=" in line:
+                    slice_order = line.split("=")[1]
+                    if slice_order == 'Sequential':
+                        interleaved = False
+                    else:
+                        interleaved = True
+                if "ObjOrderList=" in line:    
+                    n_slices = re.findall(r'\d+', line)
+                    if len(n_slices) == 1:
+                        n_slices = int(n_slices[0])
+                    if lines[idx+1]:
+                        slice_order = [int(float(s)) for s in re.findall(r'\d+', lines[idx+1])]
+                        if slice_order[0] > slice_order[-1]:
+                            reverse = True
+
+            if "fMRI" in self.acqp['ACQ_protocol_name']:
+                slice_timings = self._calculate_slice_timings(n_slices, repetition_time, slicepack_delay, slice_order, reverse)
+
+                # adjust slice order to start at 1
+                temp_slice_order = [x+1 for x in slice_order]
+                slice_order = temp_slice_order
+                #save metadata
+                mri_meta_data = {}
+                mri_meta_data["RepetitionTime"] = repetition_time
+                mri_meta_data["ObjOrderList"] = slice_order
+                mri_meta_data["n_slices"] = n_slices
+                mri_meta_data["costum_timings"] = slice_timings
+
+                procfolder = os.path.join(self.procfolder, self.study, "fMRI")
+                fname = '.'.join([self.study, self.expno, self.procno, "json"])
+                mri_meta_json = os.path.join(procfolder, fname)
+
+                with open(mri_meta_json, "w") as outfile:
+                    json.dump(mri_meta_data, outfile)
+
+
+    def _calculate_slice_timings(self, n_slices, repetition_time, slicepack_delay, slice_order, reverse=False):
+        n_slices_2 = int(n_slices / 2)
+        slice_spacing = float(repetition_time - slicepack_delay) / float(n_slices * repetition_time)
+        if n_slices % 2 == 1: # odd
+            slice_timings = list(range(n_slices_2, -n_slices_2 - 1, -1))
+            slice_timings = list(map(float, slice_timings))
+        else: # even
+            slice_timings = list(range(n_slices_2, -n_slices_2, -1))
+            slice_timings = list(map(lambda x: float(x) - 0.5, slice_timings))
+
+        if reverse:
+            slice_order.reverse()
+
+        print("slice_order:", slice_order)
+        slice_timings = list(slice_timings[x] for x in slice_order)
+
+        return list((slice_spacing * x) for x in slice_timings)
+
 
     def save_nifti(self, subfolder=''):
 
@@ -244,8 +320,8 @@ if __name__ == "__main__":
 
 
 
-    list = os.listdir(input_folder)
-    listOfScans = [s for s in list if s.isdigit()]
+    listOfDirs = os.listdir(input_folder)
+    listOfScans = [s for s in listOfDirs if s.isdigit()]
 
     if len(listOfScans) is 0:
         sys.exit("Error: '%s' contains no numbered scans." % (input_folder,))
@@ -265,6 +341,7 @@ if __name__ == "__main__":
             img = Bruker2Nifti(study, expno, procno, os.path.split(input_folder)[0], input_folder, ftype='NIFTI_GZ')
             img.read_2dseq(map_raw=args.map_raw, pv6=args.pv6)
             resPath = img.save_nifti()
+            img.create_slice_timings()
             if resPath is None: continue
 
             if 'VisuAcqEchoTime' in img.visu_pars:
