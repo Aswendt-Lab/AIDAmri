@@ -27,6 +27,9 @@ T2-weighted (anatomical scan),
 DTI (structural connectivity scan),
 rs-fMRI (functional connectivity scan).
 
+[<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
+Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
+
 <h3><b>VERSION HISTORY</h3></b>
 
 [Information about Version 1.2 (Docker stable release)](https://github.com/maswendt/AIDAmri/releases/tag/v1.2)
