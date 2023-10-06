@@ -11,7 +11,7 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 
 [Information latest Version 1.3](https://github.com/maswendt/AIDAmri/releases/tag/v1.3)
 
-<h3><b>Manual v1.2</h3></b>
+<h3><b>Manual v1.3</h3></b>
 
 [**Link**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 
