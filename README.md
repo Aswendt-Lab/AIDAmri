@@ -29,7 +29,8 @@ rs-fMRI (functional connectivity scan).
 
 <h3><b>VERSION HISTORY</h3></b>
 
-[Information about Version 1.2 (Docker stable release)](ttps://github.com/maswendt/AIDAmri/releases/tag/v1.2)
+[Information about Version 1.2 (Docker stable release)](https://github.com/maswendt/AIDAmri/releases/tag/v1.2)
+<br/>
 [Information about Version 1.1.1 (Docker pre-release)](https://github.com/maswendt/AIDAmri/releases/tag/1.1.1)
 <br/>
 [Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
