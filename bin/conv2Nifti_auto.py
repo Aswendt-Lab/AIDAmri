@@ -1,22 +1,18 @@
 """
-Created on 27/10/2020
+Created on 18/10/2023
 
 @author: Leon Scharwächter
 AG Neuroimaging and Neuroengineering of Experimental Stroke
 Department of Neurology, University Hospital Cologne
 
 This script automates the conversion from the raw bruker data format to the NIfTI
-format for the whole dataset using 1_PV2NIfTiConverter/pv_conv2Nifti.py. The raw
-data needs to be in the following structure: projectfolder/days/subjects/data/.
-For this script to work, the groupMapping.csv needs to be adjusted, where the group
-name of every subject's folder in the raw data structure needs to be specified.
-This script computes the conversion either for all data in the raw project folder
-or for certain days and/or groups specified through the optionalx
-arguments -d and -g . During the processing a new folder called proc_data is being
-created in the same directory where the raw data folder is located.
+format for the whole dataset using brkraw. The raw
+data needs to be stored in one folder.
+All the data which is contained in the input folder will be converted to nifti. During the processing a new folder called proc_data is being
+created in the same directory where the raw data folder is located. If you wish to save the output elsewhere you can specify the output directory with the -o flag when starting the script.
 
 Example:
-python conv2Nifti_auto.py -f /Volumes/Desktop/MRI/raw_data -d Baseline P1 P7 P14
+python conv2Nifti_auto.py -i /Volumes/Desktop/MRI/raw_data -o /Volumes/Desktop/MRI/raw_data/proc_data
 """
 
 import os
@@ -28,8 +24,13 @@ import glob as glob
 from pathlib import Path
 import numpy as np
 import re
+from PV2NIfTiConverter import P2_IDLt2_mapping
+from PV2NIfTiConverter.ReferenceMethods import brummerSNR
+
+
 
 def create_slice_timings(method_file, out_file):
+    # read in method file to search for parameters
     with open(method_file, "r") as infile:
         lines = infile.readlines()
         interleaved = False
@@ -39,6 +40,7 @@ def create_slice_timings(method_file, out_file):
         n_slices = 0
         reverse = False
         
+        # iterate over line to find parameters
         for idx, line in enumerate(lines):
             if "RepetitionTime=" in line:
                 repetition_time = int(float(line.split("=")[1]))
@@ -60,6 +62,7 @@ def create_slice_timings(method_file, out_file):
                     if slice_order[0] > slice_order[-1]:
                         reverse = True
 
+        # calculate actual slice timings
         slice_timings = calculate_slice_timings(n_slices, repetition_time, slicepack_delay, slice_order, reverse)
 
         # adjust slice order to start at 1
@@ -171,6 +174,7 @@ if __name__ == "__main__":
             os.remove(os.path.join(pathToRawData,file)) 
     
     # find MEMS and fmri files 
+    mese_scan_data = {}
     mese_scan_ids = []
     fmri_scan_ids = {}
     with open(os.path.abspath("dataset.csv"), 'r') as csvfile:
@@ -179,6 +183,9 @@ if __name__ == "__main__":
             # save every sub which has MEMS scans
             if row["modality"] == "MESE":
                 mese_scan_ids.append(row["SubjID"])
+                mese_scan_data[row["SubjID"]] = {}
+                mese_scan_data[row["SubjID"]]["ScanID"] = row["ScanID"]
+                mese_scan_data[row["SubjID"]]["RawData"] = row["RawData"]
             # save every sub and scanid wich is fmri scan
             if row["DataType"] == "func":
                 fmri_scan_ids[row["RawData"]] = {}
@@ -193,7 +200,6 @@ if __name__ == "__main__":
         for ses in sessions:
             anat_data_path = os.path.join(mese_scan_path, ses, "anat", "*MESE.nii*")
             mese_data_paths = glob.glob(anat_data_path, recursive=True)
-            
             
             #skip the subject if no MEMS files are found
             if not mese_data_paths:
@@ -223,7 +229,26 @@ if __name__ == "__main__":
             
             # save nifti file in anat folder
             img_name = "sub-" + sub + "_" + ses + "_T2w_map.nii.gz"
-            nii.save(nii_img, os.path.join(output_dir, "sub-" + sub, ses, "anat", img_name))
+            t2_map_path = os.path.join(output_dir, "sub-" + sub, ses, "anat", img_name)
+            nii.save(nii_img, t2_map_path)
+
+            # create t2 mapping
+            # check visu_pars and echo time
+            visu_pars_path = os.path.join(pathToRawData, mese_scan_data[sub]["RawData"], str(mese_scan_data[sub]["ScanID"]), "visu_pars")
+    
+            if os.path.exists(visu_pars_path):
+                with open(visu_pars_path, 'r') as infile:
+                    lines = infile.readlines()
+
+                    for idx, line in enumerate(lines):
+                        if "VisuAcqEchoTime=" in line:    
+                            if lines[idx+1]:
+                                echotimes = [float(s) for s in re.findall(r'\d+', lines[idx+1])]
+                                echotimes = np.array(echotimes)
+                
+                if len(echotimes) > 3:
+                    output_path = os.path.join(output_dir,  "sub-" + sub, ses, "anat", "T2Map"+'.nii.gz')
+                    P2_IDLt2_mapping.getT2mapping(t2_map_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, output_path)
             
             
     # iterate over all fmri scans to calculate and save costum slice timings
