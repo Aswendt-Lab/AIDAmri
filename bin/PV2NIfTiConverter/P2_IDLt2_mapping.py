@@ -15,8 +15,9 @@ import nibabel as nii
 import numpy as np
 import progressbar
 
+from .ReferenceMethods import brummerSNR
 
-from ReferenceMethods import brummerSNR, changSNR, sijbersSNR
+
 
 plt.interactive(False)
 
@@ -321,7 +322,7 @@ def parsePV(filename):
     return params
 
 
-def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime):
+def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime,output_path):
 
     data = nii.load(path)
     hdr = data.header
@@ -331,9 +332,6 @@ def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime):
 
     print('Start to  fit '+model+'-Map over TE %s ...' % (echoTime,) )
 
-
-
-
     map = t2_mapping(data, echoTime, model=model, uplim=upLim, snrLim=snrLim, SNRMethod=SNRMethod)
     pathT2Map = os.path.split(path)[0]
     map = map[:, :, :, 0] #delete this line if you want more outputdata
@@ -341,7 +339,7 @@ def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime):
     hdr = mapNii.header
     hdr.set_xyzt_units('mm')
     study = os.path.split(path)[1].split('.')[0]
-    nii.save(mapNii, os.path.join(pathT2Map, (study+'T2Map'+model+'.nii.gz')))
+    nii.save(mapNii, output_path)
 
 
 
