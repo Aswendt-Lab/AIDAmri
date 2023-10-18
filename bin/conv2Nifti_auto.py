@@ -71,13 +71,30 @@ def create_slice_timings(method_file, out_file):
         mri_meta_data["ObjOrderList"] = slice_order
         mri_meta_data["n_slices"] = n_slices
         mri_meta_data["costum_timings"] = slice_timings
+        
+        if os.path.exists(out_file):
+            with open(out_file, "r") as outfile:
+                content = json.load(outfile)
+                #update brkraw content with own slice timings
+                content.update(mri_meta_data)
+                with open(out_file, "w") as outfile:
+                    json.dump(content, outfile)
 
-        with open(out_file, "r") as outfile:
-            content = json.load(outfile)
-            #update brkraw content with own slice timings
-            content.update(mri_meta_data)
-            with open(out_file, "w") as outfile:
-                json.dump(content, outfile)
+        # if json has different naming than usual adjust path
+        else:
+            parent_path = Path(out_file).parent
+
+            search_path = os.path.join(parent_path, "*.json")
+            json_files = glob.glob(search_path)
+            
+            for json_file in json_files:
+                if os.path.exists(json_file):
+                    with open(json_file, "r") as outfile:
+                        content = json.load(outfile)
+                        #update brkraw content with own slice timings
+                        content.update(mri_meta_data)
+                        with open(json_file, "w") as outfile:
+                            json.dump(content, outfile)
                  
 
 def calculate_slice_timings(n_slices, repetition_time, slicepack_delay, slice_order, reverse=False):
