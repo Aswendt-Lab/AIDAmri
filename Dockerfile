@@ -78,3 +78,9 @@ RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2022.08.03/dsi
 COPY bin/ bin/
 COPY lib/ lib/
 RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
+COPY test/ test/
+ENV PATH=${PATH}:/aida/test
+WORKDIR /aida/test
+RUN chmod u+x hello_dad
+WORKDIR /
+
