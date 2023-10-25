@@ -28,7 +28,7 @@ import scipy.optimize, scipy.signal
 def calcSNR(img,show,fac):
     # Normalize input dataset and plot histogram
     #img = np.fliplr(img)
-    img = img.astype(int)
+    img = img.astype(float)
     maxi =  img.max()
     imgFlat = img.flatten()
     imgNorm= imgFlat/maxi

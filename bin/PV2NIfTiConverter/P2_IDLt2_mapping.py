@@ -332,13 +332,12 @@ def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime,output_path):
 
     print('Start to  fit '+model+'-Map over TE %s ...' % (echoTime,) )
 
-    map = t2_mapping(data, echoTime, model=model, uplim=upLim, snrLim=snrLim, SNRMethod=SNRMethod)
+    t2map = t2_mapping(data, echoTime, model=model, uplim=upLim, snrLim=snrLim, SNRMethod=SNRMethod)
     pathT2Map = os.path.split(path)[0]
-    map = map[:, :, :, 0] #delete this line if you want more outputdata
-    mapNii =  nii.as_closest_canonical(nii.Nifti1Image(map, data.affine))
+    t2map = t2map[:, :, :, 0] #delete this line if you want more outputdata
+    mapNii =  nii.as_closest_canonical(nii.Nifti1Image(t2map, data.affine))
     hdr = mapNii.header
     hdr.set_xyzt_units('mm')
-    study = os.path.split(path)[1].split('.')[0]
     nii.save(mapNii, output_path)
 
 
