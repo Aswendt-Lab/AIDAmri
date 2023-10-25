@@ -1,7 +1,7 @@
 """
 Created on 18/10/2023
 
-@author: Leon Scharwächter
+@author: Marc Schneider
 AG Neuroimaging and Neuroengineering of Experimental Stroke
 Department of Neurology, University Hospital Cologne
 
@@ -25,8 +25,6 @@ from pathlib import Path
 import numpy as np
 import re
 from PV2NIfTiConverter import P2_IDLt2_mapping
-from PV2NIfTiConverter.ReferenceMethods import brummerSNR
-
 
 
 def create_slice_timings(method_file, out_file):
@@ -117,6 +115,49 @@ def calculate_slice_timings(n_slices, repetition_time, slicepack_delay, slice_or
 
     return list((slice_spacing * x) for x in slice_timings)
 
+def get_visu_pars(path):
+    echotimes = []
+    if os.path.exists(path):
+        with open(path, 'r') as infile:
+            lines = infile.readlines()
+            for idx, line in enumerate(lines):
+                if "VisuAcqEchoTime=" in line:    
+                    if lines[idx+1]:
+                        echotimes = [float(s) for s in re.findall(r'\d+', lines[idx+1])]
+                        echotimes = np.array(echotimes)
+    return echotimes
+
+def bids_convert(input_dir, out_path):
+    ## rearrange proc data in BIDS-format   
+    print('brkraw bids_helper ' + input_dir + ' ' + "dataset" + ' -j')
+    os.system('brkraw bids_helper ' + input_dir + ' ' + "dataset" + ' -j')
+    
+    # # adjust dataset.json template
+    with open("datase" + '.json', 'r') as infile:
+        meta_data = json.load(infile)
+        meta_data["common"]["RepititionTime"] = ""
+        if meta_data["common"]["EchoTime"]:
+            del meta_data["common"]["EchoTime"]
+            
+        with open("datase" + '.json', 'w') as outfile:
+            json.dump(meta_data, outfile)
+          
+    ## convert to bids
+    os.system('brkraw bids_convert ' + input_dir + ' ' + "dataset" + '.csv ' + '-j ' + "datase" + '.json ' + ' -o ' + out_path) 
+
+def nifti_convert(input_dir, raw_data_list):
+    # create list with full paths of raw data
+    list_of_paths = []        
+    for idx, raw_path in enumerate(raw_data_list):
+        full_path = os.path.join(input_dir, raw_path)
+        list_of_paths.append(full_path)
+        
+    # ## perform bruker to nifti conversion for all files    
+    for idx, sub in enumerate(list_of_paths):
+        os.system('cd ' + sub)
+        os.system('brkraw tonii ' + sub + ' -o ' + sub)
+
+
 
 
 if __name__ == "__main__":
@@ -136,35 +177,14 @@ if __name__ == "__main__":
     
     # get list of raw data in input folder
     list_of_raw = sorted([d for d in os.listdir(pathToRawData) if os.path.isdir(os.path.join(pathToRawData, d)) \
-                              or (os.path.isfile(os.path.join(pathToRawData, d)) and (('zip' in d) or ('PvDataset' in d)))])
+                               or (os.path.isfile(os.path.join(pathToRawData, d)) and (('zip' in d) or ('PvDataset' in d)))])
 
-    # create list with full paths of raw data
-    list_of_paths = []        
-    for idx, path in enumerate(list_of_raw):
-        full_path = os.path.join(pathToRawData, path)
-        list_of_paths.append(full_path)
-        
-    ## perform bruker to nifti conversion for all files    
-    for idx, sub in enumerate(list_of_paths):
-        os.system('cd ' + sub)
-        os.system('brkraw tonii ' + sub + ' -o ' + sub)
-       
-    ## rearrange proc data in BIDS-format   
-    os.system('brkraw bids_helper ' + pathToRawData + ' ' + "dataset" + ' -j')
+    # convert data into nifti format
+    nifti_convert(pathToRawData, list_of_raw)
     
-    # adjust dataset.json template
-    with open("dataset" + '.json', 'r') as infile:
-        meta_data = json.load(infile)
-        meta_data["common"]["RepititionTime"] = ""
-        if meta_data["common"]["EchoTime"]:
-            del meta_data["common"]["EchoTime"]
-            
-        with open("dataset" + '.json', 'w') as outfile:
-            json.dump(meta_data, outfile)
-          
-    # convert to bids
-    os.system('brkraw bids_convert ' + pathToRawData + ' ' + "dataset" + '.csv ' + '-j ' + "dataset" + '.json ' + ' -o ' + output_dir) 
-    
+    # convert data into BIDS format
+    bids_convert(pathToRawData, output_dir)
+  
     # delete duplicated files in input folder
     all_files_input_folder = os.listdir(pathToRawData)
     del_file_ext = [".nii", ".bval", ".bvec"]
@@ -228,27 +248,20 @@ if __name__ == "__main__":
             nii_img = nii.Nifti1Image(new_img, affine)
             
             # save nifti file in anat folder
-            img_name = "sub-" + sub + "_" + ses + "_T2w_map.nii.gz"
+            img_name = "sub-" + sub + "_" + ses + "_T2w_MEMS.nii.gz"
             t2_map_path = os.path.join(output_dir, "sub-" + sub, ses, "anat", img_name)
             nii.save(nii_img, t2_map_path)
 
             # create t2 mapping
             # check visu_pars and echo time
             visu_pars_path = os.path.join(pathToRawData, mese_scan_data[sub]["RawData"], str(mese_scan_data[sub]["ScanID"]), "visu_pars")
-    
-            if os.path.exists(visu_pars_path):
-                with open(visu_pars_path, 'r') as infile:
-                    lines = infile.readlines()
-
-                    for idx, line in enumerate(lines):
-                        if "VisuAcqEchoTime=" in line:    
-                            if lines[idx+1]:
-                                echotimes = [float(s) for s in re.findall(r'\d+', lines[idx+1])]
-                                echotimes = np.array(echotimes)
-                
-                if len(echotimes) > 3:
-                    output_path = os.path.join(output_dir,  "sub-" + sub, ses, "anat", "T2Map"+'.nii.gz')
-                    P2_IDLt2_mapping.getT2mapping(t2_map_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, output_path)
+            
+            echotimes = get_visu_pars(visu_pars_path)
+         
+            if len(echotimes) > 3:
+                img_name = "sub-" + sub + "_" + ses + "_T2w_MAP.nii.gz"
+                output_path = os.path.join(output_dir,  "sub-" + sub, ses, "anat", img_name)
+                P2_IDLt2_mapping.getT2mapping(t2_map_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, output_path)
             
             
     # iterate over all fmri scans to calculate and save costum slice timings
