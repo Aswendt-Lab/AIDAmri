@@ -236,24 +236,24 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     return outputAnnoSplit
 
 def find_RefStroke(refStrokePath,inputVolume):
-    path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/T2w/*IncidenceData_mask.nii.gz', recursive=False)
+    path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/anat/*IncidenceData_mask.nii.gz', recursive=False)
     return path
 
 def find_RefAff(inputVolume):
-    path =  glob.glob(os.path.dirname(os.path.dirname(inputVolume))+'/T2w/*MatrixAff.txt', recursive=False)
+    path =  glob.glob(os.path.dirname(os.path.dirname(inputVolume))+'/anat/*MatrixAff.txt', recursive=False)
     return path
 
 def find_RefTemplate(inputVolume):
-    path =  glob.glob(os.path.dirname(os.path.dirname(inputVolume))+'/T2w/*TemplateAff.nii.gz', recursive=False)
+    path =  glob.glob(os.path.dirname(os.path.dirname(inputVolume))+'/anat/*TemplateAff.nii.gz', recursive=False)
     return path
 
 
 def find_relatedData(pathBase):
-    pathT2 =  glob.glob(pathBase+'*/T2w/*Bet.nii.gz', recursive=False)
-    pathStroke_mask = glob.glob(pathBase + '*/T2w/*Stroke_mask.nii.gz', recursive=False)
-    pathAnno = glob.glob(pathBase + '*/T2w/*Anno.nii.gz', recursive=False)
-    pathAllen = glob.glob(pathBase + '*/T2w/*Allen.nii.gz', recursive=False)
-    bsplineMatrix =  glob.glob(pathBase + '*/T2w/*MatrixBspline.nii', recursive=False)
+    pathT2 =  glob.glob(pathBase+'*/anat/*Bet.nii.gz', recursive=False)
+    pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
+    pathAnno = glob.glob(pathBase + '*/anat/*Anno.nii.gz', recursive=False)
+    pathAllen = glob.glob(pathBase + '*/anat/*Allen.nii.gz', recursive=False)
+    bsplineMatrix =  glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
     return pathT2,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
 
 
