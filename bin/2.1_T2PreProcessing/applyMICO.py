@@ -39,6 +39,10 @@ def run_MICO(IMGdata,outputPath):
         nCvalue = 1000
     elif ImgMe > 1000:
         nCvalue = 10
+    elif ImgMe < 1:
+        nCvalue = 1 / 1000
+    elif ImgMe < 10:
+        nCvalue = 1 / 100
     else:
         nCvalue = 1
 
@@ -117,7 +121,18 @@ def run_MICO(IMGdata,outputPath):
 
         biasCorrectedVol[:,:,idx]=img_bc
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
+    data.header["quatern_b"] = 0.0
+    data.header["quatern_c"] = 0.0
+    data.header["quatern_d"] = 0.0
+    data.header["qoffset_y"] = 0.0
+    data.header["qoffset_x"] = 0.0
+    data.header["qoffset_z"] = 0.0
+    data.header["srow_x"] = [0.0,0.0,0.0,0.0]
+    data.header["srow_y"] = [0.0,0.0,0.0,0.0]
+    data.header["srow_z"] = [0.0,0.0,0.0,0.0]
+
+
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, None, data.header)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
 

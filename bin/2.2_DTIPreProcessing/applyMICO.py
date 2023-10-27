@@ -34,10 +34,23 @@ def run_MICO(IMGdata,outputPath):
     vol = data.get_data()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
 
+    ImgMe = np.mean(vol)
+    
+    if ImgMe > 10000:
+        nCvalue = 1000
+    elif ImgMe > 1000:
+        nCvalue = 10
+    elif ImgMe < 1:
+        nCvalue = 1 / 1000
+    elif ImgMe < 10:
+        nCvalue = 1 / 100
+    else:
+        nCvalue = 1
+
     bar = progressbar.ProgressBar()
     for idx in bar(range(vol.shape[2])):
 
-        Img = vol[:,:,idx]
+        Img = vol[:,:,idx] / nCvalue
         kernel =np.ones((5,5),np.uint8)
         erosion = cv2.erode(Img,kernel,iterations = 1)
 
