@@ -92,11 +92,11 @@ def find_RefTemplate(inputVolume):
 
 
 def find_relatedData(pathBase):
-    pathT2 =  glob.glob(pathBase+'*/T2w/*Bet.nii.gz', recursive=False)
-    pathStroke_mask = glob.glob(pathBase + '*/T2w/*Stroke_mask.nii.gz', recursive=False)
-    pathAnno = glob.glob(pathBase + '*/T2w/*Anno.nii.gz', recursive=False)
-    pathAllen = glob.glob(pathBase + '*/T2w/*Allen.nii.gz', recursive=False)
-    bsplineMatrix =  glob.glob(pathBase + '*/T2w/*MatrixBspline.nii', recursive=False)
+    pathT2 =  glob.glob(pathBase+'*/anat/*Bet.nii.gz', recursive=False)
+    pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
+    pathAnno = glob.glob(pathBase + '*/anat/*Anno.nii.gz', recursive=False)
+    pathAllen = glob.glob(pathBase + '*/anat/*Allen.nii.gz', recursive=False)
+    bsplineMatrix =  glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
     return pathT2,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
 
 
