@@ -15,6 +15,7 @@ import nibabel as nii
 import numpy as np
 import applyMICO
 import cv2
+from pathlib import Path
 
 # 1) Process MRI
 def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str:
@@ -65,6 +66,20 @@ def smoothIMG(input_file, output_path):
     data = nii.load(input_file)
 
     vol = data.get_data()
+
+    ImgMe = np.mean(vol)
+    if ImgMe > 10000:
+        nCvalue = 1000
+    elif ImgMe > 1000:
+        nCvalue = 10
+    elif ImgMe < 1:
+        nCvalue = 1 / 1000
+    elif ImgMe < 10:
+        nCvalue = 1 / 100
+    else:
+        nCvalue = 1
+
+    vol = vol / nCvalue
     ImgSmooth = np.min(vol, 3)
 
     unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
@@ -145,7 +160,37 @@ if __name__ == "__main__":
     # 1) Process MRI
     print('Start Preprocessing ...')
 
-    output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
+    img_name = os.path.normpath(os.path.basename(input_file))
+    img_name = img_name.split(".")[0]
+    img_name = img_name.split(".")[0]
+
+    temp_img_name = img_name + "2.nii.gz"
+
+    temp_img_name = os.path.join(Path(input_file).parent, temp_img_name)
+
+    data = nii.load(input_file)
+    header = data.header
+
+    vol = data.get_data()
+
+    data.header["quatern_b"] = 0.0
+    data.header["quatern_c"] = 0.0
+    data.header["quatern_d"] = 0.0
+    data.header["qoffset_y"] = 0.0
+    data.header["qoffset_x"] = 0.0
+    data.header["qoffset_z"] = 0.0
+    data.header["srow_x"] = [0.0,0.0,0.0,0.0]
+    data.header["srow_y"] = [0.0,0.0,0.0,0.0]
+    data.header["srow_z"] = [0.0,0.0,0.0,0.0]
+
+    temp_nii = nii.Nifti1Image(vol, None, header)
+
+    nii.save(temp_nii, temp_img_name)
+
+    output_smooth = smoothIMG(input_file = temp_img_name, output_path = output_path)
+
+    # remove temp dti image
+    os.remove(temp_img_name)
     # intensity correction using non parametric bias field correction algorithm
     output_mico = applyMICO.run_MICO(output_smooth, output_path)
 
