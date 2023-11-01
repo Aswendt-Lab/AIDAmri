@@ -87,7 +87,7 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                         message = 'Could not find *SmoothBet.nii.gz in '+currentPath_wData;
                         print(message)
                         errorList.append(message)
-                    currentFile = find("*1.nii.gz", currentPath_wData)
+                    currentFile = find("*EPI.nii.gz", currentPath_wData)
                     if len(currentFile)>0:
                         print('Run python 3.3_fMRIActivity/process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
                         os.chdir(cwd + '/3.3_fMRIActivity')
@@ -174,6 +174,7 @@ if __name__ == "__main__":
     
     print('Entered information:')
     print(pathToData)
+    print('dataTypes %s' % dataTypes)
     print('Slice time correction [%s]' % stc)
 
     listMr = findData(pathToData)
