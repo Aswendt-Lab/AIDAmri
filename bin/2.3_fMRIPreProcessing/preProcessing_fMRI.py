@@ -15,6 +15,7 @@ import os,sys
 import nibabel as nii
 import numpy as np
 import nipype.interfaces.ants as ants
+from pathlib import Path
 
 
 # 1) Process MRI
@@ -69,8 +70,25 @@ def biasfieldcorr(input_file,outputPath):
 def smoothIMG(input_file,outputPath):
     data = nii.load(input_file)
 
+    header = data.header
+
     vol = data.get_data()
+
+    ImgMe = np.mean(vol)
+    if ImgMe > 10000:
+        nCvalue = 1000
+    elif ImgMe > 1000:
+        nCvalue = 10
+    elif ImgMe < 1:
+        nCvalue = 1 / 1000
+    elif ImgMe < 10:
+        nCvalue = 1 / 100
+    else:
+        nCvalue = 1
+
+    vol = vol / nCvalue
     ImgSmooth = np.min(vol, 3)
+
 
     unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
     hdrOut = unscaledNiiData.header
@@ -148,7 +166,37 @@ if __name__ == "__main__":
     # 1) Process MRI
     print('Start Preprocessing ...')
 
+    img_name = os.path.normpath(os.path.basename(inputFile))
+    img_name = img_name.split(".")[0]
+    img_name = img_name.split(".")[0]
+
+    temp_img_name = img_name + "2.nii.gz"
+
+    temp_img_name = os.path.join(Path(inputFile).parent, temp_img_name)
+
+    data = nii.load(inputFile)
+    header = data.header
+
+    vol = data.get_data()
+
+    data.header["quatern_b"] = 0.0
+    data.header["quatern_c"] = 0.0
+    data.header["quatern_d"] = 0.0
+    data.header["qoffset_y"] = 0.0
+    data.header["qoffset_x"] = 0.0
+    data.header["qoffset_z"] = 0.0
+    data.header["srow_x"] = [0.0,0.0,0.0,0.0]
+    data.header["srow_y"] = [0.0,0.0,0.0,0.0]
+    data.header["srow_z"] = [0.0,0.0,0.0,0.0]
+
+    temp_nii = nii.Nifti1Image(vol, None, header)
+
+    nii.save(temp_nii, temp_img_name)
+
+
     outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
+
+    os.remove(temp_img_name)
 
     # get rid of your skull
     outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
