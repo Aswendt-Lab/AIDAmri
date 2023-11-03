@@ -166,37 +166,20 @@ if __name__ == "__main__":
     # 1) Process MRI
     print('Start Preprocessing ...')
 
-    img_name = os.path.normpath(os.path.basename(inputFile))
-    img_name = img_name.split(".")[0]
-    img_name = img_name.split(".")[0]
-
-    temp_img_name = img_name + "2.nii.gz"
-
-    temp_img_name = os.path.join(Path(inputFile).parent, temp_img_name)
-
-    data = nii.load(inputFile)
-    header = data.header
-
-    vol = data.get_data()
-
-    data.header["quatern_b"] = 0.0
-    data.header["quatern_c"] = 0.0
-    data.header["quatern_d"] = 0.0
-    data.header["qoffset_y"] = 0.0
-    data.header["qoffset_x"] = 0.0
-    data.header["qoffset_z"] = 0.0
-    data.header["srow_x"] = [0.0,0.0,0.0,0.0]
-    data.header["srow_y"] = [0.0,0.0,0.0,0.0]
-    data.header["srow_z"] = [0.0,0.0,0.0,0.0]
-
-    temp_nii = nii.Nifti1Image(vol, None, header)
-
-    nii.save(temp_nii, temp_img_name)
-
-
     outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
 
-    os.remove(temp_img_name)
+    # get rid of your skull
+    outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
+
+    sys.stdout = sys.__stdout__
+    print('rsfMRI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+    # get rid of your skull
+    outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
+
+    sys.stdout = sys.__stdout__
+    print('rsfMRI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+
+    outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
 
     # get rid of your skull
     outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)

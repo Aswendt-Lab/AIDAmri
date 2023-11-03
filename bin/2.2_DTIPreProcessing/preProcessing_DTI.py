@@ -160,45 +160,25 @@ if __name__ == "__main__":
     # 1) Process MRI
     print('Start Preprocessing ...')
 
-    img_name = os.path.normpath(os.path.basename(input_file))
-    img_name = img_name.split(".")[0]
-    img_name = img_name.split(".")[0]
+    output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
 
-    temp_img_name = img_name + "2.nii.gz"
-
-    temp_img_name = os.path.join(Path(input_file).parent, temp_img_name)
-
-    data = nii.load(input_file)
-    header = data.header
-
-    vol = data.get_data()
-
-    data.header["quatern_b"] = 0.0
-    data.header["quatern_c"] = 0.0
-    data.header["quatern_d"] = 0.0
-    data.header["qoffset_y"] = 0.0
-    data.header["qoffset_x"] = 0.0
-    data.header["qoffset_z"] = 0.0
-    data.header["srow_x"] = [0.0,0.0,0.0,0.0]
-    data.header["srow_y"] = [0.0,0.0,0.0,0.0]
-    data.header["srow_z"] = [0.0,0.0,0.0,0.0]
-
-    temp_nii = nii.Nifti1Image(vol, None, header)
-
-    nii.save(temp_nii, temp_img_name)
-
-    output_smooth = smoothIMG(input_file = temp_img_name, output_path = output_path)
-
-    # remove temp dti image
-    os.remove(temp_img_name)
     # intensity correction using non parametric bias field correction algorithm
     output_mico = applyMICO.run_MICO(output_smooth, output_path)
 
-    # get rid of your skull
+    # get rid of your skull         
     outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
 
     sys.stdout = sys.__stdout__
     print('DTI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+
+
+
+
+
+
+
+
+
 
 
 

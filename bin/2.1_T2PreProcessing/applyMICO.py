@@ -121,18 +121,7 @@ def run_MICO(IMGdata,outputPath):
 
         biasCorrectedVol[:,:,idx]=img_bc
 
-    data.header["quatern_b"] = 0.0
-    data.header["quatern_c"] = 0.0
-    data.header["quatern_d"] = 0.0
-    data.header["qoffset_y"] = 0.0
-    data.header["qoffset_x"] = 0.0
-    data.header["qoffset_z"] = 0.0
-    data.header["srow_x"] = [0.0,0.0,0.0,0.0]
-    data.header["srow_y"] = [0.0,0.0,0.0,0.0]
-    data.header["srow_z"] = [0.0,0.0,0.0,0.0]
-
-
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, None, data.header)
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
 

@@ -17,6 +17,9 @@ python batchProc.py -f /Volumes/Desktop/MRI/proc_data -g Treatment_C3a Treatment
 import glob
 import os
 import fnmatch
+import shutil
+from pathlib import Path
+import nibabel as nii
 
 def findData(projectPath):
     # This function screens all existing paths. Within these paths, this function collects all subject
@@ -31,6 +34,41 @@ def findData(projectPath):
             all_wanted_paths.extend(wanted_paths)
 
     return all_wanted_paths
+    
+def create_temp_nifti(original_nifti, sequence_type):
+    parent_folder = Path(original_nifti).parent
+    img_name = Path(original_nifti).name
+    
+    temp_dir = os.path.join(parent_folder, "temp")
+    if not os.path.exists(temp_dir):
+        os.mkdir(temp_dir)
+        
+    shutil.copyfile(original_nifti, os.path.join(temp_dir, img_name))
+    data = nii.load(original_nifti)
+    imgTemp = data.get_fdata()
+
+    header = data.header
+    header["qform_code"]=0
+    if sequence_type == "anat":
+        header["pixdim"] = [0,0.070312500000000,0.070312500000000,0.300000011920929,0,0,0,0]
+    elif sequence_type == "dwi":
+        header["pixdim"] = [0,0.150000005960464,0.150000005960464,0.150000005960464,3.000000953674316,0,0,0]
+    elif sequence_type == "func":
+        header["pixdim"] = [0,0.140625000000000,0.140625000000000,0.500000000000000,1.419999957084656,0,0,0]
+    header["quatern_b"] = 0.0
+    header["quatern_c"] = 0.0
+    header["quatern_d"] = 0.0
+    header["qoffset_y"] = 0.0
+    header["qoffset_x"] = 0.0
+    header["qoffset_z"] = 0.0
+    header["srow_x"]=[0.,0.,0.,0.]
+    header["srow_y"]=[0.,0.,0.,0.]
+    header["srow_z"]=[0.,0.,0.,0.]
+    #header["scl_inter"] = 0
+    #header["scl_slope"] = 1
+
+    img = nii.Nifti1Image(imgTemp, None, header)
+    nii.save(img, original_nifti)
 
 def executeScripts(fullPath, dataTypeInput, stc, *optargs):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
@@ -49,6 +87,7 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                     os.chdir(cwd + '/2.1_T2PreProcessing')
                     currentFile = find("*T2w.nii.gz", currentPath_wData)
                     if len(currentFile)>0:
+                        create_temp_nifti(currentFile[0], dataFormat)
                         print('Run python 2.1_T2PreProcessing/preProcessing_T2.py -i '+currentFile[0])
                         os.system('python preProcessing_T2.py -i '+currentFile[0])
                     else:
@@ -73,6 +112,7 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                     os.chdir(cwd + '/2.3_fMRIPreProcessing')
                     currentFile = find("*EPI.nii.gz", currentPath_wData)
                     if len(currentFile)>0:
+                        create_temp_nifti(currentFile[0], dataFormat)
                         print('Run python 2.3_fMRIPreProcessing/preProcessing_fMRI.py -i '+currentFile[0])
                         os.system('python preProcessing_fMRI.py -i '+currentFile[0])
                     else:
@@ -97,6 +137,7 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                     os.chdir(cwd + '/2.2_DTIPreProcessing')
                     currentFile = find("*dwi.nii.gz", currentPath_wData)
                     if len(currentFile)>0:
+                        create_temp_nifti(currentFile[0], dataFormat)
                         print('Run python 2.2_DTIPreProcessing/preProcessing_DTI.py -i '+currentFile[0])
                         os.system('python preProcessing_DTI.py -i '+currentFile[0])
                     else:
