@@ -27,7 +27,7 @@ import re
 from PV2NIfTiConverter import P2_IDLt2_mapping
 
 
-def create_slice_timings(method_file, out_file):
+def create_slice_timings(method_file, scanid, out_file):
     # read in method file to search for parameters
     with open(method_file, "r") as infile:
         lines = infile.readlines()
@@ -72,6 +72,7 @@ def create_slice_timings(method_file, out_file):
         mri_meta_data["ObjOrderList"] = slice_order
         mri_meta_data["n_slices"] = n_slices
         mri_meta_data["costum_timings"] = slice_timings
+        mri_meta_data["ScanID"] = scanid
         
         if os.path.exists(out_file):
             with open(out_file, "r") as outfile:
@@ -277,7 +278,7 @@ if __name__ == "__main__":
         out_file = os.path.join(output_dir, "sub-" + subjid, "ses-" + sessid, "func", "sub-" + subjid + "_ses-" + sessid + "_EPI.json")
         
         # calculate slice timings
-        create_slice_timings(fmri_scan_method_file, out_file)
+        create_slice_timings(fmri_scan_method_file, scanid, out_file)
      
     print("\n")
     print("###")
