@@ -174,19 +174,32 @@ def fsl_SeparateSliceMoCo(input_file,par_folder):
     return output_file
 
 def copyRawPhysioData(file_name,i32_Path):
-    studyName = file_name.split('/')[-3]
-    scanNo = file_name.split('.')[-4]+'.I32'
-    physioPath=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(file_name))),'Physio',studyName)
-
+    img_name = Path(file_name).name
+    json_name = img_name.replace(".nii.gz", ".json")
+    
+    json_file = os.path.join(os.path.dirname(file_name), json_name)
+    sub_name = (Path(file_name).name.split("_")[0]).split("-")[1]
+    studyName = (Path(os.path.dirname(os.path.dirname(file_name))).name).split("-")[1]
+    
     relatedPhysioData = []
-    fileALL = glob.glob(physioPath+'/'+studyName+'*'+scanNo)
-    for filename in fileALL:
-        relatedPhysioData.append(filename)
+    if os.path.exists(json_file):
+        with open(json_file, 'r') as infile:
+            content = json.load(infile)
+            scanid = str(content["ScanID"]) + ".I32"
+            print(scanid)
+
+        physioPath=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(file_name)))),'Physio')
+        
+        conditions = [sub_name , studyName]
+        for file in glob.iglob(os.path.join(physioPath, "**", "*" + scanid), recursive=True):
+            filename = os.path.basename(file)
+            if all(condition in filename for condition in conditions):
+                relatedPhysioData.append(file)
 
     if len(relatedPhysioData)>1:
-        sys.exit("Warning: '%s' has no unique physio data for scan %s." % (physioPath, scanNo,))
+        sys.exit("Warning: '%s' has no unique physio data for scan %s." % (physioPath, scanid,))
     if len(relatedPhysioData) is 0:
-        print("Error: '%s' has no related physio data for scan %s." % (physioPath, scanNo,))
+        print("Error: '%s' has no related physio data for scan %s." % (physioPath, scanid,))
         return []
 
     physioFile_name = relatedPhysioData[0]
@@ -301,13 +314,13 @@ if __name__ == "__main__":
         os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs+2000.txt'
     labelNames2000 = os.path.abspath(
         os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt'
-    input = None
+    input_file = None
     if args.input is not None and args.input is not None:
-        input = args.input
-    if not os.path.exists(input):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input, args.file,))
+        input_file = args.input
+    if not os.path.exists(input_file):
+        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
 
-    mcfFile_name = startProcess(input)
+    mcfFile_name = startProcess(input_file)
 
     
     # if stc is activated find parameters
@@ -345,7 +358,7 @@ if __name__ == "__main__":
 
     
 
-    atlasPath = os.path.dirname(input)
+    atlasPath = os.path.dirname(input_file)
     roisPath = copyAtlasOfData(atlasPath,'Anno_rsfMRI',labels)
 
     fslMeantsFile = fsl_mean_ts.start_fsl_mean_ts(sfrgr_file, roisPath, labelNames, 'MasksTCs.')
