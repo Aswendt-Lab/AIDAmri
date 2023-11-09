@@ -40,8 +40,8 @@ def run_MICO(IMGdata,outputPath):
         nCvalue = 1000
     elif ImgMe > 1000:
         nCvalue = 10
-    elif ImgMe < 1:
-        nCvalue = 1 / 1000
+    else:
+        nCvalue = 1
 
 
     bar = progressbar.ProgressBar()

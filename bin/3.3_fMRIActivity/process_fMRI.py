@@ -75,18 +75,23 @@ def findSlicesData(path,pre):
     return regMR_list
 
 def getRASorientation(file_name,proc_Path):
-    file_data = nii.load(file_name)
-    imgData = file_data.get_data()
+    data = nii.load(file_name)
+    imgData = data.dataobj.get_unscaled()
     imgData = np.flip(imgData, 2)
 
     imgData = np.flip(imgData, 0)
-    y = imgData
-    #y = imgScaleResize(imgData)
+ 
+    # reset orienation so no sform affine or qform affine is used
+    data.header.set_sform(None)
+    data.header.set_qform(None)
 
-
-    epiData = nii.Nifti1Image(y, file_data.affine)
+    temp_epi_nifti = os.path.join(proc_Path, "temp_epi_data.nii.gz")
+    temp_data = nii.Nifti1Image(imgData, None, data.header)
+    nii.save(temp_data, temp_epi_nifti)
+    epiData = nii.load(temp_epi_nifti)
     hdrIn = epiData.header
     hdrIn.set_xyzt_units('mm')
+    #os.remove(temp_epi_nifti)
     epiData_RAS = nii.as_closest_canonical(epiData)
     print('Orientation:' + str(nii.aff2axcodes(epiData_RAS.affine)))
     output_file = os.path.join(proc_Path, os.path.basename(file_name))

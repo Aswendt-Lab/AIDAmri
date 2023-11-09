@@ -37,11 +37,23 @@ import subprocess
 
 def scaleBy10(input_path, inv):
     data = nii.load(input_path)
-    imgTemp = data.get_data()
+    imgTemp = data.dataobj.get_unscaled()
+
+    # reset orientaiton
+    data.header.set_sform(None)
+    data.header.set_qform(None)
+
+    fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
+    temp_nifti = nii.Nifti1Image(imgTemp, None, data.header)
+    nii.save(temp_nifti, fslPath)
+
+    data = nii.load(fslPath)
+    imgTemp = data.dataobj.get_unscaled()
     if inv is False:
         scale = np.eye(4) * 10
         scale[3][3] = 1
         scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
+        # overwrite old nifti
         fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
         nii.save(scaledNiiData, fslPath)
         return fslPath
