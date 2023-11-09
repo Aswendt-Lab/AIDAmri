@@ -97,6 +97,24 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                         os.chdir(cwd + '/3.3_fMRIActivity')
                         os.system('python process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
                     os.chdir(cwd)
+                elif dataFormat == 't2map':
+                    os.chdir(cwd + '/4.1_T2mapPreProcessing')
+                    currentFile = find("*MEMS.nii.gz", currentPath_wData)
+                    if len(currentFile)>0:
+                        print('Run python 4.1_T2mapPreProcessing/preProcessing_T2MAP.py -i '+currentFile[0])
+                        os.system('python preProcessing_T2MAP.py -i '+currentFile[0])
+                    else:
+                        message = 'Could not find *MEMS.nii.gz in '+currentPath_wData;
+                        print(message)
+                        errorList.append(message)
+                    currentFile = find("*SmoothMicoBet.nii.gz", currentPath_wData)
+                    if len(currentFile)>0:
+                        print('Run python 4.1_T2mapPreProcessing/registration_T2MAP.py -i '+currentFile[0])
+                        os.system('python registration_T2MAP.py -i '+currentFile[0])
+                    else:
+                        message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
+                        print(message)
+                        errorList.append(message)
                 elif dataFormat == 'dwi':
                     os.chdir(cwd + '/2.2_DTIPreProcessing')
                     currentFile = find("*dwi.nii.gz", currentPath_wData)
@@ -172,7 +190,7 @@ if __name__ == "__main__":
     else:
         stc = args.slicetimecorrection
     if args.dataTypes is None:
-        dataTypes = ["anat", "dwi", "func"]
+        dataTypes = ["anat", "dwi", "func", "t2map"]
     else:
         dataTypes = args.dataTypes
     
