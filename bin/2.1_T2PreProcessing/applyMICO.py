@@ -32,7 +32,8 @@ def run_MICO(IMGdata,outputPath):
     data = nii.load(IMGdata)
     v = 8
 
-    vol = data.get_data()
+    # get UNSCALED img data
+    vol = data.dataobj.get_unscaled()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
     ImgMe = np.mean(vol)
     if ImgMe > 10000:
@@ -41,15 +42,10 @@ def run_MICO(IMGdata,outputPath):
         nCvalue = 10
     elif ImgMe < 1:
         nCvalue = 1 / 1000
-    elif ImgMe < 10:
-        nCvalue = 1 / 100
-    else:
-        nCvalue = 1
+
 
     bar = progressbar.ProgressBar()
     for idx in bar(range(vol.shape[2])):
-        #ImgMe = np.mean(vol,3)
-        #Img = ImgMe[:,:,idx]/10
 
         if np.size(vol.shape) == 4:
             Img = vol[:, :, idx, 0] / nCvalue
@@ -121,7 +117,11 @@ def run_MICO(IMGdata,outputPath):
 
         biasCorrectedVol[:,:,idx]=img_bc
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
+    # reset orientation so no qform and sform affine is used
+    data.header.set_sform(None)
+    data.header.set_qform(None)
+
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, None, data.header)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
 

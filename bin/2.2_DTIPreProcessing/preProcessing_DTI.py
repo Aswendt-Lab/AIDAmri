@@ -65,24 +65,15 @@ def smoothIMG(input_file, output_path):
     """
     data = nii.load(input_file)
 
-    vol = data.get_data()
+    vol = data.dataobj.get_unscaled()
 
-    ImgMe = np.mean(vol)
-    if ImgMe > 10000:
-        nCvalue = 1000
-    elif ImgMe > 1000:
-        nCvalue = 10
-    elif ImgMe < 1:
-        nCvalue = 1 / 1000
-    elif ImgMe < 10:
-        nCvalue = 1 / 100
-    else:
-        nCvalue = 1
-
-    vol = vol / nCvalue
     ImgSmooth = np.min(vol, 3)
 
-    unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
+    # reset orientation so no qform and sform affine is used
+    data.header.set_sform(None)
+    data.header.set_qform(None)
+
+    unscaledNiiData = nii.Nifti1Image(ImgSmooth, None, data.header)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),

@@ -70,27 +70,15 @@ def biasfieldcorr(input_file,outputPath):
 def smoothIMG(input_file,outputPath):
     data = nii.load(input_file)
 
-    header = data.header
+    vol = data.dataobj.get_unscaled()
 
-    vol = data.get_data()
-
-    ImgMe = np.mean(vol)
-    if ImgMe > 10000:
-        nCvalue = 1000
-    elif ImgMe > 1000:
-        nCvalue = 10
-    elif ImgMe < 1:
-        nCvalue = 1 / 1000
-    elif ImgMe < 10:
-        nCvalue = 1 / 100
-    else:
-        nCvalue = 1
-
-    vol = vol / nCvalue
     ImgSmooth = np.min(vol, 3)
 
+    # reset orientation so no qform and sform affine is used
+    data.header.set_sform(None)
+    data.header.set_qform(None)
 
-    unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
+    unscaledNiiData = nii.Nifti1Image(ImgSmooth, None, data.header)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
@@ -165,19 +153,6 @@ if __name__ == "__main__":
 
     # 1) Process MRI
     print('Start Preprocessing ...')
-
-    outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
-
-    # get rid of your skull
-    outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
-
-    sys.stdout = sys.__stdout__
-    print('rsfMRI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
-    # get rid of your skull
-    outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
-
-    sys.stdout = sys.__stdout__
-    print('rsfMRI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
 
     outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
 
