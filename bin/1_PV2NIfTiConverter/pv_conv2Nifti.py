@@ -1,7 +1,7 @@
 """
 Created on 10/08/2017
 
-@author: Niklas Pallast
+@author: Niklas Pallast, Marc Schneider, Markus Aswendt
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
@@ -31,6 +31,19 @@ class Bruker2Nifti:
         self.rawfolder = rawfolder
         self.procfolder = procfolder
         self.ftype = ftype
+
+    def save_table(self, subfolder=''):
+        try:
+            procfolder = os.path.join(self.procfolder, self.study)
+            if not os.path.isdir(procfolder):
+                os.mkdir(procfolder)
+
+            procfolder = os.path.join(self.procfolder, self.study, subfolder)
+            if not os.path.isdir(procfolder):
+                os.mkdir(procfolder)
+
+        except Exception as e:
+            print("Error in save_table:", str(e))
 
     def read_2dseq(self, map_raw=False, pv6=False, sc=1.0):
         study = self.study
@@ -118,7 +131,7 @@ class Bruker2Nifti:
                         interleaved = False
                     else:
                         interleaved = True
-                if "ObjOrderList=" in line:    
+                if "ObjOrderList=" in line:
                     n_slices = re.findall(r'\d+', line)
                     if len(n_slices) == 1:
                         n_slices = int(n_slices[0])
@@ -292,19 +305,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Convert ParaVision to NIfTI')
 
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i','--input_folder', help='raw data folder')
+    requiredNamed.add_argument('-i', '--input_folder', help='raw data folder')
     # parser.add_argument('-o','--output_folder', help='output data folder')
     # parser.add_argument('study', help='study name')
     # parser.add_argument('expno', help='experiment number')
     # parser.add_argument('procno', help='processed (reconstructed) images number')
-    parser.add_argument('-f','--model',
+    parser.add_argument('-f', '--model',
                         help='T2_2p  (default)  : Two   parameter T2 decay S(t) = S0 * exp(-t/T2)\n'
                              'T2_3p             : Three parameter T2 decay S(t) = S0 * exp(-t/T2) + C'
                         , nargs='?', const='T2_2p', type=str, default='T2_2p')
-    parser.add_argument('-u','--upLim', help='upper limit of TE - default: 100', nargs='?', const=100, type=int, default=100)
-    parser.add_argument('-s','--snrLim', help='upper limit of SNR - default: 1.5', nargs='?', const=1.5, type=float,
+    parser.add_argument('-u', '--upLim', help='upper limit of TE - default: 100', nargs='?', const=100, type=int,
+                        default=100)
+    parser.add_argument('-s', '--snrLim', help='upper limit of SNR - default: 1.5', nargs='?', const=1.5, type=float,
                         default=1.5)
-    parser.add_argument('-k','--snrMethod', help='Brummer ,Chang, Sijbers', nargs='?', const='Brummer', type=str,
+    parser.add_argument('-k', '--snrMethod', help='Brummer ,Chang, Sijbers', nargs='?', const='Brummer', type=str,
                         default='Brummer')
     parser.add_argument('-m', '--map_raw', action='store_true', help='get the real values')
     parser.add_argument('-p', '--pv6', action='store_true', help='ParaVision 6')
@@ -318,44 +332,51 @@ if __name__ == "__main__":
     if not os.path.isdir(input_folder):
         sys.exit("Error: '%s' is not an existing directory." % (input_folder,))
 
-
-
     listOfDirs = os.listdir(input_folder)
     listOfScans = [s for s in listOfDirs if s.isdigit()]
 
     if len(listOfScans) is 0:
         sys.exit("Error: '%s' contains no numbered scans." % (input_folder,))
 
-    print('Start to process '+str(len(listOfScans))+' scans...')
-    procno ='1'
-    study=input_folder.split('/')[len(input_folder.split('/'))-1]
+    print('Start to process ' + str(len(listOfScans)) + ' scans...')
+    procno = '1'
+    study = input_folder.split('/')[len(input_folder.split('/')) - 1]
     print(study)
     img = []
     for expno in np.sort(listOfScans):
         path = os.path.join(input_folder, expno, 'pdata', procno)
         if not os.path.isdir(path):
-            sys.exit("Error: '%s' is not an existing directory." % (path,))
+            print("Error: '%s' is not an existing directory." % (path,))
+            continue
 
-        if os.path.exists(os.path.join(path,'2dseq')):
-
+        if os.path.exists(os.path.join(path, '2dseq')):
             img = Bruker2Nifti(study, expno, procno, os.path.split(input_folder)[0], input_folder, ftype='NIFTI_GZ')
             img.read_2dseq(map_raw=args.map_raw, pv6=args.pv6)
             resPath = img.save_nifti()
             img.create_slice_timings()
-            if resPath is None: continue
 
+            if resPath is not None:
+                pathlog = os.path.dirname(os.path.dirname(resPath))
+                pathlog = os.path.join(pathlog, 'data.log')
+                logfile = open(pathlog, 'w')
+                logfile.write(img.subject['coilname'])
+                logfile.close()
+
+                # Call the save_table function here
+                img.save_table()
             if 'VisuAcqEchoTime' in img.visu_pars:
 
                 echoTime = img.visu_pars['VisuAcqEchoTime']
                 echoTime = np.fromstring(echoTime, dtype=float, sep=' ')
                 if len(echoTime) > 3:
-                    mapT2.getT2mapping(resPath,args.model,args.upLim,args.snrLim,args.snrMethod,echoTime)
-    
-        else: 
+                    mapT2.getT2mapping(resPath, args.model, args.upLim, args.snrLim, args.snrMethod, echoTime)
+        else:
             print("The following file does not exist, it will be skipped:")
-            print(os.path.join(path,'2dseq'))
+            print(os.path.join(path, '2dseq'))
             continue
-    
+
+
+
     if resPath is not None:
         pathlog = os.path.dirname(os.path.dirname(resPath))
         pathlog = os.path.join(pathlog, 'data.log')
