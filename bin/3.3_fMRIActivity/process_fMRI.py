@@ -80,6 +80,7 @@ def getRASorientation(file_name,proc_Path):
     imgData = np.flip(imgData, 2)
 
     imgData = np.flip(imgData, 0)
+    imgData = np.flip(imgData, 1)
  
     # reset orienation so no sform affine or qform affine is used
     data.header.set_sform(None)
@@ -99,7 +100,7 @@ def getRASorientation(file_name,proc_Path):
     return output_file
 
 def getEPIMean(file_name,proc_Path):
-    output_file = os.path.join(proc_Path, os.path.basename(file_name).split('.')[0]) + 'EPI.nii.gz'
+    output_file = os.path.join(proc_Path, os.path.basename(file_name).split('.')[0]) + 'mean.nii.gz'
     myMean = fsl.MeanImage(in_file=file_name, out_file=output_file)
     print(myMean.cmdline)
     print(myMean.cmdline)
