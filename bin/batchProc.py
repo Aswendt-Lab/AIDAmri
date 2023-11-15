@@ -11,7 +11,7 @@ project_folder/days/groups/subjects/.
 For the script to work, it needs to be placed within the /bin folder of AIDAmri.
 
 Example:
-python batchProc.py -f /Volumes/Desktop/MRI/proc_data -g Treatment_C3a Treatment_PBS -d Baseline P7 P14 P28 P42 P56 -t fMRI DTI
+python batchProc.py -i /Volumes/Desktop/MRI/proc_data -t anat dwi func t2map
 """
 
 import glob
@@ -111,6 +111,15 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                     if len(currentFile)>0:
                         print('Run python 4.1_T2mapPreProcessing/registration_T2MAP.py -i '+currentFile[0])
                         os.system('python registration_T2MAP.py -i '+currentFile[0])
+                    else:
+                        message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
+                        print(message)
+                        errorList.append(message)
+                    currentFile = find("*T2w_MAP.nii.gz", currentPath_wData)
+                    rois_file = find("*AnnoSplit_rsfMRI.nii.gz", currentPath_wData)
+                    if len(currentFile)>0 and len(rois_file)>0:
+                        print('Run python 4.1_T2mapPreProcessing/t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
+                        os.system('python t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
                     else:
                         message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
                         print(message)
