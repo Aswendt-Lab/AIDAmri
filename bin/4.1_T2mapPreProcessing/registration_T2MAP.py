@@ -26,7 +26,7 @@ import numpy as np
 import shutil
 import glob
 
-def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
+def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
 
@@ -261,18 +261,18 @@ def find_relatedData(pathBase):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Registration Allen Brain to DTI')
+    parser = argparse.ArgumentParser(description='Registration Allen Brain to T2map')
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--inputVolume', help='Path to the BET file of DTI data after preprocessing',
+    requiredNamed.add_argument('-i', '--inputVolume', help='Path to the BET file of T2map data after preprocessing',
                                required=True)
 
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask (for example: P5)', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
-    parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI/DTI', nargs='?', type=str,
+    parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI/T2map', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
-    parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/DTI', nargs='?', type=str,
+    parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/T2map', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
 
     args = parser.parse_args()
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     if not os.path.exists(outfile):
         os.makedirs(outfile)
 
-    print("DTI Registration  \33[5m...\33[0m (wait!)", end="\r")
+    print("T2map Registration  \33[5m...\33[0m (wait!)", end="\r")
     # generate log - file
     sys.stdout = open(os.path.join(os.path.dirname(inputVolume), 'registration.log'), 'w')
 
@@ -364,10 +364,10 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
 
-    output = regABA2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
+    output = regABA2T2map(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
     print(output + '...DONE!')
     sys.stdout = sys.__stdout__
-    print('DTI Registration  \033[0;30;42m COMPLETED \33[0m')
+    print('T2map Registration  \033[0;30;42m COMPLETED \33[0m')
 
 
 

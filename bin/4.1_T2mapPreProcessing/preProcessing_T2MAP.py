@@ -113,10 +113,10 @@ if __name__ == "__main__":
     import argparse
 
 
-    parser = argparse.ArgumentParser(description='Preprocessing of DTI Data')
+    parser = argparse.ArgumentParser(description='Preprocessing of T2map Data')
 
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--input', help='Path to the raw NIfTI DTI file', required=True)
+    requiredNamed.add_argument('-i', '--input', help='Path to the raw NIfTI T2map file', required=True)
 
     parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
     parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
@@ -137,8 +137,8 @@ if __name__ == "__main__":
     vertical_gradient = args.vertical_gradient
     output_path = os.path.dirname(input_file)
 
-    # 1) Process DTI
-    print("DTI Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
+    # 1) Process T2map
+    print("T2map Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
 
     # generate log - file
     sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
 
     sys.stdout = sys.__stdout__
-    print('DTI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+    print('T2map Preprocessing  \033[0;30;42m COMPLETED \33[0m')
 
 
 
