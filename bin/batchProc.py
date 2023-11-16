@@ -147,10 +147,10 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                     # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                     if len(currentFile)>0:
                         cli_str = r'dsi_main.py -i %s' % currentFile[0]
-                        if len(optargs) > 0:
-                            cli_str += ' -o'
-                            for arg in optargs:
-                                cli_str += ' %s' % arg
+                        #if len(optargs) > 0:
+                        #    cli_str += ' -o'
+                        #    for arg in optargs:
+                        #        cli_str += ' %s' % arg
                         print('Run python 3.2_DTIConnectivity/%s' % cli_str)
                         os.chdir(cwd + '/3.2_DTIConnectivity')
                         os.system('python %s' % cli_str)
