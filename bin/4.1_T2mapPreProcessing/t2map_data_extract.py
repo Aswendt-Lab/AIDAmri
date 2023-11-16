@@ -94,5 +94,3 @@ if __name__ == '__main__':
     outFile = getOutfile(roi_file, image_file)
     file = extractT2Mapdata(img,rois,outFile,txt_file)
     print("\033[0;30;42m Done \33[0m'  %s" % file)
-    # save output image and txtFile
-    #save_data(image_out, peaks)
