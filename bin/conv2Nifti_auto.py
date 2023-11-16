@@ -215,7 +215,11 @@ def create_mems_and_map(mese_scan_ids, mese_scan_data):
         
             if len(echotimes) > 3:
                 img_name = "sub-" + sub + "_" + ses + "_T2w_MAP.nii.gz"
-                t2map_path = os.path.join(output_dir,  "sub-" + sub, ses, "anat", img_name)
+                t2map_path = os.path.join(output_dir,  "sub-" + sub, ses, "t2map", img_name)
+
+                if not os.path.exists(os.path.join(output_dir,  "sub-" + sub, ses, "t2map")):
+                    os.mkdri(os.path.join(output_dir,  "sub-" + sub, ses, "t2map"))
+
                 P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
 
                 correct_orientation(qform,sform,t2_mems_path,t2map_path)
