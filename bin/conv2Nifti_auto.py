@@ -218,7 +218,7 @@ def create_mems_and_map(mese_scan_ids, mese_scan_data):
                 t2map_path = os.path.join(output_dir,  "sub-" + sub, ses, "t2map", img_name)
 
                 if not os.path.exists(os.path.join(output_dir,  "sub-" + sub, ses, "t2map")):
-                    os.mkdri(os.path.join(output_dir,  "sub-" + sub, ses, "t2map"))
+                    os.mkdir(os.path.join(output_dir,  "sub-" + sub, ses, "t2map"))
 
                 P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
 
