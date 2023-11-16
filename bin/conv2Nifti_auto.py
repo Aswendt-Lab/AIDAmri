@@ -135,18 +135,19 @@ def bids_convert(input_dir, out_path):
     
     # # adjust dataset.json template
     dataset_json = glob.glob(os.path.join(os.getcwd(),"data*.json"))[0]
+    dataset_csv = glob.glob(os.path.join(os.getcwd(),"data*.csv"))[0]
     if os.path.exists(dataset_json):
-        with open("datase" + '.json', 'r') as infile:
+        with open(dataset_json, 'r') as infile:
             meta_data = json.load(infile)
             meta_data["common"]["RepititionTime"] = ""
             if meta_data["common"]["EchoTime"]:
                 del meta_data["common"]["EchoTime"]
                 
-            with open("datase" + '.json', 'w') as outfile:
+            with open(dataset_json, 'w') as outfile:
                 json.dump(meta_data, outfile)
           
     ## convert to bids
-    os.system('brkraw bids_convert ' + input_dir + ' ' + "dataset" + '.csv ' + '-j ' + "datase" + '.json ' + ' -o ' + out_path) 
+    os.system('brkraw bids_convert ' + input_dir + ' ' + dataset_csv + ' -j ' + dataset_json + ' -o ' + out_path) 
 
 def nifti_convert(input_dir, raw_data_list):
     # create list with full paths of raw data
@@ -185,8 +186,8 @@ def create_mems_and_map(mese_scan_ids, mese_scan_data):
                 img_array_data[slice_number] = img_array
 
                 # remove single mese file
-                #os.remove(m_d_p)
-                #os.remove(m_d_p.replace(".nii.gz", ".json"))
+                os.remove(m_d_p)
+                os.remove(m_d_p.replace(".nii.gz", ".json"))
             
             # sort imgs into right order 
             sorted_imgs = []
@@ -215,7 +216,7 @@ def create_mems_and_map(mese_scan_ids, mese_scan_data):
             if len(echotimes) > 3:
                 img_name = "sub-" + sub + "_" + ses + "_T2w_MAP.nii.gz"
                 t2map_path = os.path.join(output_dir,  "sub-" + sub, ses, "anat", img_name)
-                #P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
+                P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
 
                 correct_orientation(qform,sform,t2_mems_path,t2map_path)
 
@@ -301,7 +302,7 @@ if __name__ == "__main__":
     fmri_scan_ids = {}
     dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
     if os.path.exists(dataset_csv):
-        with open(os.path.abspath("dataset.csv"), 'r') as csvfile:
+        with open(dataset_csv, 'r') as csvfile:
             df = pd.read_csv(csvfile, delimiter=',')
             for index, row in df.iterrows():
                 # save every sub which has MEMS scans
