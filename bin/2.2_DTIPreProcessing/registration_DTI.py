@@ -367,6 +367,21 @@ if __name__ == "__main__":
     output = regABA2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
     print(output + '...DONE!')
     sys.stdout = sys.__stdout__
+
+
+    current_dir = os.path.dirname(inputVolume)
+    search_string = os.path.join(current_dir, "*dwi.nii.gz")
+    currentFile = glob.glob(search_string)
+
+    search_string = os.path.join(current_dir, "*.nii*")
+    created_imgs = glob.glob(search_string, recursive=True)
+
+    os.chdir(os.path.dirname(os.getcwd()))
+    for idx, img in enumerate(created_imgs):
+        if img == None:
+            continue
+        os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+
     print('DTI Registration  \033[0;30;42m COMPLETED \33[0m')
 
 

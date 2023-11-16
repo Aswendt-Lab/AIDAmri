@@ -48,8 +48,9 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit +
         ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit)
 
+
     # resample split rsfMRI Annotation
-    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_rsfMRI.nii.gz')
+    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz')
     os.system(
         'reg_resample -ref ' + brain_anno + ' -flo ' + splitAnno_rsfMRI +
         ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
@@ -57,9 +58,10 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit_rsfMRI +
         ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
 
+
     # resample rsfMRI Annotation
     outputAnno_rsfMRI = os.path.join(outfile,
-                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_rsfMRI.nii.gz')
+                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_t2map.nii.gz')
     os.system(
         'reg_resample -ref ' + brain_anno + ' -flo ' + anno_rsfMRI +
         ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnno_rsfMRI)
@@ -90,7 +92,6 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
             ' -cpp ' + refMatrix + ' -res ' + outputRefStrokeMaskAff)
 
         stroke_mask = outputRefStrokeMaskAff
-
 
 
     if stroke_mask is not None and len(stroke_mask) > 0 and os.path.exists(stroke_mask):
@@ -145,12 +146,12 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_rsfMRI_mask.nii.gz'))
+                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_t2map_mask.nii.gz'))
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
 
         # Stroke Mask
         outputMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'rsfMRI_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+                                        os.path.basename(inputVolume).split('.')[0] + 't2map_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
         #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
@@ -198,7 +199,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
 
 
     dataAnno = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz'))
-    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_rsfMRI.nii.gz'))
+    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz'))
     dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
 
     imgTempAnno = dataAnno.get_data()
@@ -367,6 +368,20 @@ if __name__ == "__main__":
     output = regABA2T2map(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
     print(output + '...DONE!')
     sys.stdout = sys.__stdout__
+
+    current_dir = os.path.dirname(inputVolume)
+    search_string = os.path.join(current_dir, "*MEMS.nii.gz")
+    currentFile = glob.glob(search_string)
+
+    search_string = os.path.join(current_dir, "*.nii*")
+    created_imgs = glob.glob(search_string, recursive=True)
+
+    os.chdir(os.path.dirname(os.getcwd()))
+    for idx, img in enumerate(created_imgs):
+        if img == None:
+            continue
+        os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+
     print('T2map Registration  \033[0;30;42m COMPLETED \33[0m')
 
 

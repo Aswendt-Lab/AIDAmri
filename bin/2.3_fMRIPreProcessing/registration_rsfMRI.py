@@ -210,6 +210,20 @@ if __name__ == "__main__":
                            anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile)
     print(output + '...DONE!')
     sys.stdout = sys.__stdout__
+
+    current_dir = os.path.dirname(inputVolume)
+    search_string = os.path.join(current_dir, "*EPI.nii.gz")
+    currentFile = glob.glob(search_string)
+
+    search_string = os.path.join(current_dir, "*.nii*")
+    created_imgs = glob.glob(search_string, recursive=True)
+
+    os.chdir(os.path.dirname(os.getcwd()))
+    for idx, img in enumerate(created_imgs):
+        if img == None:
+            continue
+        os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+
     print('rsfMRI Registration  \033[0;30;42m COMPLETED \33[0m')
 
 

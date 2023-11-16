@@ -177,6 +177,20 @@ if __name__ == "__main__":
     transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,allenBrain_template,allenBrain_anno,allenBrain_annorsfMRI,outfile,deformationStrength)
     #result = ARA_2_input(transInput, allenBrain_template, allenBrain_anno ,outfile)
     sys.stdout = sys.__stdout__
+
+    current_dir = os.path.dirname(inputVolume)
+    search_string = os.path.join(current_dir, "*T2w.nii.gz")
+    currentFile = glob.glob(search_string)
+
+    search_string = os.path.join(current_dir, "*.nii*")
+    created_imgs = glob.glob(search_string, recursive=True)
+
+    os.chdir(os.path.dirname(os.getcwd()))
+    for idx, img in enumerate(created_imgs):
+        if img == None:
+            continue
+        os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+
     print('T2 Registration  \033[0;30;42m COMPLETED \33[0m')
 
 

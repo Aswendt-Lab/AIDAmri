@@ -116,12 +116,12 @@ def executeScripts(fullPath, dataTypeInput, stc, *optargs):
                         print(message)
                         errorList.append(message)
                     currentFile = find("*T2w_MAP.nii.gz", currentPath_wData)
-                    rois_file = find("*AnnoSplit_rsfMRI.nii.gz", currentPath_wData)
+                    rois_file = find("*AnnoSplit_t2map.nii.gz", currentPath_wData)
                     if len(currentFile)>0 and len(rois_file)>0:
                         print('Run python 4.1_T2mapPreProcessing/t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
                         os.system('python t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
                     else:
-                        message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
+                        message = 'Could not find *T2w_MAP.nii.gz in '+currentPath_wData;
                         print(message)
                         errorList.append(message)
                 elif dataFormat == 'dwi':
