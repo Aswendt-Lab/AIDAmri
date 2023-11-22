@@ -380,7 +380,8 @@ if __name__ == "__main__":
     for idx, img in enumerate(created_imgs):
         if img == None:
             continue
-        os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+        #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+        continue
 
     print('DTI Registration  \033[0;30;42m COMPLETED \33[0m')
 
