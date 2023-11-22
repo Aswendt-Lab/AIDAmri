@@ -264,9 +264,9 @@ class Bruker2Nifti:
                 fid = open(os.path.join(procfolder, fname),mode='w',buffering=-1)
 
                 for i in range(nd):
-                    fid.write("%.4f" % (bvals[i],) + " %.8f %.8f %.8f" % tuple(dwdir[i]))
+                    fid.write("%.4f" % (bvals[i],) + " %.8f %.8f %.8f\n" % tuple(dwdir[i]))
                     #print("%.4f" % (bvals[i],) + " %.8f %.8f %.8f" % tuple(dwdir[i]), end="\r\n", file=fid) - py 2.6
-
+                fid.truncate(fid.tell() - 1)
                 # Close file
                 fid.close()
 

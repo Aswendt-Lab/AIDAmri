@@ -15,7 +15,7 @@ import nibabel as nii
 import numpy as np
 import progressbar
 
-from .ReferenceMethods import brummerSNR
+from ReferenceMethods import brummerSNR
 
 
 
