@@ -1,4 +1,3 @@
-#!/opt/env/bin/python
 """
 Created on 10/08/2017
 
@@ -17,9 +16,9 @@ import shutil
 
 if __name__ == '__main__':
     # default dsi studio directory
-#    f = open(os.path.join(os.getcwd(), "dsi_studioPath.txt"), "r")
-#    dsi_studio = f.read().split("\n")[0]
-#    f.close()
+    f = open(os.path.join(os.getcwd(), "dsi_studioPath.txt"), "r")
+    dsi_studio = f.read().split("\n")[0]
+    f.close()
 
     # default b-table in input directory
     b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir)) + '/lib/DTI_Jones30.txt'
@@ -46,16 +45,12 @@ if __name__ == '__main__':
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
                         )    
     args = parser.parse_args()
-"""
+
     # Preparing directories
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
-    dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii'))
-    if not dir_mask:
-        dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz')) # check for ending (either .nii or .nii.gz)
-    dir_mask = dir_mask[0]
-
+    dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii'))[0]
     dir_out = args.file_in
 
     if os.path.exists(mcf_path):
@@ -70,13 +65,16 @@ if __name__ == '__main__':
     dsi_tools_20170214.tracking(dsi_studio, file_in)
 
     # Calculating connectivity
-    suffixes = ['*StrokeMask_scaled.nii', '*rsfMRI_Mask_scaled.nii', '*Anno_scaled.nii', '*Anno_rsfMRISplit_scaled.nii']
-    for f in suffixes:
-        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
-        if not dir_seeds:
-            dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f + '.gz')) # check for ending (either .nii or .nii.gz)
-        dir_seeds = dir_seeds[0]
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii'))
+    if len(dir_seeds)>0:
+        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*StrokeMask_scaled.nii'))[0]
         dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*rsfMRI_Mask_scaled.nii'))[0]
+        dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_scaled.nii'))[0]
+    dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+    dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', '*Anno_rsfMRISplit_scaled.nii'))[0]
+    dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
     # rename files to reduce path length
     confiles = os.path.join(file_cur,dir_con)
@@ -114,4 +112,3 @@ if __name__ == '__main__':
                     os.remove(newName)
                 os.rename(oldName, newName)
     print('DTI Connectivity  \033[0;30;42m COMPLETED \33[0m')
-"""
