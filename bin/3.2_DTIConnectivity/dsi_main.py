@@ -17,9 +17,9 @@ import shutil
 
 if __name__ == '__main__':
     # default dsi studio directory
-#    f = open(os.path.join(os.getcwd(), "dsi_studioPath.txt"), "r")
-#    dsi_studio = f.read().split("\n")[0]
-#    f.close()
+    f = open(os.path.join(os.getcwd(), "dsi_studioPath.txt"), "r")
+    dsi_studio = f.read().split("\n")[0]
+    f.close()
 
     # default b-table in input directory
     b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir)) + '/lib/DTI_Jones30.txt'
@@ -46,7 +46,7 @@ if __name__ == '__main__':
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
                         )    
     args = parser.parse_args()
-"""
+
     # Preparing directories
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
@@ -114,4 +114,4 @@ if __name__ == '__main__':
                     os.remove(newName)
                 os.rename(oldName, newName)
     print('DTI Connectivity  \033[0;30;42m COMPLETED \33[0m')
-"""
+
