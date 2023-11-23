@@ -27,30 +27,6 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.23.2/cmake-3.23.2
 RUN mkdir aida/
 WORKDIR /aida/
 
-# Python setup
-RUN apt install -y python3 python3-pip &&\
-	python3 -m pip install --user --upgrade pip &&\
-	apt-get install -y python3-venv
-ENV VIRTUAL_ENV=/opt/env
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN	python3 -m pip install --upgrade setuptools
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip &&\
-	pip install -r requirements.txt
-
-# installation of FSL 5.0.11 with modified installer 
-# (disabling interactive allocation query)
-COPY fslinstaller_mod.py ./
-RUN python3 fslinstaller_mod.py -V 5.0.11
-
-# Configure environment
-ENV FSLDIR=/usr/local/fsl
-RUN . ${FSLDIR}/etc/fslconf/fsl.sh
-ENV FSLOUTPUTTYPE=NIFTI_GZ
-ENV PATH=${FSLDIR}/bin:${PATH}
-RUN export FSLDIR PATHs
-
 # Niftyreg preparation and installation
 RUN mkdir -p NiftyReg/niftyreg_source/
 WORKDIR /aida/NiftyReg
@@ -73,6 +49,33 @@ WORKDIR /aida
 RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2022.08.03/dsi_studio_ubuntu1804.zip &&\
 	unzip dsi_studio_ubuntu1804.zip -d dsi_studio_ubuntu1804 &&\
 	rm dsi_studio_ubuntu1804.zip
+
+# Python setup
+RUN apt install -y python3.7 python3-pip &&\
+	python3 -m pip install --user --upgrade pip &&\
+	apt-get install -y python3.7-venv &&\
+	apt clean &&\
+	rm -rf /var/lib/apt/lists/*
+ENV VIRTUAL_ENV=/opt/env
+RUN python3.7 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN	python3 -m pip install --upgrade setuptools
+COPY requirements.txt requirements.txt
+RUN pip install --upgrade pip &&\
+	pip install -r requirements.txt
+
+# installation of FSL 5.0.11 with modified installer 
+# (disabling interactive allocation query)
+COPY fslinstaller_mod.py ./
+RUN python3 fslinstaller_mod.py -V 5.0.11
+
+# Configure environment
+ENV FSLDIR=/usr/local/fsl
+RUN . ${FSLDIR}/etc/fslconf/fsl.sh
+ENV FSLOUTPUTTYPE=NIFTI_GZ
+ENV PATH=${FSLDIR}/bin:${PATH}
+RUN export FSLDIR PATHs
+
 
 # copy bin/ and lib/ from AIDAmri into image
 COPY bin/ bin/
