@@ -23,16 +23,16 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     # Read 4D data file (NIfTI )
     data_img = nib.load(sPathData)
     data = data_img.get_data()
-    data_hdr = data_img.get_header()
+    data_hdr = data_img.header
     data_dtype = data_hdr.get_data_dtype()
     data_shape = data_hdr.get_data_shape()
 
     # output data
     sPathOut = os.path.abspath(os.path.join(sPathData, os.pardir, postTxt + os.path.basename(sPathData).split('_')[0]))
     sPathOut = sPathOut + '.txt'
-    PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR.' + os.path.basename(sPathData).split('_')[0])) + '.txt'
-    PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP.' + os.path.basename(sPathData).split('_')[0])) + '.txt'
-    PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ.' + os.path.basename(sPathData).split('_')[0])) + '.txt'
+    PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+    PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+    PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
     pcorr_paths = [PcorrR_matrix_path, PcorrP_matrix_path, PcorrZ_matirx_path]
 
     if len(data_shape) != 4:
@@ -41,7 +41,7 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     # Read 4D mask file (NIfTI)
     mask_img = nib.load(sPathMask)
     mask = mask_img.get_data()
-    mask_hdr = mask_img.get_header()
+    mask_hdr = mask_img.header
     #mask_dtype = mask_hdr.get_data_dtype()
     mask_shape = mask_hdr.get_data_shape()
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     #data = np.cast[np.float32](data_img.get_data())
     #print("data.dtype:", data.dtype)
     #print("data.shape:", data.shape)
-    data_hdr = data_img.get_header()
+    data_hdr = data_img.header
     data_dtype = data_hdr.get_data_dtype()
     data_shape = data_hdr.get_data_shape()
     #print("data_dtype:", data_dtype)
@@ -130,7 +130,7 @@ if __name__ == '__main__':
     #mask = np.cast[np.float32](mask_img.get_data())
     #print("mask.dtype:", mask.dtype)
     #print("mask.shape:", mask.shape)
-    mask_hdr = mask_img.get_header()
+    mask_hdr = mask_img.header
     mask_dtype = mask_hdr.get_data_dtype()
     mask_shape = mask_hdr.get_data_shape()
     #print("mask_dtype:", mask_dtype)
