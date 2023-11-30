@@ -24,7 +24,9 @@ import glob as glob
 from pathlib import Path
 import numpy as np
 import re
+import concurrent.futures
 from PV2NIfTiConverter import P2_IDLt2_mapping
+import functools
 
 
 def create_slice_timings(method_file, scanid, out_file):
@@ -115,7 +117,7 @@ def calculate_slice_timings(n_slices, repetition_time, slicepack_delay, slice_or
     slice_timings = list(slice_timings[x] for x in slice_order)
 
     return list((slice_spacing * x) for x in slice_timings)
-
+    
 def get_visu_pars(path):
     echotimes = []
     if os.path.exists(path):
@@ -139,7 +141,6 @@ def bids_convert(input_dir, out_path):
     if os.path.exists(dataset_json):
         with open(dataset_json, 'r') as infile:
             meta_data = json.load(infile)
-            meta_data["common"]["RepititionTime"] = ""
             if meta_data["common"]["EchoTime"]:
                 del meta_data["common"]["EchoTime"]
                 
@@ -161,87 +162,88 @@ def nifti_convert(input_dir, raw_data_list):
         os.system('cd ' + sub)
         os.system('brkraw tonii ' + sub + ' -o ' + sub)
 
-def create_mems_and_map(mese_scan_ids, mese_scan_data):
+def create_mems_and_map(mese_scan_ses, mese_scan_data, output_dir):
     # iterate over every subject and ses to check if MEMS files are included
-    for idx, sub in enumerate(mese_scan_ids):
-        mese_scan_path = os.path.join(output_dir, "sub-" + sub)
-        sessions = os.listdir(mese_scan_path)
-        for ses in sessions:
-            anat_data_path = os.path.join(mese_scan_path, ses, "anat", "*MESE.nii*")
-            mese_data_paths = glob.glob(anat_data_path, recursive=True)
-            
-            #skip the subject if no MEMS files are found
-            if not mese_data_paths:
-                continue
-            
-            # collect data of all individual MEMS files of one subject and session
-            img_array_data = {}
-            for m_d_p in mese_data_paths:
-                # find slice numer in path. e.g.: *echo-10_MESE.nii.gz, extract number 10
-                slice_number = int(((Path(m_d_p).name).split('-')[-1]).split('_')[0])
-            
-                # load nifti image and save the array in a dict while key is the slice number
-                data = nii.load(m_d_p)
-                img_array = data.dataobj.get_unscaled()
-                img_array_data[slice_number] = img_array
+    
+    sub = os.path.basename(os.path.dirname(mese_scan_ses))
+    ses = os.path.basename(mese_scan_ses)
 
-                # remove single mese file
-                os.remove(m_d_p)
-                os.remove(m_d_p.replace(".nii.gz", ".json"))
-            
-            # sort imgs into right order 
-            sorted_imgs = []
-            for key in sorted(img_array_data):
-                sorted_imgs.append(img_array_data[key])
-              
-            # stack all map related niftis
-            new_img = np.stack(sorted_imgs, axis=2)
-            qform = data.header.get_qform()
-            sform = data.header.get_sform()
-            data.header.set_qform(None)
-            data.header.set_sform(None)
-            nii_img = nii.Nifti1Image(new_img, None, data.header)
-            
-            # save nifti file in anat folder
-            img_name = "sub-" + sub + "_" + ses + "_T2w_MEMS.nii.gz"
-            t2_mems_path = os.path.join(output_dir, "sub-" + sub, ses, "anat", img_name)
-            nii.save(nii_img, t2_mems_path)
+    anat_data_path = os.path.join(mese_scan_ses, "anat", "*MESE.nii*")
+    mese_data_paths = glob.glob(anat_data_path, recursive=True)
 
-            # create t2 mapping
-            # check visu_pars and echo time
-            visu_pars_path = os.path.join(pathToRawData, mese_scan_data[sub]["RawData"], str(mese_scan_data[sub]["ScanID"]), "visu_pars")
-            
-            echotimes = get_visu_pars(visu_pars_path)
+    #skip the subject if no MEMS files are found
+    if not mese_data_paths:
+        return 1
+    
+    # collect data of all individual MEMS files of one subject and session
+    img_array_data = {}
+    for m_d_p in mese_data_paths:
+        # find slice numer in path. e.g.: *echo-10_MESE.nii.gz, extract number 10
+        slice_number = int(((Path(m_d_p).name).split('-')[-1]).split('_')[0])
+    
+        # load nifti image and save the array in a dict while key is the slice number
+        data = nii.load(m_d_p)
+        img_array = data.dataobj.get_unscaled()
+        img_array_data[slice_number] = img_array
+
+        # remove single mese file
+        os.remove(m_d_p)
+        os.remove(m_d_p.replace(".nii.gz", ".json"))
+    
+    # sort imgs into right order 
+    sorted_imgs = []
+    for key in sorted(img_array_data):
+        sorted_imgs.append(img_array_data[key])
+      
+    # stack all map related niftis
+    new_img = np.stack(sorted_imgs, axis=2)
+    qform = data.header.get_qform()
+    sform = data.header.get_sform()
+    data.header.set_qform(None)
+    data.header.set_sform(None)
+    nii_img = nii.Nifti1Image(new_img, None, data.header)
+    
+    # save nifti file in anat folder
+    img_name = sub + "_" + ses + "_T2w_MEMS.nii.gz"
+    t2_mems_path = os.path.join(output_dir, sub, ses, "anat", img_name)
+    nii.save(nii_img, t2_mems_path)
+
+    # create t2 map
+    sub_num = sub.split("-")[1]
+    visu_pars_path = os.path.join(pathToRawData, mese_scan_data[sub_num]["RawData"], str(mese_scan_data[sub_num]["ScanID"]), "visu_pars")
+
+    # get echotimes of scan
+    echotimes = get_visu_pars(visu_pars_path)
+
+    if len(echotimes) > 3:
+        img_name = sub + "_" + ses + "_T2w_MAP.nii.gz"
+        t2map_path = os.path.join(output_dir, sub, ses, "t2map", img_name)
+
+        if not os.path.exists(os.path.join(output_dir, sub, ses, "t2map")):
+            os.mkdir(os.path.join(output_dir, sub, ses, "t2map"))
+
+        P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
+
+        correct_orientation(qform,sform,t2_mems_path,t2map_path)
+
+    # generate transposed MEMS img for later registration
+    org_mems_scan = nii.load(t2_mems_path)
+    mems_data = org_mems_scan.dataobj.get_unscaled()
+    
+    mems_data_transposed = np.transpose(mems_data, axes=(0,1,3,2))
+    mems_data_first_slice = mems_data_transposed[:,:,:,1]
+    
+    for i in range(mems_data_transposed.shape[3]):
+        mems_data_transposed[:,:,:,i] = mems_data_first_slice
         
-            if len(echotimes) > 3:
-                img_name = "sub-" + sub + "_" + ses + "_T2w_MAP.nii.gz"
-                t2map_path = os.path.join(output_dir,  "sub-" + sub, ses, "t2map", img_name)
-
-                if not os.path.exists(os.path.join(output_dir,  "sub-" + sub, ses, "t2map")):
-                    os.mkdir(os.path.join(output_dir,  "sub-" + sub, ses, "t2map"))
-
-                P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
-
-                correct_orientation(qform,sform,t2_mems_path,t2map_path)
-
-            # generate transposed MEMS img for later registration
-            org_mems_scan = nii.load(t2_mems_path)
-            mems_data = org_mems_scan.dataobj.get_unscaled()
-            
-            mems_data_transposed = np.transpose(mems_data, axes=(0,1,3,2))
-            mems_data_first_slice = mems_data_transposed[:,:,:,1]
-            
-            for i in range(mems_data_transposed.shape[3]):
-                mems_data_transposed[:,:,:,i] = mems_data_first_slice
-                
-            transposed_copied_img = nii.Nifti1Image(mems_data_transposed, org_mems_scan.affine)
-            
-            img_name = "sub-" + sub + "_" + ses + "_T2w_transposed_MEMS.nii.gz"
-            t2_mems_transposed_path = os.path.join(output_dir, "sub-" + sub, ses, "t2map", img_name)
-            
-            if not os.path.exists(os.path.join(output_dir, "sub-" + sub, ses, "t2map")):
-                os.mkdir(os.path.join(output_dir, "sub-" + sub, ses, "t2map"))
-            nii.save(transposed_copied_img, t2_mems_transposed_path)
+    transposed_copied_img = nii.Nifti1Image(mems_data_transposed, org_mems_scan.affine)
+    
+    img_name = sub + "_" + ses + "_T2w_transposed_MEMS.nii.gz"
+    t2_mems_transposed_path = os.path.join(output_dir, sub, ses, "t2map", img_name)
+    
+    if not os.path.exists(os.path.join(output_dir, sub, ses, "t2map")):
+        os.mkdir(os.path.join(output_dir, sub, ses, "t2map"))
+    nii.save(transposed_copied_img, t2_mems_transposed_path)
 
 
 def correct_orientation(qform,sform, t2_mems_img, t2_map_img):
@@ -320,9 +322,7 @@ if __name__ == "__main__":
                     fmri_scan_ids[row["RawData"]] = {}
                     fmri_scan_ids[row["RawData"]]["ScanID"] = row["ScanID"] 
                     fmri_scan_ids[row["RawData"]]["SessID"] = row["SessID"]
-                    fmri_scan_ids[row["RawData"]]["SubjID"] = row["SubjID"]
-    
-    create_mems_and_map(mese_scan_ids, mese_scan_data)            
+                    fmri_scan_ids[row["RawData"]]["SubjID"] = row["SubjID"]           
     
     # iterate over all fmri scans to calculate and save costum slice timings
     for sub, data in fmri_scan_ids.items():
@@ -338,6 +338,23 @@ if __name__ == "__main__":
         
         # calculate slice timings
         create_slice_timings(fmri_scan_method_file, scanid, out_file)
+        
+        
+    
+    ## use parallel computing for a faster generation of t2maps
+    mese_scan_sessions = []
+    for id in mese_scan_ids:
+        mese_scan_path = os.path.join(output_dir, "sub-" + id)
+        sessions = os.listdir(mese_scan_path)
+        for ses in sessions:
+            mese_scan_ses = os.path.join(mese_scan_path, ses)
+            if mese_scan_ses not in mese_scan_sessions:
+                mese_scan_sessions.append(os.path.join(mese_scan_path, ses))
+           
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        
+        futures = [executor.submit(create_mems_and_map, mese_scan_ses, mese_scan_data, output_dir) for mese_scan_ses in mese_scan_sessions]
+        concurrent.futures.wait(futures)
      
     print("\n")
     print("###")
@@ -347,5 +364,105 @@ if __name__ == "__main__":
     print("###")
     print("Finished converting raw data into nifti format!")
   
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+
+
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+  
+
+
+
 
 
