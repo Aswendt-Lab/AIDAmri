@@ -157,10 +157,14 @@ def nifti_convert(input_dir, raw_data_list):
         full_path = os.path.join(input_dir, raw_path)
         list_of_paths.append(full_path)
         
-    # ## perform bruker to nifti conversion for all files    
-    for idx, sub in enumerate(list_of_paths):
-        os.system('cd ' + sub)
-        os.system('brkraw tonii ' + sub + ' -o ' + sub)
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        
+        futures = [executor.submit(brkraw_tonii, path) for path in list_of_paths]
+        concurrent.futures.wait(futures)
+        
+def brkraw_tonii(input_path):
+    os.system('cd ' + input_path)
+    os.system('brkraw tonii ' + input_path + ' -o ' + input_path)
 
 def create_mems_and_map(mese_scan_ses, mese_scan_data, output_dir):
     # iterate over every subject and ses to check if MEMS files are included
