@@ -335,6 +335,7 @@ def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime,output_path):
     t2map = t2_mapping(data, echoTime, model=model, uplim=upLim, snrLim=snrLim, SNRMethod=SNRMethod)
     pathT2Map = os.path.split(path)[0]
     t2map = t2map[:, :, :, 0] #delete this line if you want more outputdata
+    t2map = np.flip(t2map, 2)
     mapNii =  nii.as_closest_canonical(nii.Nifti1Image(t2map, data.affine))
     hdr = mapNii.header
     hdr.set_xyzt_units('mm')
