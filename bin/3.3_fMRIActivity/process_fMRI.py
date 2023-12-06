@@ -138,10 +138,14 @@ def applyMask(input_file,mask_file):
 def fsl_SeparateSliceMoCo(input_file,par_folder):
     # scale Nifti data by factor 10
     dataName = os.path.basename(input_file).split('.')[0]
+
     aidamri_dir = os.getcwd()
-    current_dir = os.path.dirname(input_file)
+    temp_dir = os.path.join(os.path.dirname(input_file), "temp")
+    if not os.path.exists(temp_dir):
+        os.mkdir(temp_dir)
+
     fslPath = scaleBy10(input_file, inv=False)
-    os.chdir(current_dir)
+    os.chdir(temp_dir)
     mySplit= fsl.Split(in_file=fslPath,dimension='z',out_base_name = dataName)
     print(mySplit.cmdline)
     mySplit.run()

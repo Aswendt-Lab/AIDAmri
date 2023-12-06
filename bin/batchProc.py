@@ -23,6 +23,7 @@ import nibabel as nii
 import concurrent.futures
 import functools
 
+
 def findData(projectPath):
     # This function screens all existing paths. Within these paths, this function collects all subject
     # folders, which are all folders that are not named 'Physio'.
@@ -38,7 +39,7 @@ def findData(projectPath):
     return all_wanted_paths
     
 
-def executeScripts(fullPath, dataTypeInput, stc, *optargs):
+def executeScripts(currentPath_wData, dataFormat, stc, *optargs):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
@@ -213,7 +214,7 @@ if __name__ == "__main__":
         for idx, path in enumerate(listMr):
             listMr[idx] = os.path.join(path,dataType)
     
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ProcessPoolExecutor() as executor:
         
             futures = [executor.submit(executeScripts, path, dataType, stc) for path in listMr]
             concurrent.futures.wait(futures)
