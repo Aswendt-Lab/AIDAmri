@@ -359,6 +359,13 @@ if __name__ == "__main__":
         
         futures = [executor.submit(create_mems_and_map, mese_scan_ses, mese_scan_data, output_dir) for mese_scan_ses in mese_scan_sessions]
         concurrent.futures.wait(futures)
+
+
+    dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
+    dataset_json = glob.glob(os.path.join(os.getcwd(), "data*.json"))[0]
+
+    os.remove(dataset_csv)
+    os.remove(dataset_json)
      
     print("\n")
     print("###")
