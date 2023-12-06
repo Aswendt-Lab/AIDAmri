@@ -14,12 +14,41 @@ import os,sys
 import nibabel as nii
 import numpy as np
 import applyMICO
+import subprocess
+import shutil
+
+
+def reset_orientation(input_file):
+
+    brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
+    if os.path.exists(brkraw_dir):
+        return 
+
+    os.mkdir(brkraw_dir)
+    dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
+
+    shutil.copyfile(input_file, dst_path)
+
+    data = nii.load(input_file)
+    raw_img = data.dataobj.get_unscaled()
+
+    raw_nii = nii.Nifti1Image(raw_img, data.affine)
+    nii.save(raw_nii, input_file)
+
+    delete_orient_command = f"fslorient -deleteorient {input_file}"
+    subprocess.run(delete_orient_command, shell=True)
+
+    # Befehl zum Festlegen der radiologischen Orientierung
+    forceradiological_command = f"fslorient -forceradiological {input_file}"
+    subprocess.run(forceradiological_command, shell=True)
+
+
 
 def applyBET(input_file,frac,radius,vertical_gradient):
     """Apply BET"""
     # scale Nifti data by factor 10
     data = nii.load(input_file)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
 
@@ -48,7 +77,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
-    imgOut = dataOut.get_data()
+    imgOut = dataOut.get_fdata()
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 
@@ -66,7 +95,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Preprocessing of T2 Data')
 
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i','--inputFile', help='path to input file',required=True)
+    requiredNamed.add_argument('-i','--input_file', help='path to input file',required=True)
 
     parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.15  smaller values give larger brain outline estimates', nargs='?', type=float,default=0.15)
     parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
@@ -81,11 +110,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # set Parameters
-    inputFile = None
-    if args.inputFile is not None and args.inputFile is not None:
-        inputFile = args.inputFile
-    if not os.path.exists(inputFile):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (inputFile, args.file,))
+    input_file = None
+    if args.input_file is not None and args.input_file is not None:
+        input_file = args.input_file
+    if not os.path.exists(input_file):
+        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
 
     frac = args.frac
     radius = args.radius
@@ -96,18 +125,20 @@ if __name__ == "__main__":
     print("T2 Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
 
     # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputFile), 'preprocess.log'), 'w')
+    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
 
     # print parameters
     print("Frac: %s" % frac)
     print("Radius: %s" % radius)
     print("Gradient: %s" %vertical_gradient)
 
+    reset_orientation(input_file)
+
     #intensity correction using non parametric bias field correction algorithm
     if bias_skip == 0:
-        outputMICO = applyMICO.run_MICO(inputFile,os.path.dirname(inputFile))
+        outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))
     else:
-        outputMICO = inputFile
+        outputMICO = input_file
     # get rid of your skull
     outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
 

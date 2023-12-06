@@ -45,7 +45,7 @@ def imgScaleResize(img):
 
 def scaleBy10(input_path,inv):
     data = nii.load(input_path)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     if inv is False:
         scale = np.eye(4) * 10
         scale[3][3] = 1
@@ -76,23 +76,14 @@ def findSlicesData(path,pre):
 
 def getRASorientation(file_name,proc_Path):
     data = nii.load(file_name)
-    imgData = data.dataobj.get_unscaled()
+    imgData = data.get_fdata()
+
     imgData = np.flip(imgData, 2)
-
     imgData = np.flip(imgData, 0)
-    imgData = np.flip(imgData, 1)
- 
-    # reset orienation so no sform affine or qform affine is used
-    data.header.set_sform(None)
-    data.header.set_qform(None)
 
-    temp_epi_nifti = os.path.join(proc_Path, "temp_epi_data.nii.gz")
-    temp_data = nii.Nifti1Image(imgData, None, data.header)
-    nii.save(temp_data, temp_epi_nifti)
-    epiData = nii.load(temp_epi_nifti)
+    epiData = nii.Nifti1Image(imgData, data.affine)
     hdrIn = epiData.header
     hdrIn.set_xyzt_units('mm')
-    #os.remove(temp_epi_nifti)
     epiData_RAS = nii.as_closest_canonical(epiData)
     print('Orientation:' + str(nii.aff2axcodes(epiData_RAS.affine)))
     output_file = os.path.join(proc_Path, os.path.basename(file_name))
@@ -154,9 +145,7 @@ def fsl_SeparateSliceMoCo(input_file,par_folder):
 
     # sparate ref and src volume in slices
     sliceFiles = findSlicesData(os.getcwd(),dataName)
-    # refFiles = findSlicesData(os.getcwd(),'ref')
     print('For all slices ... ')
-
 
     #start to correct motions slice by slice
     for i in  range(len(sliceFiles)):
@@ -184,6 +173,7 @@ def fsl_SeparateSliceMoCo(input_file,par_folder):
     # unscale result data by factor 10ˆ(-1)
     output_file = scaleBy10(output_file, inv=True)
     
+    #os.remove(temp_dir)
     os.chdir(aidamri_dir)
 
     return output_file

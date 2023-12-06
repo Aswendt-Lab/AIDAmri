@@ -33,7 +33,7 @@ def run_MICO(IMGdata,outputPath):
     v = 8
 
     # get UNSCALED img data
-    vol = data.dataobj.get_unscaled()
+    vol = data.get_fdata()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
     ImgMe = np.mean(vol)
     if ImgMe > 10000:
@@ -118,10 +118,10 @@ def run_MICO(IMGdata,outputPath):
         biasCorrectedVol[:,:,idx]=img_bc
 
     # reset orientation so no qform and sform affine is used
-    data.header.set_sform(None)
-    data.header.set_qform(None)
+    #data.header.set_sform(None)
+    #data.header.set_qform(None)
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, None, data.header)
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
 

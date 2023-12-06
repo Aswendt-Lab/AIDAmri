@@ -16,14 +16,39 @@ import nibabel as nii
 import numpy as np
 import nipype.interfaces.ants as ants
 from pathlib import Path
+import subprocess
+import shutil
 
 
-# 1) Process MRI
+def reset_orientation(input_file):
+
+    brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
+    if os.path.exists(brkraw_dir):
+        return 
+
+    os.mkdir(brkraw_dir)
+    dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
+
+    shutil.copyfile(input_file, dst_path)
+
+    data = nii.load(input_file)
+    raw_img = data.dataobj.get_unscaled()
+
+    raw_nii = nii.Nifti1Image(raw_img, data.affine)
+    nii.save(raw_nii, input_file)
+
+    delete_orient_command = f"fslorient -deleteorient {input_file}"
+    subprocess.run(delete_orient_command, shell=True)
+
+    # Befehl zum Festlegen der radiologischen Orientierung
+    forceradiological_command = f"fslorient -forceradiological {input_file}"
+    subprocess.run(forceradiological_command, shell=True)
+
 def applyBET(input_file,frac,radius,outputPath):
 
     # scale Nifti data by factor 10
     data = nii.load(input_file)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
     #imgTemp = np.rot90(imgTemp,2)
@@ -47,7 +72,7 @@ def applyBET(input_file,frac,radius,outputPath):
 
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
-    imgOut = dataOut.get_data()
+    imgOut = dataOut.get_fdata()
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 
@@ -60,7 +85,6 @@ def applyBET(input_file,frac,radius,outputPath):
     return output_file
 
 def biasfieldcorr(input_file,outputPath):
-    #output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
     output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
     myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,shrink_factor=4,dimension=3)
     myAnts.run()
@@ -68,17 +92,14 @@ def biasfieldcorr(input_file,outputPath):
     return output_file
 
 def smoothIMG(input_file,outputPath):
+    """
+    Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
+    """
     data = nii.load(input_file)
-
-    vol = data.dataobj.get_unscaled()
-
+    vol = data.get_fdata()
     ImgSmooth = np.min(vol, 3)
 
-    # reset orientation so no qform and sform affine is used
-    data.header.set_sform(None)
-    data.header.set_qform(None)
-
-    unscaledNiiData = nii.Nifti1Image(ImgSmooth, None, data.header)
+    unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
@@ -153,6 +174,8 @@ if __name__ == "__main__":
 
     # 1) Process MRI
     print('Start Preprocessing ...')
+
+    reset_orientation(inputFile)
 
     outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
 

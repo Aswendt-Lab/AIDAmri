@@ -16,15 +16,41 @@ import numpy as np
 import applyMICO
 import cv2
 from pathlib import Path
+import subprocess
+import shutil
 
-# 1) Process MRI
+
+def reset_orientation(input_file):
+
+    brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
+    if os.path.exists(brkraw_dir):
+        return 
+
+    os.mkdir(brkraw_dir)
+    dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
+
+    shutil.copyfile(input_file, dst_path)
+
+    data = nii.load(input_file)
+    raw_img = data.dataobj.get_unscaled()
+
+    raw_nii = nii.Nifti1Image(raw_img, data.affine)
+    nii.save(raw_nii, input_file)
+
+    delete_orient_command = f"fslorient -deleteorient {input_file}"
+    subprocess.run(delete_orient_command, shell=True)
+
+    # Befehl zum Festlegen der radiologischen Orientierung
+    forceradiological_command = f"fslorient -forceradiological {input_file}"
+    subprocess.run(forceradiological_command, shell=True)
+
 def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str:
     """
     Performs brain extraction via the FSL Brain Extraction Tool (BET). Requires an appropriate input file (input_file), the fractional intensity threshold (frac), the head radius (radius) and the output path (output_path).
     """
     # scale Nifti data by factor 10
     data = nii.load(input_file)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
     imgTemp = np.flip(imgTemp, 2)
@@ -47,7 +73,7 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
 
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
-    imgOut = dataOut.get_data()
+    imgOut = dataOut.get_fdata()
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 
@@ -64,16 +90,10 @@ def smoothIMG(input_file, output_path):
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
     """
     data = nii.load(input_file)
-
-    vol = data.dataobj.get_unscaled()
-
+    vol = data.get_fdata()
     ImgSmooth = np.min(vol, 3)
 
-    # reset orientation so no qform and sform affine is used
-    data.header.set_sform(None)
-    data.header.set_qform(None)
-
-    unscaledNiiData = nii.Nifti1Image(ImgSmooth, None, data.header)
+    unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
@@ -150,6 +170,8 @@ if __name__ == "__main__":
 
     # 1) Process MRI
     print('Start Preprocessing ...')
+
+    reset_orientation(input_file)
 
     output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
 
