@@ -84,6 +84,9 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     # scale Nifti data by factor 10
     dataName = os.path.basename(input_file).split('.')[0]
     fslPath = scaleBy10(input_file, inv=False)
+    aidamri_dir = os.getcwd()
+    current_dir = os.path.dirname(input_file)
+    os.chdir(current_dir)
     mySplit = fsl.Split(in_file=fslPath, dimension='z', out_base_name=dataName)
     print(mySplit.cmdline)
     mySplit.run()
@@ -115,6 +118,8 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
 
     # unscale result data by factor 10**(-1)
     output_file = scaleBy10(output_file, inv=True)
+    
+    os.chdir(aidamri_dir)
 
     return output_file
 

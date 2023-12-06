@@ -35,7 +35,7 @@ def applyBET(input_file,frac,radius,outputPath):
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
     print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
-    fslPath = os.path.join(os.getcwd(),'fslScaleTemp.nii.gz')
+    fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fslPath)
 
     # extract brain
