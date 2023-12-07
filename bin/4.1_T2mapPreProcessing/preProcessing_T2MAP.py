@@ -16,6 +16,8 @@ import numpy as np
 import applyMICO
 import cv2
 from pathlib import Path
+import shutil
+import subprocess
 
 
 
@@ -61,7 +63,7 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
     print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
-    fsl_path = os.path.join(os.getcwd(),'fslScaleTemp.nii.gz')
+    fsl_path = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fsl_path)
 
     # extract brain
@@ -73,7 +75,7 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
 
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
-    imgOut = dataOut.get_data()
+    imgOut = dataOut.get_fdata()
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 

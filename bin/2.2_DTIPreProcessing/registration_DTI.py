@@ -102,8 +102,8 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # Superposition of annotations and mask
         dataAnno = nii.load(outputAnnoSplit)
         dataStroke = nii.load(outputStrokeMask)
-        imgAnno = dataAnno.get_data()
-        imgStroke = dataStroke.get_data()
+        imgAnno = dataAnno.get_fdata()
+        imgStroke = dataStroke.get_fdata()
         imgStroke[imgStroke > 0] = 1
         imgStroke[imgStroke == 0] = 0
 
@@ -135,8 +135,8 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # Superposition of rsfMRI annotations and mask
         dataAnno = nii.load(outputAnnoSplit_rsfMRI)
         dataStroke = nii.load(outputStrokeMask)
-        imgAnno = dataAnno.get_data()
-        imgStroke = dataStroke.get_data()
+        imgAnno = dataAnno.get_fdata()
+        imgStroke = dataStroke.get_fdata()
         imgStroke[imgStroke > 0] = 1
         imgStroke[imgStroke == 0] = 0
 
@@ -169,7 +169,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     # Mask
     outputMaskScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     dataMask = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_mask.nii.gz'))
-    imgMask = dataMask.get_data()
+    imgMask = dataMask.get_fdata()
 
     imgMask = np.flip(imgMask, 2)
     # imgMask = np.rot90(imgMask, 2)
@@ -201,9 +201,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_dwi.nii.gz'))
     dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
 
-    imgTempAnno = dataAnno.get_data()
-    imgTempAnnorsfMRI = dataAnnorsfMRI.get_data()
-    imgTempAllen = dataAllen.get_data()
+    imgTempAnno = dataAnno.get_fdata()
+    imgTempAnnorsfMRI = dataAnnorsfMRI.get_fdata()
+    imgTempAllen = dataAllen.get_fdata()
 
     imgTempAllen = np.flip(imgTempAllen, 2)
     imgTempAnno = np.flip(imgTempAnno, 2)

@@ -73,6 +73,12 @@ def delete5Slides(input_file,regr_Path):
 def fsl_RegrSliceWise(input_file,txtregr_Path,regr_Path):
     # scale Nifti data by factor 10
     dataName = os.path.basename(input_file).split('.')[0]
+    
+    aidamri_dir = os.getcwd()
+    temp_dir = os.path.join(os.path.dirname(input_file), "temp")
+    
+    os.chdir(temp_dir)
+    
 
     # proof  data existence
     regrTextFiles = findRegData(txtregr_Path)
@@ -127,6 +133,8 @@ def fsl_RegrSliceWise(input_file,txtregr_Path,regr_Path):
 
     # unscale result data by factor 10ˆ(-1)
     output_file = scaleBy10(output_file, inv=True)
+    
+    os.chdir(aidamri_dir)
 
     return output_file
 
