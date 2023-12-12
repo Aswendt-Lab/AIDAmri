@@ -22,9 +22,9 @@ University Hospital Cologne
 
 import numpy as np
 import nibabel as nii
-import sys,os
+import sys, os
 
-def runMICO(Img,q,W,M,C,b,Bas,GGT,ImgG, Iter, iterCM):
+def runMICO(Img, q, W, M, C, b, Bas, GGT, ImgG, Iter, iterCM):
 
 
     D = np.zeros(M.shape)
@@ -45,7 +45,7 @@ def runMICO(Img,q,W,M,C,b,Bas,GGT,ImgG, Iter, iterCM):
 
     return M_out, b_out, C_out
 
-def updateB(Img, q, C, M, Bas,GGT,ImgG):
+def updateB(Img, q, C, M, Bas, GGT, ImgG):
     PC2 = np.zeros(Img.shape)
     PC = PC2
 

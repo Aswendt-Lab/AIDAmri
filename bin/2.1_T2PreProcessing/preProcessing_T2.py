@@ -15,15 +15,20 @@ import nibabel as nii
 import numpy as np
 import applyMICO
 
-def applyBET(input_file,frac,radius,vertical_gradient):
-    """Apply BET"""
+#%% Functions
+
+def applyBET(input_file, frac, radius, vertical_gradient):
+    """
+    Apply BET. Input nifti file (`input_file`) alongside fractional intensity threshold (`frac`), head radius (`radius`), 
+    and vertical gradient (`vertical_gradient`). Output is brain extracted nifti file.
+    """
     # scale Nifti data by factor 10
     data = nii.load(input_file)
     imgTemp = data.get_data()
     scale = np.eye(4)* 10
     scale[3][3] = 1
 
-    # this has to be adapted in the case the output image is not RAS orientated - Siding from feed to nose
+    # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
     imgTemp = np.flip(imgTemp,2)
     #imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp, 2)
@@ -58,6 +63,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     nii.save(unscaledNiiData, output_file)
     return output_file
 
+#%% Program
 
 if __name__ == "__main__":
     import argparse
@@ -68,15 +74,38 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument('-i','--inputFile', help='path to input file',required=True)
 
-    parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.15  smaller values give larger brain outline estimates', nargs='?', type=float,default=0.15)
-    parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
-    parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
-                        type=float,default=0.0)
-    parser.add_argument('-b', '--bias_skip',
-                        help='Set value to 1 to skip bias field correction',
-                        nargs='?',
-                        type=float, default=0.0)
-
+    parser.add_argument(
+        '-f',
+        '--frac',
+        help='Fractional intensity threshold - default=0.15  smaller values give larger brain outline estimates',
+        nargs='?',
+        type=float,
+        default=0.15,
+        )
+    parser.add_argument(
+        '-r', 
+        '--radius',
+        help='Head radius (mm not voxels) - default=45',
+        nargs='?',
+        type=int,
+        default=45,
+        )
+    parser.add_argument(
+        '-g',
+        '--vertical_gradient',
+        help='Vertical gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        nargs='?',
+        type=float,
+        default=0.0,
+        )
+    parser.add_argument(
+        '-b',
+        '--bias_skip',
+        help='Set value to 1 to skip bias field correction',
+        nargs='?',
+        type=float, 
+        default=0.0,
+        )
 
     args = parser.parse_args()
 
