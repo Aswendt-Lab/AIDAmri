@@ -45,7 +45,7 @@ def imgScaleResize(img):
 
 def scaleBy10(input_path,inv):
     data = nii.load(input_path)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     if inv is False:
         scale = np.eye(4) * 10
         scale[3][3] = 1
@@ -76,7 +76,7 @@ def findSlicesData(path,pre):
 
 def getRASorientation(file_name,proc_Path):
     file_data = nii.load(file_name)
-    imgData = file_data.get_data()
+    imgData = file_data.get_fdata()
     imgData = np.flip(imgData, 2)
 
     imgData = np.flip(imgData, 0)
@@ -177,7 +177,7 @@ def copyRawPhysioData(file_name,i32_Path):
     studyName = file_name.split('/')[-3]
     scanNo = file_name.split('.')[-4]+'.I32'
     physioPath=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(file_name))),'Physio',studyName)
-
+    print(physioPath)
     relatedPhysioData = []
     fileALL = glob.glob(physioPath+'/'+studyName+'*'+scanNo)
     for filename in fileALL:

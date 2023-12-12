@@ -67,7 +67,7 @@ def startSeedPoint(in_labels,in_atlas):
         labels_data.append(labels_img[k].get_data())
         # print("labels_data[%d].dtype:" % (k,), labels_data[k].dtype)
         # print("labels_data[%d].shape:" % (k,), labels_data[k].shape)
-        labels_hdr.append(labels_img[k].get_header())
+        labels_hdr.append(labels_img[k].header)
         labels_shape.append(labels_hdr[k].get_data_shape())
         # print("labels_shape[%d]:" % (k,), labels_shape[k])
         if len(labels_shape[k]) != 3:
