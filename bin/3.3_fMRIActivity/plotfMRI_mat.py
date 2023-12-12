@@ -36,7 +36,7 @@ def matrixMaker(matData):
 
     fig, ax = plt.subplots()
 
-    sns.heatmap(corrMatrix)
+    sns.heatmap(corrMatrix, vmin = 0, vmax = 1)
     ax.axis('tight')
 
     # Set labels
