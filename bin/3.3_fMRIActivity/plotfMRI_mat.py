@@ -19,7 +19,7 @@ np.seterr(divide='ignore', invalid='ignore')
 import seaborn as sns
 
 
-def matrixMaker(matData):
+def matrixMaker(matData, output_path):
     unCorrmatrix = matData['matrix']
     labels = matData['label']
 
@@ -48,8 +48,9 @@ def matrixMaker(matData):
              rotation_mode="anchor")
 
     ax.set_title("rsfMRI Correlation between ARA regions")
-    plt.show()
-
+    output_file = os.path.join(output_path, "CorrMatrixHM")
+    plt.savefig(output_file)
+    plt.close
     return corrMatrix
 
 
@@ -71,4 +72,4 @@ if __name__ == "__main__":
     matData = sio.loadmat(inputPath)
 
     # generate Matrix
-    matrixMaker(matData)
+    matrixMaker(matData, os.path.dirname(inputPath))
