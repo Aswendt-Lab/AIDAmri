@@ -24,7 +24,7 @@ import concurrent.futures
 import functools
 
 
-def findData(projectPath):
+def findData(projectPath, sessions):
     # This function screens all existing paths. Within these paths, this function collects all subject
     # folders, which are all folders that are not named 'Physio'.
     full_path_list = []
@@ -35,6 +35,19 @@ def findData(projectPath):
             wanted_paths = os.listdir(os.path.join(projectPath, path))
             wanted_paths = [os.path.join(projectPath, path, wanted_path) for wanted_path in wanted_paths if "ses" in wanted_path]
             all_wanted_paths.extend(wanted_paths)
+            
+            
+    if sessions:
+        ses_path = []
+        matching_paths = []
+        for ses in sessions:
+            ses_path.append("ses-" + ses)
+        for path in all_wanted_paths:
+            if any(ses in path for ses in ses_path):
+                matching_paths.append(path)
+        
+        all_wanted_paths = matching_paths
+        
 
     return all_wanted_paths
     
@@ -146,11 +159,7 @@ def executeScripts(currentPath_wData, dataFormat, stc, *optargs):
 
             # Appends optional (fa0, nii_gz) flags to DTI main process if passed
             if len(currentFile)>0:
-                cli_str = r'dsi_main.py -i %s' % currentFile[0]
-                #if len(optargs) > 0:
-                #    cli_str += ' -o'
-                #    for arg in optargs:
-                #        cli_str += ' %s' % arg
+                cli_str = r'dsi_main.py -i %s' % currentFile[0] 
                 print('Run python 3.2_DTIConnectivity/%s' % cli_str)
                 os.chdir(cwd + '/3.2_DTIConnectivity')
                 os.system('python %s' % cli_str)
@@ -186,9 +195,10 @@ if __name__ == "__main__":
 
 
     optionalNamed = parser.add_argument_group('optional arguments')
+    optionalNamed.add_argument('-s', '--sessions', required=False,
+                        help='Select which sessions of your data should be processed, if no days are given all data will be used.', nargs='+')
     optionalNamed.add_argument('-stc', '--slicetimecorrection', default = "False", type=str,
                                help='Set True or False if a slice time correction should be performed. Only set true if you converted raw bruker data with conv2nifti.py from aidamri beforehand. Otherwise choose False')
-    optionalNamed.add_argument('-d', '--days', required=False, nargs='+', help='Day names as in the Bruker2NIfTI processed project folder')
     optionalNamed.add_argument('-t', '--dataTypes', required=False, nargs='+', help='Data types to be processed e.g. anat, dwi and/or func. Multiple specifications are possible.')
 
     args = parser.parse_args()
@@ -208,8 +218,8 @@ if __name__ == "__main__":
     print('dataTypes %s' % dataTypes)
     print('Slice time correction [%s]' % stc)
 
-    listMr = findData(pathToData)
-    
+    listMr = findData(pathToData, args.sessions)
+
     for dataType in dataTypes:
         for idx, path in enumerate(listMr):
             listMr[idx] = os.path.join(path,dataType)
