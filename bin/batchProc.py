@@ -22,20 +22,21 @@ from pathlib import Path
 import nibabel as nii
 import concurrent.futures
 import functools
+import subprocess
+from tqdm import tqdm
+import multiprocessing
 
-
-def findData(projectPath, sessions):
+def findData(projectPath, sessions, dataTypes):
     # This function screens all existing paths. Within these paths, this function collects all subject
     # folders, which are all folders that are not named 'Physio'.
-    full_path_list = []
     full_path_list = os.listdir(projectPath)
-    all_wanted_paths = []
+    all_wanted_paths, anat_files, dwi_files, func_files, t2map_files = [], [], [], [], []
+
     for path in full_path_list:  
         if "sub" in path and not ".DS_Store" in path:
             wanted_paths = os.listdir(os.path.join(projectPath, path))
             wanted_paths = [os.path.join(projectPath, path, wanted_path) for wanted_path in wanted_paths if "ses" in wanted_path]
             all_wanted_paths.extend(wanted_paths)
-            
             
     if sessions:
         ses_path = []
@@ -47,12 +48,32 @@ def findData(projectPath, sessions):
                 matching_paths.append(path)
         
         all_wanted_paths = matching_paths
+
+    for path in all_wanted_paths:
+        for sub_dir in os.listdir(path):
+            if sub_dir == "anat" and "anat" in dataTypes:
+                anat_files.append(os.path.join(path, sub_dir))
+
+            elif sub_dir == "dwi" and "dwi" in dataTypes:
+                dwi_files.append(os.path.join(path, sub_dir))
+
+            elif sub_dir == "func" and "func" in dataTypes:
+                func_files.append(os.path.join(path, sub_dir))
+
+            elif sub_dir == "t2map" and "t2map" in dataTypes:
+                t2map_files.append(os.path.join(path, sub_dir))
+
+    all_files = {}
+    all_files["anat"] = anat_files
+    all_files["dwi"] = dwi_files
+    all_files["func"] = func_files
+    all_files["t2map"] = t2map_files
         
 
-    return all_wanted_paths
+    return all_files
     
 
-def executeScripts(currentPath_wData, dataFormat, stc, *optargs):
+def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
@@ -66,7 +87,7 @@ def executeScripts(currentPath_wData, dataFormat, stc, *optargs):
             os.chdir(cwd + '/2.1_T2PreProcessing')
             currentFile = find("*T2w.nii.gz", currentPath_wData)
             if len(currentFile)>0:
-                print('Run python 2.1_T2PreProcessing/preProcessing_T2.py -i '+currentFile[0])
+                #print('Run python 2.1_T2PreProcessing/preProcessing_T2.py -i '+currentFile[0])
                 os.system('python preProcessing_T2.py -i '+currentFile[0])
             else:
                 message = 'Could not find *T2w.nii.gz in '+currentPath_wData;
@@ -74,16 +95,16 @@ def executeScripts(currentPath_wData, dataFormat, stc, *optargs):
                 errorList.append(message)
             currentFile = find("*Bet.nii.gz", currentPath_wData)
             if len(currentFile)>0:
-                print('Run python 2.1_T2PreProcessing/registration_T2.py -i '+currentFile[0])
+                #print('Run python 2.1_T2PreProcessing/registration_T2.py -i '+currentFile[0])
                 os.system('python registration_T2.py -i '+currentFile[0])
             else:
                 message = 'Could not find *BiasBet.nii.gz in '+currentPath_wData;
                 print(message)
                 errorList.append(message)
-            print('Run python 3.1_T2Processing/getIncidenceSize_par.py -i '+currentPath_wData)
+            #print('Run python 3.1_T2Processing/getIncidenceSize_par.py -i '+currentPath_wData)
             os.chdir(cwd + '/3.1_T2Processing')
             os.system('python getIncidenceSize_par.py -i '+currentPath_wData)
-            print('Run python 3.1_T2Processing/getIncidenceSize.py -i '+currentPath_wData)
+            #print('Run python 3.1_T2Processing/getIncidenceSize.py -i '+currentPath_wData)
             os.system('python getIncidenceSize.py -i '+currentPath_wData)
             os.chdir(cwd)
         elif dataFormat == 'func':
@@ -203,6 +224,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     pathToData = args.input
+    sessions = args.sessions
 
     if args.slicetimecorrection is None:
         stc = False
@@ -217,16 +239,32 @@ if __name__ == "__main__":
     print(pathToData)
     print('dataTypes %s' % dataTypes)
     print('Slice time correction [%s]' % stc)
+    print()
 
-    listMr = findData(pathToData, args.sessions)
+    all_files = findData(pathToData, sessions, dataTypes)
 
-    for dataType in dataTypes:
-        for idx, path in enumerate(listMr):
-            listMr[idx] = os.path.join(path,dataType)
-    
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-        
-            futures = [executor.submit(executeScripts, path, dataType, stc) for path in listMr]
-            concurrent.futures.wait(futures)
-    
+    num_processes = multiprocessing.cpu_count()
+
+    for key, value in all_files.items():
+        if value:
+            print(f"Entered {key} data: \n{value}")
+            print()
+            with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
+
+                progress_bar = tqdm(total=len(value), desc=f"Processing {key} data")
+
+                print(f"\n{key} processing \33[5m...\33[0m (wait!)", end="\r")
+                
+                futures = [executor.submit(executeScripts, path, key, stc) for path in value]
+
+                for future in futures:
+                    future.result()
+                    progress_bar.update(1)
+
+                concurrent.futures.wait(futures)
+
+                progress_bar.close()
+
+                print(f"{key} processing  \033[0;30;42m COMPLETED \33[0m")
+
  

@@ -26,6 +26,7 @@ import nibabel as nii
 import sys,os
 import MICO
 import progressbar
+from tqdm import tqdm
 
 
 def run_MICO(IMGdata,outputPath):
@@ -43,10 +44,10 @@ def run_MICO(IMGdata,outputPath):
     else:
         nCvalue = 1
 
-
-    bar = progressbar.ProgressBar()
-    for idx in bar(range(vol.shape[2])):
-
+    progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
+    #bar = progressbar.ProgressBar()
+    #for idx in bar(range(vol.shape[2])):
+    for idx in range(vol.shape[2]):
         if np.size(vol.shape) == 4:
             Img = vol[:, :, idx, 0] / nCvalue
         else:
@@ -107,9 +108,6 @@ def run_MICO(IMGdata,outputPath):
                         # smV = img_bc > 1200
                         # img_bc[smV] = 0
 
-
-
-
         M, C = sortMemC(M, C)
         seg = np.zeros([nrow,ncol])
         for k in range(N_region):
@@ -117,9 +115,9 @@ def run_MICO(IMGdata,outputPath):
 
         biasCorrectedVol[:,:,idx]=img_bc
 
-    # reset orientation so no qform and sform affine is used
-    #data.header.set_sform(None)
-    #data.header.set_qform(None)
+        progressbar.update(1)
+
+    progressbar.close()
 
     unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
     hdrOut = unscaledNiiData.header

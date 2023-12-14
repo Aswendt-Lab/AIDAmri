@@ -13,25 +13,41 @@ import sys,os
 import numpy as np
 import nibabel as nii
 import glob
+import subprocess
+import shlex
 
 def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,allenBrain_anno,allenBrain_annorsfMRI,outfile,opt):
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
     outputCPPAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixAff.txt')
-    os.system(
-         'reg_aladin -ref ' +inputVolume  + ' -flo ' + brain_template + ' -res ' + output+ ' -aff ' +outputCPPAff)# + ' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
 
+    command = f"reg_aladin -ref {inputVolume} -flo {brain_template} -res {output} -aff {outputCPPAff}" 
+    command_args = shlex.split(command)
+    try:
+        subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error: {e}")
 
     # Inverse registration
     outputInc = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
     outputIncAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixInv.txt')
-    os.system(
-         'reg_aladin  -ref ' + allenBrain_template + ' -flo ' +inputVolume  + ' -res ' + outputInc + ' -aff ' +outputIncAff)
+
+    command = f"reg_aladin -ref {allenBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
+    command_args = shlex.split(command)
+    try:
+        subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error: {e}")
 
     # if region such as stroke_mask is defined
     if len(stroke_mask) > 0:
         outputIncStrokeMask = os.path.join(outfile, os.path.basename(outputInc).split('.')[0] + '_mask.nii.gz')
-        os.system(
-            'reg_resample -ref ' + allenBrain_template + ' -flo ' +stroke_mask + ' -trans ' + outputIncAff + ' -res ' + outputIncStrokeMask)
+
+        command = f"reg_resample -ref {allenBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
+        command_args = shlex.split(command)
+        try:
+            subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            print(f"Error: {e}")
 
     jac = 0.3
     # minimum defomraiton field in mm
@@ -46,26 +62,44 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
 
     # resample in-house developed template
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
-    os.system('reg_f3d -ref ' + inputVolume + ' -flo ' + brain_template +
-              ' -sx  ' + str(s[0]) + '  -sy ' + str(s[1]) + ' -sz ' + str(s[2]) +
-              ' -jl ' + str(jac) +
-              ' -res ' + output + ' -cpp ' + outputCPP + ' -aff ' + outputCPPAff)
+
+    command = f"reg_f3d -ref {inputVolume} -flo {brain_template} -sx {s[0]} -sy {s[1]} -sz {s[2]} -jl {jac} -res {output} -cpp {outputCPP} -aff {outputCPPAff}"
+    command_args = shlex.split(command)
+    try:
+        subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error: {e}")
 
     # resmaple Allen Brain Reference Template
     outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAllen.nii.gz')
-    os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + allenBrain_template +
-        ' -cpp ' + outputCPP + ' -res ' + outputAnno)
+
+    command = f"reg_resample -ref {inputVolume} -flo {allenBrain_template} -cpp {outputCPP} -res {outputAnno}"
+    command_args = shlex.split(command)
+    try:
+        subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error: {e}")
 
     # resample parental annotations
     outputAnnorsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnorsfMRI.nii.gz')
-    os.system('reg_resample -ref ' + inputVolume + ' -flo ' + allenBrain_annorsfMRI + ' -inter 0'
-                                                                                      ' -cpp ' + outputCPP + ' -res ' + outputAnnorsfMRI)
+
+    command = f"reg_resample -ref {inputVolume} -flo {allenBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI}"
+    command_args = shlex.split(command)
+    try:
+        subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error: {e}")
+
     # resample annotations
     outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
-    os.system('reg_resample -ref ' + inputVolume + ' -flo ' + allenBrain_anno + ' -inter 0'
-                  
-                                                                                ' -cpp ' + outputCPP + ' -res ' + outputAnno)
+
+    command = f"reg_resample -ref {inputVolume} -flo {allenBrain_anno} -inter 0 -cpp {outputCPP} -res {outputAnno}"
+    command_args = shlex.split(command)
+    try:
+        subprocess.run(command_args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"Error: {e}")
+
     return outputAnno
 
 def find_nearest(array,value):
@@ -166,11 +200,11 @@ if __name__ == "__main__":
     stroke_mask = find_mask(inputVolume)
     if len(stroke_mask) is 0:
         stroke_mask = []
-        print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
+        #print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
     else:
         stroke_mask = stroke_mask[0]
 
-    print("T2 Registration \33[5m...\33[0m (wait!)", end="\r")
+    #print("T2 Registration \33[5m...\33[0m (wait!)", end="\r")
     # generate log - file
     sys.stdout = open(os.path.join(os.path.dirname(inputVolume), 'reg.log'), 'w')
 
@@ -191,6 +225,6 @@ if __name__ == "__main__":
             continue
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
 
-    print('T2 Registration  \033[0;30;42m COMPLETED \33[0m')
+    #print('T2 Registration  \033[0;30;42m COMPLETED \33[0m')
 
 

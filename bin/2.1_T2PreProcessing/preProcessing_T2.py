@@ -122,7 +122,7 @@ if __name__ == "__main__":
     bias_skip = args.bias_skip
 
     # 1) Process MRI
-    print("T2 Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
+    #print("T2 Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
 
     # generate log - file
     sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
 
     sys.stdout = sys.__stdout__
-    print('T2 Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+    #print('T2 Preprocessing  \033[0;30;42m COMPLETED \33[0m')
 
 
 
