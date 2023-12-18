@@ -1,6 +1,6 @@
 '''
 Created on 10/08/2017
-Updated on 12/18/2023
+Updated on 18/12/2023
 
 @author: Niklas Pallast, Markus Aswendt
 Neuroimaging & Neuroengineering
@@ -53,6 +53,9 @@ def incidenceMap2(path_listInc, araTemplate, inputFile):
 
         overlazedInciedences = overlazedInciedences + volumeMRI
 
+    overlayNII = nii.Nifti1Image(overlazedInciedences, araDataTemplate.affine)
+    output_file = os.path.join(inputFile, 'incMap.nii.gz')
+    nii.save(overlayNII, output_file)
     heatMap(incidenceMap=overlazedInciedences, araVol=realAraImg)
 
 
