@@ -1,14 +1,16 @@
 '''
 Created on 10/08/2017
+Updated on 12/18/2023
 
-@author: Niklas Pallast
+@author: Niklas Pallast, Markus Aswendt
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
 
 '''
 
-import os,sys
+import os
+import sys
 import nibabel as nii
 import glob
 import numpy as np
@@ -26,7 +28,6 @@ def heatMap(incidenceMap, araVol):
         ax.axis('off')
         t = t + 1
 
-
     fig.subplots_adjust(right=0.8)
     cbar_ax = fig.add_axes([0.85, 0.15, 0.05, 0.7])
     bounds = np.linspace(0, maxV, maxV + 1)
@@ -37,12 +38,12 @@ def heatMap(incidenceMap, araVol):
 
 def incidenceMap2(path_listInc, araTemplate, inputFile):
     araDataTemplate = nii.load(araTemplate)
-    realAraImg = araDataTemplate.get_data()
+    realAraImg = np.asanyarray(araDataTemplate.dataobj)
     overlazedInciedences = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
     bar = progressbar.ProgressBar()
     for fileIndex in bar(range(len(path_listInc))):
         dataMRI = nii.load(path_listInc[fileIndex])
-        volumeMRI = dataMRI.get_data()
+        volumeMRI = np.asanyarray(dataMRI.dataobj)
 
         bvalues = volumeMRI <= 0
         volumeMRI[bvalues] = 0
@@ -51,10 +52,7 @@ def incidenceMap2(path_listInc, araTemplate, inputFile):
         volumeMRI[fvalues] = 1
 
         overlazedInciedences = overlazedInciedences + volumeMRI
-    # uncomment the following lines to save incidence map:
-    # overlayNII = nii.Nifti1Image(overlazedInciedences, araDataTemplate.affine)
-    # output_file = os.path.join(inputFile, 'incMap.nii.gz')
-    # nii.save(overlayNII, output_file)
+
     heatMap(incidenceMap=overlazedInciedences, araVol=realAraImg)
 
 
@@ -65,6 +63,7 @@ def findIncData(path):
         regMR_list.append(filename)
     return regMR_list
 
+
 if __name__ == "__main__":
     import argparse
 
@@ -74,8 +73,8 @@ if __name__ == "__main__":
     requiredNamed.add_argument('-s', '--studyname', help='Prefix of the study in the input folder - for example "Mouse"*')
 
     parser.add_argument('-a', '--allenBrainTemplate', help='File: Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) +
+                        '/lib/average_template_50.nii.gz')
 
     args = parser.parse_args()
     inputFile = None
