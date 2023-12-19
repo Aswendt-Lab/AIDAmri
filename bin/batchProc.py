@@ -92,7 +92,7 @@ def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
                 message = 'Could not find *T2w.nii.gz in '+currentPath_wData;
                 print(message)
                 errorList.append(message)
-            currentFile = glog.glob(os.path.join(currentPath_wData,"*Bet.nii.gz"))
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*Bet.nii.gz"))
             if len(currentFile)>0:
                 os.system('python registration_T2.py -i '+currentFile[0])
             else:
