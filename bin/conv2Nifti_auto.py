@@ -27,6 +27,11 @@ import re
 import concurrent.futures
 from PV2NIfTiConverter import P2_IDLt2_mapping
 import functools
+import subprocess
+import shlex
+import logging
+
+
 
 
 def create_slice_timings(method_file, scanid, out_file):
@@ -131,9 +136,18 @@ def get_visu_pars(path):
     return echotimes
 
 def bids_convert(input_dir, out_path):
-    ## rearrange proc data in BIDS-format   
-    print('brkraw bids_helper ' + input_dir + ' ' + "dataset" + ' -j')
-    os.system('brkraw bids_helper ' + input_dir + ' ' + "dataset" + ' -j')
+    ## rearrange proc data in BIDS-format       
+    command = f"brkraw bids_helper {input_dir} dataset -j"
+    command_args = shlex.split(command)
+    
+    os.chdir(input_dir)
+    
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        logging.info(f"Output bids helper:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Fehler bei der Ausführung des Befehls: {command_args}\nFehlermeldung: {str(e)}')
+        raise
     
     # # adjust dataset.json template
     dataset_json = glob.glob(os.path.join(os.getcwd(),"data*.json"))[0]
@@ -148,7 +162,15 @@ def bids_convert(input_dir, out_path):
                 json.dump(meta_data, outfile)
           
     ## convert to bids
-    os.system('brkraw bids_convert ' + input_dir + ' ' + dataset_csv + ' -j ' + dataset_json + ' -o ' + out_path) 
+    command = f"brkraw bids_convert {input_dir} {dataset_csv} -j {dataset_json} -o {out_path}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        logging.info(f"Output bids convert:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Fehler bei der Ausführung des Befehls: {command_args}\nFehlermeldung: {str(e)}')
+        raise
+
 
 def nifti_convert(input_dir, raw_data_list):
     # create list with full paths of raw data
@@ -163,8 +185,16 @@ def nifti_convert(input_dir, raw_data_list):
         concurrent.futures.wait(futures)
         
 def brkraw_tonii(input_path):
-    os.system('cd ' + input_path)
-    os.system('brkraw tonii ' + input_path + ' -o ' + input_path)
+    os.chdir(input_path)
+    
+    command = f"brkraw tonii {input_path} -o {input_path}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        logging.info(f"Output nifti conversion of dataset {os.path.basename(input_path)}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Fehler bei der Ausführung des Befehls: {command_args}\nFehlermeldung: {str(e)}')
+        raise
 
 def create_mems_and_map(mese_scan_ses, mese_scan_data, output_dir):
     # iterate over every subject and ses to check if MEMS files are included
@@ -225,8 +255,11 @@ def create_mems_and_map(mese_scan_ses, mese_scan_data, output_dir):
 
         if not os.path.exists(os.path.join(output_dir, sub, ses, "t2map")):
             os.mkdir(os.path.join(output_dir, sub, ses, "t2map"))
-
-        P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
+        try:
+            P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
+        except Exception as e:
+            logging.error(f"Error while computing T2w Map:\n{e}")
+            raise
 
         correct_orientation(qform,sform,t2_mems_path,t2map_path)
 
@@ -277,7 +310,9 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='This script automates the conversion from the raw bruker data format to the NIfTI format using 1_PV2NIfTiConverter/pv_conv2Nifti.py. The raw data needs to be in the following structure: projectfolder/days/subjects/data/. For this script to work, the groupMapping.csv needs to be adjusted, where the group name of every subject''s folder in the raw data structure needs to be specified. This script computes the converison either for all data in the raw project folder or for certain days and/or groups specified through the optional arguments -d and -g. During the processing a new folder called proc_data is being created in the same directory where the raw data folder is located. Example: python conv2Nifti_auto.py -f /Volumes/Desktop/MRI/raw_data -d Baseline P1 P7 P14 P28')
     parser.add_argument('-i', '--input', required=True,
-                        help='Path to the parent project folder of the dataset, e.g. raw_data', type=str)
+                        help='Path to the parent project folder of the dataset, e.g. raw_data', type=str)                 
+    parser.add_argument('-s', '--sessions',
+                        help='Select which sessions of your data should be processed, if no days are given all data will be used.', type=str, required=False)
     parser.add_argument('-o', '--output', type=str, required=False, help='Output directory where the results will be saved.')
 
     ## read out parameters
@@ -287,16 +322,28 @@ if __name__ == "__main__":
         output_dir = os.path.join(pathToRawData, "proc_data")
     else:
         output_dir = args.output
+     
+    # Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(pathToRawData, "log.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     # get list of raw data in input folder
     list_of_raw = sorted([d for d in os.listdir(pathToRawData) if os.path.isdir(os.path.join(pathToRawData, d)) \
                                or (os.path.isfile(os.path.join(pathToRawData, d)) and (('zip' in d) or ('PvDataset' in d)))])
+                               
+    logging.info(f"Converting following datasets: {list_of_raw}")
+    print(f"Converting following datasets: {list_of_raw}")
 
     # convert data into nifti format
+    
+    print("Paravision to nifti conversion running \33[5m...\33[0m (wait!)")
     nifti_convert(pathToRawData, list_of_raw)
+    print("\rNifti conversion \033[0;30;42m COMPLETED \33[0m                  ")
     
     # convert data into BIDS format
+    print("BIDS conversion running \33[5m...\33[0m (wait!)")
     bids_convert(pathToRawData, output_dir)
+    print("\rBIDS conversion \033[0;30;42m COMPLETED \33[0m                   ")
   
     # delete duplicated files in input folder
     all_files_input_folder = os.listdir(pathToRawData)
@@ -342,8 +389,6 @@ if __name__ == "__main__":
         
         # calculate slice timings
         create_slice_timings(fmri_scan_method_file, scanid, out_file)
-        
-        
     
     ## use parallel computing for a faster generation of t2maps
     mese_scan_sessions = []
@@ -354,11 +399,15 @@ if __name__ == "__main__":
             mese_scan_ses = os.path.join(mese_scan_path, ses)
             if mese_scan_ses not in mese_scan_sessions:
                 mese_scan_sessions.append(os.path.join(mese_scan_path, ses))
-           
+   
+    print("T2 mapping running \33[5m...\33[0m (wait!)")
     with concurrent.futures.ProcessPoolExecutor() as executor:
         
         futures = [executor.submit(create_mems_and_map, mese_scan_ses, mese_scan_data, output_dir) for mese_scan_ses in mese_scan_sessions]
         concurrent.futures.wait(futures)
+        
+        
+    print('\rT2 mapping \033[0;30;42m COMPLETED \33[0m                            ')
 
 
     dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
@@ -366,14 +415,18 @@ if __name__ == "__main__":
 
     os.remove(dataset_csv)
     os.remove(dataset_json)
-     
-    print("\n")
-    print("###")
-    print("All duplicated files have been deleted")     
 
     print("\n")
     print("###")
     print("Finished converting raw data into nifti format!")
+    
+    print("\n")
+    print("###")
+    print("For detailed information check logging file!")
+    
+    print("\n")
+    print("###")
+    print("Thank you for using AIDAmri!")
   
 
 
