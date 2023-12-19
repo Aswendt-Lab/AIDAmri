@@ -68,85 +68,127 @@ def findData(projectPath, sessions, dataTypes):
 
     return all_files
 
+def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
+    errorList = []
+    message = ''
+    cwd = str(Path.cwd())
+    currentPath_wData = Path(currentPath_wData)
+    
+    if os.path.isdir(currentPath_wData):
+        if dataFormat == 'anat':
+            os.chdir(cwd + '/2.1_T2PreProcessing')
+            currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
+            print(f"currentPath_wData: {currentPath_wData}")
+            print(f"currentFile: {currentFile}")
+
+            if len(currentFile) > 0:
+                print(f"Found *T2w.nii.gz in {currentPath_wData}")
+                os.system(f'python preProcessing_T2.py -i {currentFile[0]}')
+            else:
+                message = f'Could not find *T2w.nii.gz in {currentPath_wData}'
+                print(message)
+                errorList.append(message)
+
+            os.chdir(cwd + '/3.1_T2Processing')
+            os.system('python getIncidenceSize_par.py -i '+currentPath_wData)
+            os.system('python getIncidenceSize.py -i '+currentPath_wData)
+            os.chdir(cwd)
+        elif dataFormat == 'func':
+            os.chdir(cwd + '/2.3_fMRIPreProcessing')
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*EPI.nii.gz"))
+            if len(currentFile) > 0:
+                os.system('python preProcessing_fMRI.py -i '+currentFile[0])
+            else:
+                message = 'Could not find *EPI.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*SmoothBet.nii.gz"))
+            if len(currentFile) > 0:
+                os.system('python registration_rsfMRI.py -i '+currentFile[0])
+            else:
+                message = 'Could not find *SmoothBet.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*EPI.nii.gz"))
+            if len(currentFile) > 0:
+                os.chdir(cwd + '/3.3_fMRIActivity')
+                os.system('python process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
+            os.chdir(cwd)
+        elif dataFormat == 't2map':
+            os.chdir(cwd + '/4.1_T2mapPreProcessing')
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*MEMS.nii.gz"))
+            if len(currentFile) > 0:
+                os.system('python preProcessing_T2MAP.py -i '+currentFile[0])
+            else:
+                message = 'Could not find *MEMS.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*SmoothMicoBet.nii.gz"))
+            if len(currentFile) > 0:
+                os.system('python registration_T2MAP.py -i '+currentFile[0])
+            else:
+                message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*T2w_MAP.nii.gz"))
+            rois_file = find("*AnnoSplit_t2map.nii.gz", currentPath_wData)
+            if len(currentFile) > 0 and len(rois_file) > 0:
+                print('Run python 4.1_T2mapPreProcessing/t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
+                os.system('python t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
+            else:
+                message = 'Could not find *T2w_MAP.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+        elif dataFormat == 'dwi':
+            os.chdir(cwd + '/2.2_DTIPreProcessing')
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*dwi.nii.gz"))
+            if len(currentFile) > 0:
+                os.system('python preProcessing_DTI.py -i '+currentFile[0])
+            else:
+                message = 'Could not find *dwi.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+
+            currentFile = glob.glob(os.path.join(currentPath_wData, "*SmoothMicoBet.nii.gz"))
+            if len(currentFile) > 0:
+                os.system('python registration_DTI.py -i '+currentFile[0])
+            else:
+                message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
+                print(message)
+                errorList.append(message)
+
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*dwi.nii.gz"))
+
+            if len(currentFile) > 0:
+                cli_str = r'dsi_main.py -i %s' % currentFile[0]
+                print('Run python 3.2_DTIConnectivity/%s' % cli_str)
+                os.chdir(cwd + '/3.2_DTIConnectivity')
+                os.system('python %s' % cli_str)
+            os.chdir(cwd)
+        else:
+            message = 'The data folders'' names do not match anat, dwi, func or t2map';
+            print(message);
+            errorList.append(message)
+    else:
+        message = 'The folder '+dataFormat+' does not exist in '+currentPath
+        print(message)
+        errorList.append(message)
+
+    print('')
+    print('Errors:')
+    print(errorList)
+
 def find(pattern, path):
     result = []
     for root, dirs, files in os.walk(path):
         for name in files:
             if fnmatch.fnmatch(name, pattern):
-                result.append(Path(root) / name)
+                result.append(os.path.join(root, name))
     return result
-
-def findData(projectPath, sessions, dataTypes):
-    # This function screens all existing paths. Within these paths, this function collects all subject
-    # folders, which are all folders that are not named 'Physio'.
-    full_path_list = os.listdir(projectPath)
-    all_wanted_paths, anat_files, dwi_files, func_files, t2map_files = [], [], [], [], []
-
-    for path in full_path_list:  
-        if "sub" in path and not ".DS_Store" in path:
-            wanted_paths = os.listdir(os.path.join(projectPath, path))
-            wanted_paths = [os.path.join(projectPath, path, wanted_path) for wanted_path in wanted_paths if "ses" in wanted_path]
-            all_wanted_paths.extend(wanted_paths)
-            
-    if sessions:
-        ses_path = []
-        matching_paths = []
-        for ses in sessions:
-            ses_path.append("ses-" + ses)
-        for path in all_wanted_paths:
-            if any(ses in path for ses in ses_path):
-                matching_paths.append(path)
-        
-        all_wanted_paths = matching_paths
-
-    for path in all_wanted_paths:
-        for sub_dir in os.listdir(path):
-            if sub_dir == "anat" and "anat" in dataTypes:
-                anat_files.append(os.path.join(path, sub_dir))
-
-            elif sub_dir == "dwi" and "dwi" in dataTypes:
-                dwi_files.append(os.path.join(path, sub_dir))
-
-            elif sub_dir == "func" and "func" in dataTypes:
-                func_files.append(os.path.join(path, sub_dir))
-
-            elif sub_dir == "t2map" and "t2map" in dataTypes:
-                t2map_files.append(os.path.join(path, sub_dir))
-
-    all_files = {}
-    all_files["anat"] = anat_files
-    all_files["dwi"] = dwi_files
-    all_files["func"] = func_files
-    all_files["t2map"] = t2map_files
-        
-
-    return all_files
-
-def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
-    # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
-    # and execute the respective (pre-)processing/registration-scripts.
-    # If a certain file does not exist, a note will be created in the errorList.
-    # cwd should contain the path of the /bin folder (the user needs to navigate to the /bin folder before executing this script)
-    errorList = []
-    message = ''
-    cwd = str(Path.cwd())
-    # currentPath_wData = projectfolder/sub/ses/dataFormat (e.g. anat, func, dwi)
-    currentPath_wData = Path(currentPath_wData)
-    
-    # ... (your existing code)
-
-    os.chdir(cwd + '/2.1_T2PreProcessing')
-    currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
-    if len(currentFile) > 0:
-        os.system(f'python preProcessing_T2.py -i {currentFile[0]}')
-    else:
-        message = f'Could not find *T2w.nii.gz in {currentPath_wData}'
-        print(message)
-        errorList.append(message)
-
-    # ... (your existing code)
-
-# ... (your existing code)
 
 if __name__ == "__main__":
     import argparse
