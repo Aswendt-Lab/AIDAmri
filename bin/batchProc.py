@@ -85,7 +85,7 @@ def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
     if os.path.isdir(currentPath_wData):
         if dataFormat == 'anat':
             os.chdir(cwd + '/2.1_T2PreProcessing')
-            currentFile = glob.glob(os.path.join(currentPath_wData, "*T2w.nii.gz")
+            currentFile = glob.glob(os.path.join(currentPath_wData, "*T2w.nii.gz"))
             if len(currentFile)>0:
                 os.system('python preProcessing_T2.py -i '+currentFile[0])
             else:
@@ -121,7 +121,7 @@ def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
                 message = 'Could not find *SmoothBet.nii.gz in '+currentPath_wData;
                 print(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData"*EPI.nii.gz"))
+            currentFile = glob.glob(os.path.join(currentPath_wData,"*EPI.nii.gz"))
             if len(currentFile)>0:
                 os.chdir(cwd + '/3.3_fMRIActivity')
                 os.system('python process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
