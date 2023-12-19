@@ -257,6 +257,7 @@ def create_mems_and_map(mese_scan_ses, mese_scan_data, output_dir):
             os.mkdir(os.path.join(output_dir, sub, ses, "t2map"))
         try:
             P2_IDLt2_mapping.getT2mapping(t2_mems_path, 'T2_2p', 100, 1.5, 'Brummer', echotimes, t2map_path)
+            logging.info(f"Map created for: {os.path.basename(t2_mems_path)}")
         except Exception as e:
             logging.error(f"Error while computing T2w Map:\n{e}")
             raise
@@ -401,6 +402,7 @@ if __name__ == "__main__":
                 mese_scan_sessions.append(os.path.join(mese_scan_path, ses))
    
     print("T2 mapping running \33[5m...\33[0m (wait!)")
+    logging.info(f"Creating T2w maps for following datasets:\n{mese_scan_ids}")
     with concurrent.futures.ProcessPoolExecutor() as executor:
         
         futures = [executor.submit(create_mems_and_map, mese_scan_ses, mese_scan_data, output_dir) for mese_scan_ses in mese_scan_sessions]
@@ -408,7 +410,7 @@ if __name__ == "__main__":
         
         
     print('\rT2 mapping \033[0;30;42m COMPLETED \33[0m                            ')
-
+    logging.info(f"Finished creating T2w maps")
 
     dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
     dataset_json = glob.glob(os.path.join(os.getcwd(), "data*.json"))[0]
@@ -428,105 +430,4 @@ if __name__ == "__main__":
     print("###")
     print("Thank you for using AIDAmri!")
   
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-
-
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-  
-
-
-
-
 
