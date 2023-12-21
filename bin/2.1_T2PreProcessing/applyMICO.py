@@ -45,8 +45,6 @@ def run_MICO(IMGdata,outputPath):
         nCvalue = 1
 
     progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
-    #bar = progressbar.ProgressBar()
-    #for idx in bar(range(vol.shape[2])):
     for idx in range(vol.shape[2]):
         if np.size(vol.shape) == 4:
             Img = vol[:, :, idx, 0] / nCvalue

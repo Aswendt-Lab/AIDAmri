@@ -16,6 +16,7 @@ import numpy as np
 import applyMICO
 import subprocess
 import shutil
+import logging
 
 
 def reset_orientation(input_file):
@@ -61,7 +62,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
+    #print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
     fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fslPath)
@@ -71,7 +72,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
     myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
                     vertical_gradient=vertical_gradient,robust=True, mask = True)
-    print(myBet.cmdline)
+    #print(myBet.cmdline)
     myBet.run()
     os.remove(fslPath)
 
@@ -115,35 +116,46 @@ if __name__ == "__main__":
         input_file = args.input_file
     if not os.path.exists(input_file):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
+        
+    #Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     bias_skip = args.bias_skip
-
-    # 1) Process MRI
-    #print("T2 Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
-
     # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
+    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocessold.log'), 'w')
 
-    # print parameters
-    print("Frac: %s" % frac)
-    print("Radius: %s" % radius)
-    print("Gradient: %s" %vertical_gradient)
+    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
     reset_orientation(input_file)
+    logging.info("Orientation resetted to RAS")
 
     #intensity correction using non parametric bias field correction algorithm
     if bias_skip == 0:
-        outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))
+        try:
+            outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))
+            logging.info("Biasfieldcorrecttion was successful")
+        except Exception as e:
+            logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+            raise
     else:
         outputMICO = input_file
-    # get rid of your skull
-    outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
-
     sys.stdout = sys.__stdout__
-    #print('T2 Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+        
+    # brain extraction
+    logging.info("Starting brain extraction")
+    try:
+        outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
+        logging.info("Brain extraction was successful")
+    except Exception as e:
+        logging.error(f'Error in brain extraction\nFehlermeldung: {str(e)}')
+        raise
+    
+    logging.info("Preprocessing completed")
+ 
 
 
 

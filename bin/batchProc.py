@@ -82,6 +82,7 @@ def run_subprocess(command):
         #output, error = process.communicate()
         #logging.info(f"Output preprocessing:\n{output}")
         os.system(command)
+        logging.info(f"Running command: {command}")
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
@@ -292,6 +293,7 @@ if __name__ == "__main__":
                 print(error_list)
 
                 print(f"{key} processing  \033[0;30;42m COMPLETED \33[0m")
+                logging.info(f"{key} processing completed")
                 
 
  
