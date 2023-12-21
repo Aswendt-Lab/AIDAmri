@@ -25,6 +25,9 @@ import functools
 import subprocess
 from tqdm import tqdm
 import multiprocessing
+import logging
+import shlex
+
 
 def findData(projectPath, sessions, dataTypes):
     # This function screens all existing paths. Within these paths, this function collects all subject
@@ -72,6 +75,17 @@ def findData(projectPath, sessions, dataTypes):
 
     return all_files
     
+def run_subprocess(command):
+    command_args = shlex.split(command)
+    try:
+        #process = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        #output, error = process.communicate()
+        #logging.info(f"Output preprocessing:\n{output}")
+        os.system(command)
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise
+    
 
 def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
@@ -81,112 +95,119 @@ def executeScripts(currentPath_wData, dataFormat, stc=False, *optargs):
     errorList = [];
     message = '';
     cwd = str(os.getcwd())
+    currentPath_wData = Path(currentPath_wData)
     # currentPath_wData = projectfolder/sub/ses/dataFormat (e.g. anat, func, dwi)
     if os.path.isdir(currentPath_wData):
         if dataFormat == 'anat':
             os.chdir(cwd + '/2.1_T2PreProcessing')
-            currentFile = glob.glob(os.path.join(currentPath_wData, "*T2w.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
             if len(currentFile)>0:
-                os.system('python preProcessing_T2.py -i '+currentFile[0])
+                command = f'python preProcessing_T2.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *T2w.nii.gz in '+currentPath_wData;
-                print(message)
+                message = 'Could not find *T2w.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*Bet.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
             if len(currentFile)>0:
-                os.system('python registration_T2.py -i '+currentFile[0])
+                command = f'python registration_T2.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *BiasBet.nii.gz in '+currentPath_wData;
-                print(message)
+                message = 'Could not find *BiasBet.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
             os.chdir(cwd + '/3.1_T2Processing')
-            os.system('python getIncidenceSize_par.py -i '+currentPath_wData)
-            os.system('python getIncidenceSize.py -i '+currentPath_wData)
+            command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
+            run_subprocess(command)
+            command = f'python getIncidenceSize.py -i {currentPath_wData}'
+            run_subprocess(command)
             os.chdir(cwd)
         elif dataFormat == 'func':
             os.chdir(cwd + '/2.3_fMRIPreProcessing')
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*EPI.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
             if len(currentFile)>0:
-                
-                os.system('python preProcessing_fMRI.py -i '+currentFile[0])
+                command = f'python preProcessing_fMRI.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *EPI.nii.gz in '+currentPath_wData;
-                print(message)
+                message = 'Could not find *EPI.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*SmoothBet.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*SmoothBet.nii.gz"))
             if len(currentFile)>0:
-                
-                os.system('python registration_rsfMRI.py -i '+currentFile[0])
+                command = f'python registration_rsfMRI.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *SmoothBet.nii.gz in '+currentPath_wData;
-                print(message)
+                message = 'Could not find *SmoothBet.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*EPI.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
             if len(currentFile)>0:
                 os.chdir(cwd + '/3.3_fMRIActivity')
-                os.system('python process_fMRI.py -i '+ currentFile[0] + ' -stc ' + str(stc))
+                command = f'python process_fMRI.py -i {currentFile[0]} -stc {stc}'
+                run_subprocess(command)
             os.chdir(cwd)
         elif dataFormat == 't2map':
             os.chdir(cwd + '/4.1_T2mapPreProcessing')
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*MEMS.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*MEMS.nii.gz"))
             if len(currentFile)>0:
-                os.system('python preProcessing_T2MAP.py -i '+currentFile[0])
+                command = f'python preProcessing_T2MAP.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *MEMS.nii.gz in '+currentPath_wData;
+                message = f'Could not find *MEMS.nii.gz in {currentPath_wData}';
+                logging.error(message)
+                errorList.append(message)
+            currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
+            if len(currentFile)>0:
+                command = f'python registration_T2MAP.py -i {currentFile[0]}'
+                run_subprocess(command)
+            else:
+                message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
                 print(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*SmoothMicoBet.nii.gz"))
-            if len(currentFile)>0:
-                os.system('python registration_T2MAP.py -i '+currentFile[0])
-            else:
-                message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
-                print(message)
-                errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*T2w_MAP.nii.gz"))
-            rois_file = find("*AnnoSplit_t2map.nii.gz", currentPath_wData)
+            currentFile = list(currentPath_wData.glob("*T2w_MAP.nii.gz"))
+            rois_file = list(currenpPath_wData.glob("*AnnoSplit_t2map.nii.gz"))
             if len(currentFile)>0 and len(rois_file)>0:
-                print('Run python 4.1_T2mapPreProcessing/t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
-                os.system('python t2map_data_extract.py -i '+currentFile[0] + ' -r ' + rois_file[0])
+                command = f'python t2map_data_extract.py -i {currentFile[0]} -r {rois_file[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *T2w_MAP.nii.gz in '+currentPath_wData;
-                print(message)
+                message = f'Could not find *T2w_MAP.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
         elif dataFormat == 'dwi':
             os.chdir(cwd + '/2.2_DTIPreProcessing')
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*dwi.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
             if len(currentFile)>0:
-                os.system('python preProcessing_DTI.py -i '+currentFile[0])
+                command = f'python preProcessing_DTI.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *dwi.nii.gz in '+currentPath_wData;
-                print(message)
+                message = f'Could not find *dwi.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData, "*SmoothMicoBet.nii.gz"))
+            currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
             if len(currentFile)>0:
-                os.system('python registration_DTI.py -i '+currentFile[0])
+                command = f'python registration_DTI.py -i {currentFile[0]}'
+                run_subprocess(command)
             else:
-                message = 'Could not find *SmoothMicoBet.nii.gz in '+currentPath_wData;
-                print(message)
+                message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
+                logging.error(message)
                 errorList.append(message)
-            currentFile = glob.glob(os.path.join(currentPath_wData,"*dwi.nii.gz"))
-
+            currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
             # Appends optional (fa0, nii_gz) flags to DTI main process if passed
             if len(currentFile)>0:
-                cli_str = r'dsi_main.py -i %s' % currentFile[0] 
-                print('Run python 3.2_DTIConnectivity/%s' % cli_str)
+                cli_str = f'dsi_main.py -i {currentFile[0]}'
                 os.chdir(cwd + '/3.2_DTIConnectivity')
-                os.system('python %s' % cli_str)
+                command = f'python {cli_str}'
+                run_subprocess(command)
             os.chdir(cwd)
         else:
             message = 'The data folders'' names do not match anat, dwi, func or t2map';
-            print(message);
+            logging.error(message);
             errorList.append(message)
     else:
         message = 'The folder '+dataFormat+' does not exist in '+currentPath
-        print(message)
+        logging.error(message)
         errorList.append(message)
-    print('')
-    print('Errors:')
-    print(errorList)
+    
  
 def find(pattern, path):
     # This function finds all files with a specified fragment within
@@ -216,6 +237,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     pathToData = args.input
     sessions = args.sessions
+    
+    #Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(pathToData, "batchproc_log.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     if args.slicetimecorrection is None:
         stc = False
@@ -233,11 +258,17 @@ if __name__ == "__main__":
     print()
 
     all_files = findData(pathToData, sessions, dataTypes)
+    
+    logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
+    logging.info(f"Processing following datasets:\n{all_files}")
 
-    num_processes = multiprocessing.cpu_count()
+    num_processes = 6
+    if multiprocessing.cpu_count() < num_processes:
+        num_processes = multiprocessing.cpu_count()
 
     for key, value in all_files.items():
         if value:
+            error_list = []
             print(f"Entered {key} data: \n{value}")
             print()
             with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
@@ -248,14 +279,19 @@ if __name__ == "__main__":
                 
                 futures = [executor.submit(executeScripts, path, key, stc) for path in value]
 
-                for future in futures:
-                    future.result()
+                for future in concurrent.futures.as_completed(futures):
+                    error_list.append(future.result())
                     progress_bar.update(1)
 
                 concurrent.futures.wait(futures)
 
                 progress_bar.close()
+                
+                print('')
+                print('Errors:')
+                print(error_list)
 
                 print(f"{key} processing  \033[0;30;42m COMPLETED \33[0m")
+                
 
  
