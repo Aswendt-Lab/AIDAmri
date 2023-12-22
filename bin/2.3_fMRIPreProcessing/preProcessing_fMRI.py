@@ -18,6 +18,7 @@ import nipype.interfaces.ants as ants
 from pathlib import Path
 import subprocess
 import shutil
+import logging
 
 
 def reset_orientation(input_file):
@@ -58,7 +59,7 @@ def applyBET(input_file,frac,radius,outputPath):
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
+    logging.info('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
     fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fslPath)
@@ -81,14 +82,14 @@ def applyBET(input_file,frac,radius,outputPath):
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiData, output_file)
 
-    print('Brain extraction DONE!')
+    logging.info("Brain extraction completed")
     return output_file
 
 def biasfieldcorr(input_file,outputPath):
     output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
     myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,shrink_factor=4,dimension=3)
     myAnts.run()
-    print('Bias correction DONE!')
+    logging.info("Biasfield correction completed")
     return output_file
 
 def smoothIMG(input_file,outputPath):
@@ -111,7 +112,7 @@ def smoothIMG(input_file,outputPath):
     output_file = os.path.join(outputPath, os.path.basename(inputFile).split('.')[0] + 'Smooth.nii.gz')
     myGauss =  fsl.SpatialFilter(in_file=input_file,out_file=output_file,operation='median',kernel_shape='box',kernel_size=0.1)
     myGauss.run()
-    print('Smoothing DONE!')
+    logging.info("Smoothing completed")
     return output_file
 
 def thresh(input_file,outputPath):
@@ -119,7 +120,7 @@ def thresh(input_file,outputPath):
     output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
     myThres = fsl.Threshold(in_file=input_file,out_file=output_file,thresh=20)#,direction='above')
     myThres.run()
-    print('Thresholding DONE!')
+    logging.info("Thresholding completed")
     return output_file
 
 def cropToSmall(input_file,outputPath):
@@ -127,7 +128,7 @@ def cropToSmall(input_file,outputPath):
     output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
     myCrop = fsl.ExtractROI(in_file=input_file,roi_file=output_file,x_min=40,x_size=130,y_min=50,y_size=110,z_min=0,z_size=12)
     myCrop.run()
-    print('Cropping DONE!')
+    logging.info("Cropping done")
     return  output_file
 
 
@@ -155,35 +156,27 @@ if __name__ == "__main__":
 
     if not os.path.exists(inputFile):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (inputFile, args.file,))
+        
+    #Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(os.path.dirname(inputFile), "preprocess.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     outputPath = os.path.dirname(inputFile)
 
-    # 1) Process fMRI
-    print("rsfMRI Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
-
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputFile), 'preprocess.log'), 'w')
-
-    # print parameters
-    print("Frac: %s" % frac)
-    print("Radius: %s" % radius)
-    print("Gradient: %s" % vertical_gradient)
-
-    # 1) Process MRI
-    print('Start Preprocessing ...')
+    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
     reset_orientation(inputFile)
+    logging.info("Orientation resetted to RAS")
 
     outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
 
     # get rid of your skull
     outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
 
-    sys.stdout = sys.__stdout__
-    print('rsfMRI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+    logging.info("Preprocessing completed")
 
 
 
