@@ -111,6 +111,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = 'Could not find *T2w.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
@@ -122,6 +123,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = 'Could not find *BiasBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "process":
                 os.chdir(cwd + '/3.1_T2Processing')
@@ -142,6 +144,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = 'Could not find *EPI.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*SmoothBet.nii.gz"))
@@ -152,6 +155,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = 'Could not find *SmoothBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
@@ -172,6 +176,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = f'Could not find *MEMS.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
@@ -182,6 +187,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
                     print(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*T2w_MAP.nii.gz"))
@@ -193,6 +199,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = f'Could not find *T2w_MAP.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
         elif dataFormat == 'dwi':
             os.chdir(cwd + '/2.2_DTIPreProcessing')
@@ -205,6 +212,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = f'Could not find *dwi.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
                 return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
@@ -215,6 +223,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
+                os.chdir(cwd)
+                return
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
