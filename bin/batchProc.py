@@ -313,7 +313,7 @@ if __name__ == "__main__":
             print()
             for step in steps: 
                 progress_bar = tqdm(total=len(value), desc=f"{step} {key} data")
-                with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
+                with concurrent.futures.ProcessPoolExecutor(max_workers=2) as executor:
                     futures = [executor.submit(executeScripts, path, key, step, stc) for path in value]
 
                     for future in concurrent.futures.as_completed(futures):
