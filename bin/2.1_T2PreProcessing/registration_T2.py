@@ -241,6 +241,8 @@ if __name__ == "__main__":
         if img == None:
             continue
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+        
+    logging.info("Registration completed")
 
 
 
