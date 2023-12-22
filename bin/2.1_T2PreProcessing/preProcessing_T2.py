@@ -62,7 +62,6 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    #print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
     fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fslPath)
@@ -72,7 +71,6 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
     myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
                     vertical_gradient=vertical_gradient,robust=True, mask = True)
-    #print(myBet.cmdline)
     myBet.run()
     os.remove(fslPath)
 
@@ -125,8 +123,6 @@ if __name__ == "__main__":
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     bias_skip = args.bias_skip
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocessold.log'), 'w')
 
     logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
@@ -143,7 +139,6 @@ if __name__ == "__main__":
             raise
     else:
         outputMICO = input_file
-    sys.stdout = sys.__stdout__
         
     # brain extraction
     logging.info("Starting brain extraction")

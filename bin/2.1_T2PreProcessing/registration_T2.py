@@ -223,16 +223,11 @@ if __name__ == "__main__":
     stroke_mask = find_mask(inputVolume)
     if len(stroke_mask) is 0:
         stroke_mask = []
-        #print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
+        logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
     else:
         stroke_mask = stroke_mask[0]
 
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputVolume), 'reg.log'), 'w')
-
     transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,allenBrain_template,allenBrain_anno,allenBrain_annorsfMRI,outfile,deformationStrength)
-    #result = ARA_2_input(transInput, allenBrain_template, allenBrain_anno ,outfile)
-    sys.stdout = sys.__stdout__
 
     current_dir = os.path.dirname(inputVolume)
     search_string = os.path.join(current_dir, "*T2w.nii.gz")

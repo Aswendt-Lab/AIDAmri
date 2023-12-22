@@ -121,9 +121,7 @@ def run_MICO(IMGdata,outputPath):
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
 
-    #outputData = os.path.join(os.path.dirname(IMGdata),os.path.basename(IMGdata).split('.')[0]+'BiasMico.nii.gz')
     outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'Bias.nii.gz')
-    # hdrOut['sform_code'] = 1
     nii.save(unscaledNiiData,outputData)
 
     return outputData
