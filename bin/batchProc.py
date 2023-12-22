@@ -183,12 +183,12 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     print(message)
                     errorList.append(message)
                 return
-            elif step == "processs":
+            elif step == "process":
                 currentFile = list(currentPath_wData.glob("*T2w_MAP.nii.gz"))
-                rois_file = list(currenpPath_wData.glob("*AnnoSplit_t2map.nii.gz"))
+                rois_file = list(currentPath_wData.glob("*AnnoSplit_t2map.nii.gz"))
                 if len(currentFile)>0 and len(rois_file)>0:
-                    command = f'python t2map_data_extract.py -i {currentFile[0]} -r {rois_file[0]}'
-                    run_subprocess(command)
+                        command = f'python t2map_data_extract.py -i {currentFile[0]} -r {rois_file[0]}'
+                        run_subprocess(command)
                 else:
                     message = f'Could not find *T2w_MAP.nii.gz in {currentPath_wData}';
                     logging.error(message)
