@@ -7,11 +7,9 @@ import os
 
 def getOutfile(roi_file,img_file):
     imgName = os.path.basename(img_file)
-    print(imgName)
 
     t2mapparam = str.split(imgName,'.')[-3]
 
-    print('\nStart processing T2Map intensities: %s' % str.upper(t2mapparam))
     outFile = os.path.join(os.path.dirname(img_file),t2mapparam + "_intensities" +'.txt') 
     return outFile
 
@@ -93,4 +91,3 @@ if __name__ == '__main__':
 
     outFile = getOutfile(roi_file, image_file)
     file = extractT2Mapdata(img,rois,outFile,txt_file)
-    print("\033[0;30;42m Done \33[0m'  %s" % file)

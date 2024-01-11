@@ -222,13 +222,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-
     if args.inputFolder is not None:
         inputFolder = args.inputFolder
         outfile = args.inputFolder
     if not os.path.exists(inputFolder):
         sys.exit("Error: '%s' is not an existing directory." % (inputFolder,))
-
 
 
     if args.allenBrain_anno is not None:
