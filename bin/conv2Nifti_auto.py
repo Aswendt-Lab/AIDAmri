@@ -325,7 +325,7 @@ if __name__ == "__main__":
         output_dir = args.output
      
     # Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(pathToRawData, "log.txt")
+    log_file_path = os.path.join(pathToRawData, "conv2nifti_log.txt") 
     logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     # get list of raw data in input folder
@@ -336,7 +336,6 @@ if __name__ == "__main__":
     print(f"Converting following datasets: {list_of_raw}")
 
     # convert data into nifti format
-    
     print("Paravision to nifti conversion running \33[5m...\33[0m (wait!)")
     nifti_convert(pathToRawData, list_of_raw)
     print("\rNifti conversion \033[0;30;42m COMPLETED \33[0m                  ")
