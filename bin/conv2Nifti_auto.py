@@ -174,18 +174,18 @@ def bids_convert(input_dir, out_path):
 
 def nifti_convert(input_dir, raw_data_list):
     # create list with full paths of raw data
-    list_of_paths = []        
-    #for idx, raw_path in enumerate(raw_data_list):
-    #    full_path = os.path.join(input_dir, raw_path)
-    #    list_of_paths.append(full_path)
+    list_of_paths = []  
+    aidamri_dir = os.getcwd()
+    os.chdir(input_dir)    
         
     with concurrent.futures.ProcessPoolExecutor() as executor:
         
         futures = [executor.submit(brkraw_tonii, path) for path in raw_data_list]
         concurrent.futures.wait(futures)
+    
+    os.chdir(aidamri_dir)
         
 def brkraw_tonii(input_path):
-    os.chdir(input_path)
     
     command = f"brkraw tonii {input_path} -o {input_path}"
     command_args = shlex.split(command)
