@@ -187,7 +187,7 @@ def nifti_convert(input_dir, raw_data_list):
         
 def brkraw_tonii(input_path):
     
-    command = f"brkraw tonii {input_path} -o {input_path}"
+    command = f"brkraw tonii {input_path}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
