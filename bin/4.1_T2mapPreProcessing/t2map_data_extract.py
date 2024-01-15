@@ -62,7 +62,7 @@ if __name__ == '__main__':
     requiredNamed.add_argument('-i','--input', help='Input t2map, should be a nifti file')
     requiredNamed.add_argument('-r','--roi_file', help='Input file of related roi')
     parser.add_argument('-t', '--translatorTXT',
-                        help='txt file to translate ROI Number to acronyms',type=str, default="./acronyms_ARA.txt")
+                        help='txt file to translate ROI Number to acronyms',type=str, default="./acronym_parentARA_LR.txt")
     args = parser.parse_args()
 
 
