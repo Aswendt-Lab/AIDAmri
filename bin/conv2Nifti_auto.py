@@ -174,20 +174,20 @@ def bids_convert(input_dir, out_path):
 
 def nifti_convert(input_dir, raw_data_list):
     # create list with full paths of raw data
-    list_of_paths = []        
-    for idx, raw_path in enumerate(raw_data_list):
-        full_path = os.path.join(input_dir, raw_path)
-        list_of_paths.append(full_path)
+    list_of_paths = []  
+    aidamri_dir = os.getcwd()
+    os.chdir(input_dir)    
         
     with concurrent.futures.ProcessPoolExecutor() as executor:
         
-        futures = [executor.submit(brkraw_tonii, path) for path in list_of_paths]
+        futures = [executor.submit(brkraw_tonii, path) for path in raw_data_list]
         concurrent.futures.wait(futures)
+    
+    os.chdir(aidamri_dir)
         
 def brkraw_tonii(input_path):
-    os.chdir(input_path)
     
-    command = f"brkraw tonii {input_path} -o {input_path}"
+    command = f"brkraw tonii {input_path}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -325,20 +325,24 @@ if __name__ == "__main__":
         output_dir = args.output
      
     # Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(pathToRawData, "log.txt")
+    log_file_path = os.path.join(pathToRawData, "conv2nifti_log.txt") 
     logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     # get list of raw data in input folder
-    list_of_raw = sorted([d for d in os.listdir(pathToRawData) if os.path.isdir(os.path.join(pathToRawData, d)) \
-                               or (os.path.isfile(os.path.join(pathToRawData, d)) and (('zip' in d) or ('PvDataset' in d)))])
-                               
-    logging.info(f"Converting following datasets: {list_of_raw}")
-    print(f"Converting following datasets: {list_of_raw}")
+    #list_of_raw = sorted([d for d in os.listdir(pathToRawData) if os.path.isdir(os.path.join(pathToRawData, d)) \
+    #                          or (os.path.isfile(os.path.join(pathToRawData, d)) and (('zip' in d) or ('PvDataset' in d)))])
+    list_of_raw = glob.glob(os.path.join(pathToRawData,"**","subject"),recursive=True)
+    list_of_data = []
+    for path in list_of_raw:
+        list_of_data.append(os.path.dirname(path))
+
+        
+    logging.info(f"Converting following datasets: {list_of_data}")
+    print(f"Converting following datasets: {list_of_data}")
 
     # convert data into nifti format
-    
     print("Paravision to nifti conversion running \33[5m...\33[0m (wait!)")
-    nifti_convert(pathToRawData, list_of_raw)
+    nifti_convert(pathToRawData, list_of_data)
     print("\rNifti conversion \033[0;30;42m COMPLETED \33[0m                  ")
     
     # convert data into BIDS format
@@ -351,7 +355,7 @@ if __name__ == "__main__":
     del_file_ext = [".nii", ".bval", ".bvec"]
     
     for file in all_files_input_folder:
-        if file not in list_of_raw and file != output_dir and any(ext in file for ext in del_file_ext):
+        if file not in list_of_data and file != output_dir and any(ext in file for ext in del_file_ext):
             os.remove(os.path.join(pathToRawData,file))
     
     # find MEMS and fmri files 

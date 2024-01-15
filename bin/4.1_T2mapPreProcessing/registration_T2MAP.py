@@ -25,13 +25,24 @@ import nibabel as nii
 import numpy as np
 import shutil
 import glob
+import subprocess
+import logging
+import shlex
 
 def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
+
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
-
-    os.system(
-        'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -rigOnly -aff ' + outputAff)  # + ' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
+    
+    
+    command = f"reg_aladin -ref {inputVolume} -flo {T2data} -res {outputT2w} -rigOnly -aff {outputAff}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise
 
     # resample Annotation
     #outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
@@ -41,41 +52,83 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
 
     # resample split  Annotation
     outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
-    os.system(
-        'reg_resample -ref ' + brain_anno + ' -flo ' + splitAnno +
-        ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit)
-    os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit +
-        ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit)
-
+    
+    command = f"reg_resample -ref {brain_anno} -flo {splitAnno} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise
+        
+    command = f"reg_aladin -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise    
+        
 
     # resample split rsfMRI Annotation
     outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz')
-    os.system(
-        'reg_resample -ref ' + brain_anno + ' -flo ' + splitAnno_rsfMRI +
-        ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
-    os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit_rsfMRI +
-        ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
+    
+    command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise 
+        
+    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise 
 
 
     # resample rsfMRI Annotation
     outputAnno_rsfMRI = os.path.join(outfile,
                                           os.path.basename(inputVolume).split('.')[0] + '_Anno_t2map.nii.gz')
-    os.system(
-        'reg_resample -ref ' + brain_anno + ' -flo ' + anno_rsfMRI +
-        ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnno_rsfMRI)
-    os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnno_rsfMRI +
-        ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnno_rsfMRI)
+        
+    command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise     
+       
+    command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise   
 
 
 
     # resample Template
     outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
-    os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + brain_template +
-        ' -cpp ' + outputAff + ' -res ' + outputTemplate)
+        
+    command = f"reg_resample -ref {inputVolume} -flo {brain_template} -cpp {outputAff} -res {outputTemplate}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        logging.info(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise  
 
     # Some scaled data for DSI Studio
     outfileDSI = os.path.join(os.path.dirname(inputVolume), 'DSI_studio')
@@ -87,18 +140,32 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         refMatrix = find_RefAff(inputVolume)[0]
         refMTemplate = find_RefTemplate(inputVolume)[0]
         outputRefStrokeMaskAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_refStrokeMaskAff.nii.gz')
-        os.system(
-            'reg_resample -ref ' + refMTemplate + ' -flo ' + refStroke_mask +
-            ' -cpp ' + refMatrix + ' -res ' + outputRefStrokeMaskAff)
+            
+        command = f"reg_resample -ref {refMTemplate} -flo {refStroke_mask} -cpp {refMatrix} -res {outputRefStrokeMaskAff}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise 
 
         stroke_mask = outputRefStrokeMaskAff
+
 
 
     if stroke_mask is not None and len(stroke_mask) > 0 and os.path.exists(stroke_mask):
         outputStrokeMask = os.path.join(outfile,
                                         os.path.basename(inputVolume).split('.')[0] + 'Stroke_mask.nii.gz')
-        os.system('reg_resample -ref ' + inputVolume + ' -flo ' + stroke_mask + ' -inter 0'
-                                                                                ' -cpp ' + outputAff + ' -res ' + outputStrokeMask)
+         
+        command = f"reg_resample -ref {inputVolume} -flo {stroke_mask} -inter 0 -cpp {outputAff} -res {outputStrokeMask}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise 
 
         # Superposition of annotations and mask
         dataAnno = nii.load(outputAnnoSplit)
@@ -163,7 +230,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
         src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
-        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'rsfMRI_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 't2map_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         shutil.copyfile(src_file, dst_file)
 
@@ -194,7 +261,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
     shutil.copyfile(src_file, dst_file)
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_rsfMRISplit_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_t2mapSplit_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
     shutil.copyfile(src_file, dst_file)
 
 
@@ -235,6 +302,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         os.remove(outputRefStrokeMaskAff)
 
     return outputAnnoSplit
+
 
 def find_RefStroke(refStrokePath,inputVolume):
     path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/anat/*IncidenceData_mask.nii.gz', recursive=False)
@@ -278,8 +346,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-
-
     stroke_mask = None
     inputVolume = None
     refStrokePath = None
@@ -289,17 +355,14 @@ if __name__ == "__main__":
 
     if args.inputVolume is not None:
         inputVolume = args.inputVolume
+        log_file_path = os.path.join(os.path.dirname(inputVolume), "registration.txt")
+        logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     if not os.path.exists(inputVolume):
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
     outfile = os.path.join(os.path.dirname(inputVolume))
     if not os.path.exists(outfile):
         os.makedirs(outfile)
-
-    print("T2map Registration  \33[5m...\33[0m (wait!)", end="\r")
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputVolume), 'registration.log'), 'w')
-
 
     # find related  data
     pathT2, pathStroke_mask, pathAnno, pathTemplate, bsplineMatrix = find_relatedData(os.path.dirname(outfile))
@@ -311,7 +374,7 @@ if __name__ == "__main__":
 
     if len(pathStroke_mask) is 0:
         pathStroke_mask = []
-        print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+        logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
     else:
         stroke_mask = pathStroke_mask[0]
 
@@ -345,7 +408,7 @@ if __name__ == "__main__":
         refStroke_mask = find_RefStroke(refStrokePath, inputVolume)
         if len(refStroke_mask) is 0:
             refStroke_mask = []
-            print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+            logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
         else:
             refStroke_mask = refStroke_mask[0]
 
@@ -364,13 +427,10 @@ if __name__ == "__main__":
     if not os.path.exists(anno_rsfMRI):
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
-
     output = regABA2T2map(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
-    print(output + '...DONE!')
-    sys.stdout = sys.__stdout__
 
     current_dir = os.path.dirname(inputVolume)
-    search_string = os.path.join(current_dir, "*MEMS.nii.gz")
+    search_string = os.path.join(current_dir, "*t2map.nii.gz")
     currentFile = glob.glob(search_string)
 
     search_string = os.path.join(current_dir, "*.nii*")
@@ -380,9 +440,10 @@ if __name__ == "__main__":
     for idx, img in enumerate(created_imgs):
         if img == None:
             continue
-        os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+        #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+        continue
 
-    print('T2map Registration  \033[0;30;42m COMPLETED \33[0m')
+    logging.info("Registration completed")
 
 
 

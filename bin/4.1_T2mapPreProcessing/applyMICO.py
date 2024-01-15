@@ -26,6 +26,8 @@ import sys,os
 import MICO
 import progressbar
 import cv2
+from tqdm import tqdm
+
 
 def run_MICO(IMGdata,outputPath):
     data = nii.load(IMGdata)
@@ -44,8 +46,8 @@ def run_MICO(IMGdata,outputPath):
     else:
         nCvalue = 1
 
-    bar = progressbar.ProgressBar()
-    for idx in bar(range(vol.shape[2])):
+    progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
+    for idx in range(vol.shape[2]):
 
         Img = vol[:,:,idx] / nCvalue
         kernel =np.ones((5,5),np.uint8)
@@ -112,16 +114,16 @@ def run_MICO(IMGdata,outputPath):
                         smV = img_bc > 5000
                         img_bc[smV] = 0
 
-
-
-
         M, C = sortMemC(M, C)
         seg = np.zeros([nrow,ncol])
         for k in range(N_region):
             seg = seg + k * M[:,:, k] # label  the k-th region
 
-
         biasCorrectedVol[:, :, idx] = img_bc
+        
+        progressbar.update(1)
+
+    progressbar.close()
 
     unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
     hdrOut = unscaledNiiData.header

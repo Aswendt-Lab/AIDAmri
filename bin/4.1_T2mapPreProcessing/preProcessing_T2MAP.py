@@ -18,6 +18,7 @@ import cv2
 from pathlib import Path
 import shutil
 import subprocess
+import logging
 
 
 
@@ -61,7 +62,6 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
     fsl_path = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fsl_path)
@@ -84,7 +84,6 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiData, output_file)
 
-    print('Brain extraction DONE!')
     return output_file
 
 def smoothIMG(input_file, output_path):
@@ -111,7 +110,6 @@ def smoothIMG(input_file, output_path):
         kernel_size = 0.1
     )
     myGauss.run()
-    print('Smoothing DONE!')
     return output_file
 
 def thresh(input_file, output_path):
@@ -119,7 +117,6 @@ def thresh(input_file, output_path):
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
     myThres = fsl.Threshold(in_file=input_file,out_file=output_file,thresh=20)#,direction='above')
     myThres.run()
-    print('Thresholding DONE!')
     return output_file
 
 def cropToSmall(input_file,output_path):
@@ -127,7 +124,6 @@ def cropToSmall(input_file,output_path):
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
     myCrop = fsl.ExtractROI(in_file=input_file,roi_file=output_file,x_min=40,x_size=130,y_min=50,y_size=110,z_min=0,z_size=12)
     myCrop.run()
-    print('Cropping DONE!')
     return  output_file
 
 
@@ -153,38 +149,40 @@ if __name__ == "__main__":
 
     if not os.path.exists(input_file):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
+        
+    #Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     output_path = os.path.dirname(input_file)
-
-    # 1) Process T2map
-    print("T2map Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
-
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
-
-    # print parameters
-    print("Frac: %s" % frac)
-    print("Radius: %s" % radius)
-    print("Gradient: %s" % vertical_gradient)
-
-    # 1) Process MRI
-    print('Start Preprocessing ...')
+    
+    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
     reset_orientation(input_file)
-
-    output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
+    logging.info("Orientation resetted to RAS")
+    
+    try:
+        output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
+        logging.info("Smoothing completed")
+    except Exception as e:
+        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        raise
 
     # intensity correction using non parametric bias field correction algorithm
-    output_mico = applyMICO.run_MICO(output_smooth, output_path)
+    try:
+        output_mico = applyMICO.run_MICO(output_smooth,output_path)
+        logging.info("Biasfieldcorrecttion was successful")
+    except Exception as e:
+        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        raise
 
     # get rid of your skull         
     outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
-
-    sys.stdout = sys.__stdout__
-    print('T2map Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+    logging.info("Brainextraction was successful")
+   
 
 
 
