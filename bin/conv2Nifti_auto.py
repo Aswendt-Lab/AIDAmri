@@ -30,8 +30,7 @@ import functools
 import subprocess
 import shlex
 import logging
-
-
+import shutil  # Import the shutil module for file operations
 
 
 def create_slice_timings(method_file, scanid, out_file):
@@ -306,6 +305,24 @@ def correct_orientation(qform,sform, t2_mems_img, t2_map_img):
     nii.save(new_img, t2_map_img)
 
 
+#this is needed to be done for the bids converter to work correctly.
+def fileCopy(list_of_data, input_path):
+    for ll in list_of_data:
+        if os.path.dirname(ll) != input_path:  # Use '!=' for inequality
+            # Extract the filename from ll
+            filename = os.path.basename(ll)
+            # Create the destination path by combining input_path and the filename
+            destination_path = os.path.join(input_path, filename)
+            
+            # Use shutil.copy to copy the file from ll to destination
+            try:
+                shutil.move(ll, destination_path)
+                print(f"File '{filename}' moved to '{input_path}' successfully.")
+            except Exception as e:
+                print(f"Error moving '{filename}' to '{input_path}': {str(e)}")
+
+
+
 
 if __name__ == "__main__":
     import argparse
@@ -336,12 +353,19 @@ if __name__ == "__main__":
     for path in list_of_raw:
         list_of_data.append(os.path.dirname(path))
 
-        
+    fileCopy(list_of_data,pathToRawData)
+
+    list_of_raw = glob.glob(os.path.join(pathToRawData,"**","subject"),recursive=True)
+    list_of_data = []
+    for path in list_of_raw:
+        list_of_data.append(os.path.dirname(path))
+
     logging.info(f"Converting following datasets: {list_of_data}")
     print(f"Converting following datasets: {list_of_data}")
 
     # convert data into nifti format
     print("Paravision to nifti conversion running \33[5m...\33[0m (wait!)")
+    #nifti_convert(output_dir, list_of_data)
     nifti_convert(pathToRawData, list_of_data)
     print("\rNifti conversion \033[0;30;42m COMPLETED \33[0m                  ")
     
@@ -419,8 +443,8 @@ if __name__ == "__main__":
     dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
     dataset_json = glob.glob(os.path.join(os.getcwd(), "data*.json"))[0]
 
-    os.remove(dataset_csv)
-    os.remove(dataset_json)
+    #os.remove(dataset_csv)
+    #os.remove(dataset_json)
 
     print("\n")
     print("###")
