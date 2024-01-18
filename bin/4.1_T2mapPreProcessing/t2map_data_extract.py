@@ -14,7 +14,7 @@ def getOutfile(roi_file,img_file, acronmys):
 
     acronym_name = str.split(os.path.basename(acronmys),'.')[0]
 
-    outFile = os.path.join(os.path.dirname(img_file),t2map + "_T2values" + acronym_name + '.txt')
+    outFile = os.path.join(os.path.dirname(img_file),t2map + "_T2values_" + acronym_name + '.txt')
 
     return outFile
 
@@ -59,7 +59,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Extracts the intensity of the t2map of every region')
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument('-i','--input', help='Input t2map, should be a nifti file')
-    requiredNamed.add_argument('-r','--roi_file', help='Input file of related roi')
     args = parser.parse_args()
 
     log_file_path = os.path.join(os.path.dirname(args.input), "process.txt")
@@ -78,18 +77,22 @@ if __name__ == '__main__':
     img_data=nii.load(image_file)
     img = img_data.dataobj.get_unscaled()
 
-    # read roi data
-    if args.roi_file is not None:
-        roi_file = args.roi_file
-        if not os.path.exists(roi_file):
-            sys.exit("Error: '%s' is not an existing roi file." % (roi_file))
+    split_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit_t2map.nii*"))[0]
+    full_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*Anno_t2map.nii*"))[0]
 
-    roi_data = nii.load(roi_file)
-    rois = roi_data.dataobj.get_unscaled()
+    
 
     for acronmys in acronyms_files:
         try:
-            outFile = getOutfile(roi_file, image_file, acronmys)
+            if "parentARA_LR" in acronmys:
+                atlas = split_atlas
+            else:
+                atlas = full_atlas
+            
+            roi_data = nii.load(atlas)
+            rois = roi_data.dataobj.get_unscaled()
+               
+            outFile = getOutfile(atlas, image_file, acronmys)
             logging.info(f"Outifle: {outFile}")
             file = extractT2Mapdata(img,rois,outFile,acronmys)
         except Exception as e:
