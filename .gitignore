@@ -2,6 +2,13 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.DS_Store
+*/.DS_Store
+*.DS_Store
+*/.DS_Store
+**/*DS_Store
+**/*DS_Store
+DS_Store
 
 # C extensions
 *.so
@@ -70,9 +77,6 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
-# Test Data
-testData/
 
 # pyenv
 .python-version
