@@ -2,15 +2,20 @@ import nibabel as nii
 import numpy as np 
 import argparse
 import os
+import glob
+import logging
 
 
 
-def getOutfile(roi_file,img_file):
+def getOutfile(roi_file,img_file, acronmys):
     imgName = os.path.basename(img_file)
 
-    t2mapparam = str.split(imgName,'.')[-3]
+    t2map = str.split(imgName,'.')[-3]
 
-    outFile = os.path.join(os.path.dirname(img_file),t2mapparam + "_intensities" +'.txt') 
+    acronym_name = str.split(os.path.basename(acronmys),'.')[0]
+
+    outFile = os.path.join(os.path.dirname(img_file),t2map + "_T2values" + acronym_name + '.txt')
+
     return outFile
 
 
@@ -51,20 +56,19 @@ def extractT2Mapdata(img,rois,outfile,txt_file):
 
 
 if __name__ == '__main__':
-    # default values
-
-
     parser = argparse.ArgumentParser(description='Extracts the intensity of the t2map of every region')
-
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument('-i','--input', help='Input t2map, should be a nifti file')
     requiredNamed.add_argument('-r','--roi_file', help='Input file of related roi')
-    parser.add_argument('-t', '--translatorTXT',
-                        help='txt file to translate ROI Number to acronyms',type=str, default="./acronym_parentARA_LR.txt")
     args = parser.parse_args()
 
+    log_file_path = os.path.join(os.path.dirname(args.input), "process.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
+    acronyms_files = glob.glob(os.path.join(os.getcwd(),"*.txt"))
+    logging.info(f"Extracting T2values for: {args.input}")
+    logging.info(f"Acronym files: {acronyms_files}")
+  
     # read image data
     if args.input is not None:
         image_file = args.input
@@ -80,14 +84,16 @@ if __name__ == '__main__':
         if not os.path.exists(roi_file):
             sys.exit("Error: '%s' is not an existing roi file." % (roi_file))
 
-    # read translation TXT file
-    if args.translatorTXT is not None:
-        txt_file = args.translatorTXT
-        if  not os.path.exists(args.translatorTXT):
-            sys.exit("Error: '%s' is not an existing translation txt file." % (txt_file))
-
     roi_data = nii.load(roi_file)
     rois = roi_data.dataobj.get_unscaled()
 
-    outFile = getOutfile(roi_file, image_file)
-    file = extractT2Mapdata(img,rois,outFile,txt_file)
+    for acronmys in acronyms_files:
+        try:
+            outFile = getOutfile(roi_file, image_file, acronmys)
+            logging.info(f"Outifle: {outFile}")
+            file = extractT2Mapdata(img,rois,outFile,acronmys)
+        except Exception as e:
+            logging.error(f'Error while processing the T2values Errorcode: {str(e)}')
+            raise
+
+    logging.info("Finished t2map processing")
