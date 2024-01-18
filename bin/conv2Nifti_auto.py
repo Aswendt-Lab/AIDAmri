@@ -12,7 +12,7 @@ All the data which is contained in the input folder will be converted to nifti. 
 created in the same directory where the raw data folder is located. If you wish to save the output elsewhere you can specify the output directory with the -o flag when starting the script.
 
 Example:
-python conv2Nifti_auto.py -i /Volumes/Desktop/MRI/raw_data -o /Volumes/Desktop/MRI/raw_data/proc_data
+python conv2Nifti_auto.py -i /Volumes/Desktop/MRI/raw_data -o /Volumes/Desktop/MRI//proc_data
 """
 
 import os
@@ -134,8 +134,9 @@ def get_visu_pars(path):
                         echotimes = np.array(echotimes)
     return echotimes
 
-def bids_convert(input_dir, out_path):
-    ## rearrange proc data in BIDS-format       
+def bids_convert(input_dir, output_dir):
+    ## rearrange proc data in BIDS-format    
+    temp_dir = os.path.join(input_dir,"temp")   
     command = f"brkraw bids_helper {input_dir} dataset -j"
     command_args = shlex.split(command)
     
@@ -161,7 +162,7 @@ def bids_convert(input_dir, out_path):
                 json.dump(meta_data, outfile)
           
     ## convert to bids
-    command = f"brkraw bids_convert {input_dir} {dataset_csv} -j {dataset_json} -o {out_path}"
+    command = f"brkraw bids_convert {input_dir} {dataset_csv} -j {dataset_json} -o {output_dir}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -170,12 +171,17 @@ def bids_convert(input_dir, out_path):
         logging.error(f'Fehler bei der Ausführung des Befehls: {command_args}\nFehlermeldung: {str(e)}')
         raise
 
+    shutil.rmtree(temp_dir)
 
-def nifti_convert(input_dir, raw_data_list):
+
+def nifti_convert(input_dir, raw_data_list, output_dir):
     # create list with full paths of raw data
     list_of_paths = []  
     aidamri_dir = os.getcwd()
-    os.chdir(input_dir)    
+    temp_dir = os.path.join(input_dir,"temp")
+    if not os.path.exists(temp_dir):
+        os.mkdir(temp_dir)
+    os.chdir(temp_dir)    
         
     with concurrent.futures.ProcessPoolExecutor() as executor:
         
@@ -340,9 +346,12 @@ if __name__ == "__main__":
         output_dir = os.path.join(pathToRawData, "proc_data")
     else:
         output_dir = args.output
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
      
     # Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(pathToRawData, "conv2nifti_log.txt") 
+    log_file_path = os.path.join(output_dir, "conv2nifti_log.txt") 
     logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     # get list of raw data in input folder
@@ -366,21 +375,13 @@ if __name__ == "__main__":
     # convert data into nifti format
     print("Paravision to nifti conversion running \33[5m...\33[0m (wait!)")
     #nifti_convert(output_dir, list_of_data)
-    nifti_convert(pathToRawData, list_of_data)
+    nifti_convert(pathToRawData, list_of_data, output_dir)
     print("\rNifti conversion \033[0;30;42m COMPLETED \33[0m                  ")
     
     # convert data into BIDS format
     print("BIDS conversion running \33[5m...\33[0m (wait!)")
     bids_convert(pathToRawData, output_dir)
     print("\rBIDS conversion \033[0;30;42m COMPLETED \33[0m                   ")
-  
-    # delete duplicated files in input folder
-    all_files_input_folder = os.listdir(pathToRawData)
-    del_file_ext = [".nii", ".bval", ".bvec"]
-    
-    for file in all_files_input_folder:
-        if file not in list_of_data and file != output_dir and any(ext in file for ext in del_file_ext):
-            os.remove(os.path.join(pathToRawData,file))
     
     # find MEMS and fmri files 
     mese_scan_data = {}
