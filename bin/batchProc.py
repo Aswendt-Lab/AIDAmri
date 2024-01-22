@@ -304,6 +304,7 @@ if __name__ == "__main__":
     for key, value in all_files.items():
         if value:
             error_list = []
+            print()
             print(f"Entered {key} data: \n{value}")
             print()
             print(f"\n{key} processing \33[5m...\33[0m (wait!)") 
