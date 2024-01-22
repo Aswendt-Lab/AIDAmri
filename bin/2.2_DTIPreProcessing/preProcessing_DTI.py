@@ -15,15 +15,43 @@ import nibabel as nii
 import numpy as np
 import applyMICO
 import cv2
+from pathlib import Path
+import subprocess
+import shutil
+import logging
 
-# 1) Process MRI
+
+def reset_orientation(input_file):
+
+    brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
+    if os.path.exists(brkraw_dir):
+        return 
+
+    os.mkdir(brkraw_dir)
+    dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
+
+    shutil.copyfile(input_file, dst_path)
+
+    data = nii.load(input_file)
+    raw_img = data.dataobj.get_unscaled()
+
+    raw_nii = nii.Nifti1Image(raw_img, data.affine)
+    nii.save(raw_nii, input_file)
+
+    delete_orient_command = f"fslorient -deleteorient {input_file}"
+    subprocess.run(delete_orient_command, shell=True)
+
+    # Befehl zum Festlegen der radiologischen Orientierung
+    forceradiological_command = f"fslorient -forceradiological {input_file}"
+    subprocess.run(forceradiological_command, shell=True)
+
 def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str:
     """
     Performs brain extraction via the FSL Brain Extraction Tool (BET). Requires an appropriate input file (input_file), the fractional intensity threshold (frac), the head radius (radius) and the output path (output_path).
     """
     # scale Nifti data by factor 10
     data = nii.load(input_file)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
     imgTemp = np.flip(imgTemp, 2)
@@ -32,9 +60,8 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
-    fsl_path = os.path.join(os.getcwd(),'fslScaleTemp.nii.gz')
+    fsl_path = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fsl_path)
 
     # extract brain
@@ -46,7 +73,7 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
 
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
-    imgOut = dataOut.get_data()
+    imgOut = dataOut.get_fdata()
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 
@@ -54,8 +81,6 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     hdrOut = unscaledNiiData.header
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiData, output_file)
-
-    print('Brain extraction DONE!')
     return output_file
 
 def smoothIMG(input_file, output_path):
@@ -63,8 +88,7 @@ def smoothIMG(input_file, output_path):
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
     """
     data = nii.load(input_file)
-
-    vol = data.get_data()
+    vol = data.get_fdata()
     ImgSmooth = np.min(vol, 3)
 
     unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
@@ -83,7 +107,6 @@ def smoothIMG(input_file, output_path):
         kernel_size = 0.1
     )
     myGauss.run()
-    print('Smoothing DONE!')
     return output_file
 
 def thresh(input_file, output_path):
@@ -91,7 +114,6 @@ def thresh(input_file, output_path):
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
     myThres = fsl.Threshold(in_file=input_file,out_file=output_file,thresh=20)#,direction='above')
     myThres.run()
-    print('Thresholding DONE!')
     return output_file
 
 def cropToSmall(input_file,output_path):
@@ -99,7 +121,6 @@ def cropToSmall(input_file,output_path):
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
     myCrop = fsl.ExtractROI(in_file=input_file,roi_file=output_file,x_min=40,x_size=130,y_min=50,y_size=110,z_min=0,z_size=12)
     myCrop.run()
-    print('Cropping DONE!')
     return  output_file
 
 
@@ -125,35 +146,48 @@ if __name__ == "__main__":
 
     if not os.path.exists(input_file):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
+        
+    #Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     output_path = os.path.dirname(input_file)
 
-    # 1) Process DTI
-    print("DTI Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
+    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(input_file), 'preprocess.log'), 'w')
+    reset_orientation(input_file)
+    logging.info("Orientation resetted to RAS")
 
-    # print parameters
-    print("Frac: %s" % frac)
-    print("Radius: %s" % radius)
-    print("Gradient: %s" % vertical_gradient)
+    try:
+        output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
+        logging.info("Smoothing completed")
+    except Exception as e:
+        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        raise
 
-    # 1) Process MRI
-    print('Start Preprocessing ...')
-
-    output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
     # intensity correction using non parametric bias field correction algorithm
-    output_mico = applyMICO.run_MICO(output_smooth, output_path)
+    try:
+        output_mico = applyMICO.run_MICO(output_smooth,output_path)
+        logging.info("Biasfieldcorrecttion was successful")
+    except Exception as e:
+        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        raise
 
-    # get rid of your skull
+    # get rid of your skull         
     outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
+    logging.info("Brainextraction was successful")
 
-    sys.stdout = sys.__stdout__
-    print('DTI Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+
+
+
+
+
+
+
+
 
 
 

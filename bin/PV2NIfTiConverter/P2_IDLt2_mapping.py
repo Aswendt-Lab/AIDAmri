@@ -15,7 +15,7 @@ import nibabel as nii
 import numpy as np
 import progressbar
 
-from ReferenceMethods import brummerSNR
+from .ReferenceMethods import brummerSNR
 
 
 
@@ -87,15 +87,15 @@ def t2_fitmonoexp1(slice,te,snrMap,snrLim, model,uplim):
 
 
     # // FITTING PROCEDURE //
-    bar = progressbar.ProgressBar()
-    for i in bar(range(nx)):
+    #bar = progressbar.ProgressBar()
+    for i in range(nx):
         for j in range(ny):
             y = slice[i][j][:]
             if np.mean(snrMap[i, j]) >= snrLim:
                 result=mpfitfun(y, te, model,uplim)
                 T2[i, j] = result['T2'].value
                 S0[i, j] = result['S0'].value
-        bar.update(i)
+        #bar.update(i)
     allResult = {'T2': T2, 'S0': S0, 'SNR': snrMap}
     #plt.imshow(T2, cmap='gray')
     return allResult
@@ -162,7 +162,7 @@ def t2_mapping(data,echoTime, model, uplim, snrLim, SNRMethod):
          #Loop to go through all slices
          for slc in range(ns):
             #   Print % of progress
-            print('Slice: ' + str(slc + 1))
+            #print('Slice: ' + str(slc + 1))
 
             # Temporal image containing all TE values for the selected slice
             slice = imgData[:, :, :, slc]
@@ -330,11 +330,10 @@ def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime,output_path):
     if raw['dim'][3] < 2:
         sys.exit("Error: '%s' has wrong dimensions." % (path,))
 
-    print('Start to  fit '+model+'-Map over TE %s ...' % (echoTime,) )
-
     t2map = t2_mapping(data, echoTime, model=model, uplim=upLim, snrLim=snrLim, SNRMethod=SNRMethod)
     pathT2Map = os.path.split(path)[0]
     t2map = t2map[:, :, :, 0] #delete this line if you want more outputdata
+    t2map = np.flip(t2map, 2)
     mapNii =  nii.as_closest_canonical(nii.Nifti1Image(t2map, data.affine))
     hdr = mapNii.header
     hdr.set_xyzt_units('mm')

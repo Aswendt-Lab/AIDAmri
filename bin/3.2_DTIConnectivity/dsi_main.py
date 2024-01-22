@@ -113,5 +113,4 @@ if __name__ == '__main__':
                 if os.path.isfile(newName):
                     os.remove(newName)
                 os.rename(oldName, newName)
-    print('DTI Connectivity  \033[0;30;42m COMPLETED \33[0m')
 

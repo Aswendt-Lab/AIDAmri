@@ -14,17 +14,42 @@ import os,sys
 import nibabel as nii
 import numpy as np
 import applyMICO
+import subprocess
+import shutil
+import logging
 
-#%% Functions
 
-def applyBET(input_file, frac, radius, vertical_gradient):
-    """
-    Apply BET. Input nifti file (`input_file`) alongside fractional intensity threshold (`frac`), head radius (`radius`), 
-    and vertical gradient (`vertical_gradient`). Output is brain extracted nifti file.
-    """
+def reset_orientation(input_file):
+
+    brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
+    if os.path.exists(brkraw_dir):
+        return 
+
+    os.mkdir(brkraw_dir)
+    dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
+
+    shutil.copyfile(input_file, dst_path)
+
+    data = nii.load(input_file)
+    raw_img = data.dataobj.get_unscaled()
+
+    raw_nii = nii.Nifti1Image(raw_img, data.affine)
+    nii.save(raw_nii, input_file)
+
+    delete_orient_command = f"fslorient -deleteorient {input_file}"
+    subprocess.run(delete_orient_command, shell=True)
+
+    # Befehl zum Festlegen der radiologischen Orientierung
+    forceradiological_command = f"fslorient -forceradiological {input_file}"
+    subprocess.run(forceradiological_command, shell=True)
+
+
+
+def applyBET(input_file,frac,radius,vertical_gradient):
+    """Apply BET"""
     # scale Nifti data by factor 10
     data = nii.load(input_file)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
 
@@ -37,9 +62,8 @@ def applyBET(input_file, frac, radius, vertical_gradient):
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    print('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
-    fslPath = os.path.join(os.getcwd(),'fslScaleTemp.nii.gz')
+    fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
     nii.save(scaledNiiData, fslPath)
 
     # extract brain
@@ -47,13 +71,12 @@ def applyBET(input_file, frac, radius, vertical_gradient):
 
     myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
                     vertical_gradient=vertical_gradient,robust=True, mask = True)
-    print(myBet.cmdline)
     myBet.run()
     os.remove(fslPath)
 
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
-    imgOut = dataOut.get_data()
+    imgOut = dataOut.get_fdata()
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 
@@ -72,7 +95,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Preprocessing of T2 Data')
 
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i','--inputFile', help='path to input file',required=True)
+    requiredNamed.add_argument('-i','--input_file', help='path to input file',required=True)
 
     parser.add_argument(
         '-f',
@@ -110,37 +133,56 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # set Parameters
-    inputFile = None
-    if args.inputFile is not None and args.inputFile is not None:
-        inputFile = args.inputFile
-    if not os.path.exists(inputFile):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (inputFile, args.file,))
+    input_file = None
+    if args.input_file is not None and args.input_file is not None:
+        input_file = args.input_file
+    if not os.path.exists(input_file):
+        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
+        
+    #Konfiguriere das Logging-Modul
+    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') 
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     bias_skip = args.bias_skip
 
-    # 1) Process MRI
-    print("T2 Preprocessing  \33[5m...\33[0m (wait!)", end="\r")
+    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputFile), 'preprocessing.log'), 'w')
-    sys.stderr = open(os.path.join(os.path.dirname(inputFile), 'preprocessing_err.log'), 'w')
-
-    # print parameters
-    print("Frac: %s" % frac)
-    print("Radius: %s" % radius)
-    print("Gradient: %s" %vertical_gradient)
+    reset_orientation(input_file)
+    logging.info("Orientation resetted to RAS")
 
     #intensity correction using non parametric bias field correction algorithm
+    logging.info("Starting Biasfieldcorrection:")
     if bias_skip == 0:
-        outputMICO = applyMICO.run_MICO(inputFile,os.path.dirname(inputFile))
+        try:
+            outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))
+            logging.info("Biasfieldcorrecttion was successful")
+        except Exception as e:
+            logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+            raise
     else:
-        outputMICO = inputFile
-    # get rid of your skull
-    outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
+        outputMICO = input_file
+        
+    # brain extraction
+    logging.info("Starting brain extraction")
+    try:
+        outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
+        logging.info("Brain extraction was successful")
+    except Exception as e:
+        logging.error(f'Error in brain extraction\nFehlermeldung: {str(e)}')
+        raise
+    
+    logging.info("Preprocessing completed")
+ 
 
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
-    print('T2 Preprocessing  \033[0;30;42m COMPLETED \33[0m')
+
+
+
+
+
+
+
+
+

@@ -37,11 +37,12 @@ import subprocess
 
 def scaleBy10(input_path, inv):
     data = nii.load(input_path)
-    imgTemp = data.get_data()
+    imgTemp = data.get_fdata()
     if inv is False:
         scale = np.eye(4) * 10
         scale[3][3] = 1
         scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
+        # overwrite old nifti
         fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
         nii.save(scaledNiiData, fslPath)
         return fslPath
@@ -52,7 +53,6 @@ def scaleBy10(input_path, inv):
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
 
-        # hdrOut['sform_code'] = 1
         nii.save(unscaledNiiData, input_path)
         return input_path
     else:
@@ -72,21 +72,25 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     # scale Nifti data by factor 10
     dataName = os.path.basename(input_file).split('.')[0]
     fslPath = scaleBy10(input_file, inv=False)
+
+    aidamri_dir = os.getcwd()
+    temp_dir = os.path.join(os.path.dirname(input_file), "temp")
+    if not os.path.exists(temp_dir):
+        os.mkdir(temp_dir)
+
+    os.chdir(temp_dir)
     mySplit = fsl.Split(in_file=fslPath, dimension='z', out_base_name=dataName)
-    print(mySplit.cmdline)
     mySplit.run()
     os.remove(fslPath)
 
     # sparate ref and src volume in slices
     sliceFiles = findSlicesData(os.getcwd(), dataName)
-    print('For all slices ... ')
 
     # start to correct motions slice by slice
     for i in range(len(sliceFiles)):
         slc = sliceFiles[i]
         output_file = os.path.join(par_folder, os.path.basename(slc))
         myMCFLIRT = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
-        print(myMCFLIRT.cmdline)
         myMCFLIRT.run()
         os.remove(slc)
 
@@ -95,7 +99,6 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
     myMerge = fsl.Merge(in_files=mcf_sliceFiles, dimension='z', merged_file=output_file)
-    print(myMerge.cmdline)
     myMerge.run()
 
     for slc in mcf_sliceFiles: 
@@ -103,6 +106,8 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
 
     # unscale result data by factor 10**(-1)
     output_file = scaleBy10(output_file, inv=True)
+    
+    os.chdir(aidamri_dir)
 
     return output_file
 
@@ -113,7 +118,6 @@ def make_dir(dir_out, dir_sub):
     """
     dir_out = os.path.normpath(os.path.join(dir_out, dir_sub))
     if not os.path.exists(dir_out):
-        print("Create directory \"%s\"" % (dir_out,))
         os.mkdir(dir_out)
         time.sleep(1.0)
         if not os.path.exists(dir_out):
@@ -128,7 +132,6 @@ def move_files(dir_in, dir_out, pattern):
     time.sleep(1.0)
     for file_mv in file_list: # move files from input to output directory
         file_in = os.path.join(dir_in, file_mv)
-        print("Move file \"%s\" to directory \"%s\"" % (file_in, dir_out))
         shutil.copy(file_in, dir_out)
 
     for file_mv in file_list: # remove files in output directory
@@ -205,13 +208,11 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
 
         file_src = filename[:pos] + ext_src
         parameters = (dsi_studio, 'src', filename, file_src, b_table)
-        print("%d of %d:" % (index + 1, len(file_list)), cmd_src % parameters)
         subprocess.call(cmd_src % parameters)
 
         # create fib files
         file_msk = os.path.join(dir_msk, pre_msk + filename[:pos] + ext_nii)
         parameters = (dsi_studio, 'rec', file_src, file_msk, 3, '16', 2, 0)
-        print("%d of %d:" % (index + 1, len(file_list)), cmd_rec % parameters)
         subprocess.call(cmd_rec % parameters)
 
     # extracts maps: 2 ways:
@@ -266,13 +267,11 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     pos = filename.rfind('.')
     file_src = os.path.join(dir_src, filename[:pos] + ext_src)
     parameters = (dsi_studio, 'src', filename, file_src, b_table)
-    print("Generate src-File %s:" % cmd_src % parameters)
     os.system(cmd_src % parameters)
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '16', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
-    print("Generate fib-File %s:" % cmd_rec % parameters)
+    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '16', 0, 1)
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
@@ -282,28 +281,24 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib+'/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'fa')
-    print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'md')
-    print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'ad')
-    print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'rd')
-    print("Generate two maps %s:" % cmd_exp % parameters)
     os.system(cmd_exp % parameters)
 
     move_files(dir_fib, dir_qa, '/*qa.nii.gz')
@@ -327,7 +322,6 @@ def tracking(dsi_studio, dir_in):
 
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
-    print("Track neuronal pathes %s:" % cmd_trk % parameters)
     os.system(cmd_trk % parameters)
 
 if __name__ == '__main__':

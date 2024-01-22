@@ -9,16 +9,17 @@ University Hospital Cologne
 """
 
 
-
 import nipype.interfaces.fsl as fsl
-import os,sys
+import os, sys
 import nibabel as nii
 import numpy as np
-import nipype.interfaces.ants as ants
+import applyMICO
+import cv2
 from pathlib import Path
-import subprocess
 import shutil
+import subprocess
 import logging
+
 
 
 def reset_orientation(input_file):
@@ -45,30 +46,31 @@ def reset_orientation(input_file):
     forceradiological_command = f"fslorient -forceradiological {input_file}"
     subprocess.run(forceradiological_command, shell=True)
 
-def applyBET(input_file,frac,radius,outputPath):
 
+def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str:
+    """
+    Performs brain extraction via the FSL Brain Extraction Tool (BET). Requires an appropriate input file (input_file), the fractional intensity threshold (frac), the head radius (radius) and the output path (output_path).
+    """
     # scale Nifti data by factor 10
     data = nii.load(input_file)
     imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
-    #imgTemp = np.rot90(imgTemp,2)
     imgTemp = np.flip(imgTemp, 2)
-    #imgTemp = np.flip(imgTemp, 0)
+
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
     scaledNiiData = nii.as_closest_canonical(scaledNiiData)
-    logging.info('Orientation:' + str(nii.aff2axcodes(scaledNiiData.affine)))
 
-    fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
-    nii.save(scaledNiiData, fslPath)
+    fsl_path = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
+    nii.save(scaledNiiData, fsl_path)
 
     # extract brain
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+    myBet = fsl.BET(in_file=fsl_path, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
     myBet.run()
-    os.remove(fslPath)
+    os.remove(fsl_path)
 
 
     # unscale result data by factor 10ˆ(-1)
@@ -82,17 +84,9 @@ def applyBET(input_file,frac,radius,outputPath):
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiData, output_file)
 
-    logging.info("Brain extraction completed")
     return output_file
 
-def biasfieldcorr(input_file,outputPath):
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
-    myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,shrink_factor=4,dimension=3)
-    myAnts.run()
-    logging.info("Biasfield correction completed")
-    return output_file
-
-def smoothIMG(input_file,outputPath):
+def smoothIMG(input_file, output_path):
     """
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
     """
@@ -105,30 +99,31 @@ def smoothIMG(input_file,outputPath):
     hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0] + 'DN.nii.gz')
-    # hdrOut['sform_code'] = 1
     nii.save(unscaledNiiData, output_file)
     input_file = output_file
-    #output_file =  os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(inputFile).split('.')[0] + 'Smooth.nii.gz')
-    myGauss =  fsl.SpatialFilter(in_file=input_file,out_file=output_file,operation='median',kernel_shape='box',kernel_size=0.1)
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
+    myGauss =  fsl.SpatialFilter(
+        in_file = input_file,
+        out_file = output_file, 
+        operation = 'median',
+        kernel_shape = 'box',
+        kernel_size = 0.1
+    )
     myGauss.run()
-    logging.info("Smoothing completed")
     return output_file
 
-def thresh(input_file,outputPath):
+def thresh(input_file, output_path):
     #output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0]+ 'Thres.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Thres.nii.gz')
     myThres = fsl.Threshold(in_file=input_file,out_file=output_file,thresh=20)#,direction='above')
     myThres.run()
-    logging.info("Thresholding completed")
     return output_file
 
-def cropToSmall(input_file,outputPath):
+def cropToSmall(input_file,output_path):
     #output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0]  + 'Crop.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Crop.nii.gz')
     myCrop = fsl.ExtractROI(in_file=input_file,roi_file=output_file,x_min=40,x_size=130,y_min=50,y_size=110,z_min=0,z_size=12)
     myCrop.run()
-    logging.info("Cropping done")
     return  output_file
 
 
@@ -136,47 +131,67 @@ if __name__ == "__main__":
     import argparse
 
 
-    parser = argparse.ArgumentParser(description='Preprocessing of rsfMRI Data')
+    parser = argparse.ArgumentParser(description='Preprocessing of T2map Data')
 
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--input', help='Path to the RAW data of rsfMRI NIfTI file', required=True)
+    requiredNamed.add_argument('-i', '--input', help='Path to the raw NIfTI T2map file', required=True)
 
-    parser.add_argument('-f', '--frac',
-                        help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates',
-                        nargs='?', type=float, default=0.15)
+    parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
     parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
     parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
                         type=float,default=0.0)
     args = parser.parse_args()
 
     # set parameters
-    inputFile = None
+    input_file = None
     if args.input is not None and args.input is not None:
-        inputFile = args.input
+        input_file = args.input
 
-    if not os.path.exists(inputFile):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (inputFile, args.file,))
+    if not os.path.exists(input_file):
+        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
         
     #Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(os.path.dirname(inputFile), "preprocess.txt")
+    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
     logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
-    outputPath = os.path.dirname(inputFile)
-
+    output_path = os.path.dirname(input_file)
+    
     logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
-    reset_orientation(inputFile)
+    reset_orientation(input_file)
     logging.info("Orientation resetted to RAS")
+    
+    try:
+        output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
+        logging.info("Smoothing completed")
+    except Exception as e:
+        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        raise
 
-    outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
+    # intensity correction using non parametric bias field correction algorithm
+    try:
+        output_mico = applyMICO.run_MICO(output_smooth,output_path)
+        logging.info("Biasfieldcorrecttion was successful")
+    except Exception as e:
+        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        raise
 
-    # get rid of your skull
-    outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
+    # get rid of your skull         
+    outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
+    logging.info("Brainextraction was successful")
+   
 
-    logging.info("Preprocessing completed")
+
+
+
+
+
+
+
+
 
 
 

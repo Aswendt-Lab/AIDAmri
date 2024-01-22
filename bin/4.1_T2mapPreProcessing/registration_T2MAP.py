@@ -26,10 +26,11 @@ import numpy as np
 import shutil
 import glob
 import subprocess
-import shlex
 import logging
+import shlex
 
-def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
+def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
+
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
     
@@ -72,7 +73,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         
 
     # resample split rsfMRI Annotation
-    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_dwi.nii.gz')
+    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz')
     
     command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
     command_args = shlex.split(command)
@@ -95,7 +96,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     # resample rsfMRI Annotation
     outputAnno_rsfMRI = os.path.join(outfile,
-                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_dwi.nii.gz')
+                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_t2map.nii.gz')
         
     command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
     command_args = shlex.split(command)
@@ -212,12 +213,12 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_dwi_mask.nii.gz'))
+                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_t2map_mask.nii.gz'))
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
 
         # Stroke Mask
         outputMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'dwi_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+                                        os.path.basename(inputVolume).split('.')[0] + 't2map_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
         #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
@@ -229,7 +230,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
         src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
-        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'dwi_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 't2map_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         shutil.copyfile(src_file, dst_file)
 
@@ -260,12 +261,12 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     shutil.copyfile(src_file, dst_file)
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_dwiSplit_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_t2mapSplit_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
     shutil.copyfile(src_file, dst_file)
 
 
     dataAnno = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz'))
-    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_dwi.nii.gz'))
+    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz'))
     dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
 
     imgTempAnno = dataAnno.get_fdata()
@@ -302,6 +303,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     return outputAnnoSplit
 
+
 def find_RefStroke(refStrokePath,inputVolume):
     path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/anat/*IncidenceData_mask.nii.gz', recursive=False)
     return path
@@ -328,18 +330,18 @@ def find_relatedData(pathBase):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Registration Allen Brain to DTI')
+    parser = argparse.ArgumentParser(description='Registration Allen Brain to T2map')
     requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--inputVolume', help='Path to the BET file of DTI data after preprocessing',
+    requiredNamed.add_argument('-i', '--inputVolume', help='Path to the BET file of T2map data after preprocessing',
                                required=True)
 
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask (for example: P5)', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
-    parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI/DTI', nargs='?', type=str,
+    parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI/T2map', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
-    parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/DTI', nargs='?', type=str,
+    parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/T2map', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
 
     args = parser.parse_args()
@@ -425,10 +427,10 @@ if __name__ == "__main__":
     if not os.path.exists(anno_rsfMRI):
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
-    output = regABA2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
+    output = regABA2T2map(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
 
     current_dir = os.path.dirname(inputVolume)
-    search_string = os.path.join(current_dir, "*dwi.nii.gz")
+    search_string = os.path.join(current_dir, "*t2map.nii.gz")
     currentFile = glob.glob(search_string)
 
     search_string = os.path.join(current_dir, "*.nii*")

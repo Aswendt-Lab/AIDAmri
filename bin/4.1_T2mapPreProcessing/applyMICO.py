@@ -28,15 +28,17 @@ import progressbar
 import cv2
 from tqdm import tqdm
 
+
 def run_MICO(IMGdata,outputPath):
     data = nii.load(IMGdata)
     v = 8
 
     vol = data.get_fdata()
+
     biasCorrectedVol = np.zeros(vol.shape[0:3])
 
     ImgMe = np.mean(vol)
-    
+
     if ImgMe > 10000:
         nCvalue = 1000
     elif ImgMe > 1000:
@@ -112,14 +114,10 @@ def run_MICO(IMGdata,outputPath):
                         smV = img_bc > 5000
                         img_bc[smV] = 0
 
-
-
-
         M, C = sortMemC(M, C)
         seg = np.zeros([nrow,ncol])
         for k in range(N_region):
             seg = seg + k * M[:,:, k] # label  the k-th region
-
 
         biasCorrectedVol[:, :, idx] = img_bc
         
