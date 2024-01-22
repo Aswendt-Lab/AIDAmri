@@ -1,0 +1,220 @@
+reg_ants_20231026.txt
+--------------------------------------------------------------------------------
+processed_data="/daten/ivnmr_scratch/michaeld/pv_ants/processed_data"
+high_res_template="${processed_data}/templates/MBrTemplate_9T_Cryo_NuNu_8w_n21_256_72_restore.nii"
+high_res_template_mask="${processed_data}/templates/MBrMask_9T_Cryo_NuNu_8w_n21_256_72.nii.gz"
+atlas_labels_ambmc="${processed_data}/templates/ambmc-c57bl6-cortex-labels_672_960_rev_lr.nii.gz"
+atlas_labels_c57="${processed_data}/templates/c57_fixed_labels_resized_672_960_rev.nii.gz"
+atlas_to_template_affine="${processed_data}/templates/ambmc_rev_to_9T_Cryo_NuNu_8w_0GenericAffine.mat"
+atlas_to_template_warp="${processed_data}/templates/ambmc_rev_to_9T_Cryo_NuNu_8w_1Warp.nii.gz"
+fixfile="${processed_data}/stroke_cells/2wk/rsfMRI_ANTs/_Segmentation/Seg.MBrTemplate_9T_Cryo_NuNu_8w_n21_256_72.nii.gz"
+
+subject_anat="AM_30674_1_4_20170820_124922.5.1"
+subject_func="AM_30674_1_4_20170820_124922.8.1"
+
+outbase_rigid="stroke_cells_2wk_ants_3d_rigid_"
+outbase_affine="stroke_cells_2wk_ants_3d_affine_"
+outbase_pse="stroke_cells_2wk_ants_3d_pse_"
+outbase_diff="stroke_cells_2wk_ants_3d_diff_"
+
+Input directories and files
+--------------------------------------------------------------------------------
+${processed_data}/templates/
+- MBrTemplate_9T_Cryo_NuNu_8w_n21_256_72_restore.nii
+- MBrMask_9T_Cryo_NuNu_8w_n21_256_72.nii.gz
+- ambmc-c57bl6-cortex-labels_672_960_rev_lr.nii.gz
+- c57_fixed_labels_resized_672_960_rev.nii.gz 
+- ambmc_rev_to_9T_Cryo_NuNu_8w_0GenericAffine.mat
+- ambmc_rev_to_9T_Cryo_NuNu_8w_1Warp.nii.gz
+
+${processed_data}/stroke_cells/2wk/rsfMRI_ANTs/_Segmentation/
+- Seg.MBrTemplate_9T_Cryo_NuNu_8w_n21_256_72.nii.gz
+- Seg.Xfm.${subject_anat}.nii.gz
+
+${processed_data}/stroke_cells/2wk/rsfMRI_ANTs/AM_30674_1_4_20170820_124922/
+- BET.${subject_anat}_restore.nii.gz
+- ${subject_anat}.nii
+- BET.EPIMean.${subject_func}_restore.nii.gz
+- EPIMean.${subject_func}.nii.gz
+
+1. Image registration of rsfMRI EPI mean to anatomical T2w (rigid)
+--------------------------------------------------------------------------------
+# antsRegistrationSyN.sh (rigid)
+-f BET.${subject_anat}_restore.nii.gz
+-m BET.EPIMean.${subject_func}_restore.nii.gz
+-> ${outbase_rigid}0GenericAffine.mat
+-> ${outbase_rigid}Warped.nii.gz
+-> ${outbase_rigid}InverseWarped.nii.gz
+
+# ${ANTSPATH}/antsApplyTransforms
+-i EPIMean.${subject_func}.nii.gz
+-r ${subject_anat}.nii
+-t ${outbase_rigid}0GenericAffine.mat
+-> ${outbase_rigid}Xfm.nii.gz
+
+2. Image registration of anatomical T2w to MBrTemplate
+--------------------------------------------------------------------------------
+
+a) rigid + affine
+--------------------------------------------------------------------------------
+# antsRegistrationSyN.sh (rigid + affine)
+-f $high_res_template
+-m BET.${subject_anat}_restore.nii.gz
+-> ${outbase_affine}0GenericAffine.mat
+-> ${outbase_affine}Warped.nii.gz
+-> ${outbase_affine}InverseWarped.nii.gz
+
+# ${ANTSPATH}/antsApplyTransforms
+-i ${subject_anat}.nii
+-r $high_res_template
+-t ${outbase_affine}0GenericAffine.mat
+-> ${outbase_affine}Xfm.nii.gz
+
+# FSL Bias Correction
+-> ${outbase_affine}Xfm.nii.gz
+-> ${outbase_affine}Xfm_Msk.nii.gz
+-> ${outbase_affine}restore.nii.gz
+
+b) Point Set Expectation (PSE)
+--------------------------------------------------------------------------------
+movfile="${processed_data}/stroke_cells/2wk/rsfMRI_ANTs/_Segmentation/Seg.Xfm.${subject_anat}.nii.gz"
+
+# ${ANTSPATH}/ANTS (PSE)
+-m PSE[${fixfile},${movfile}]
+-m MSQ[${fixfile},${movfile}]
+-> ${outbase_pse}Affine.txt
+-> ${outbase_pse}Warp.nii.gz
+-> ${outbase_pse}InverseWarp.nii.gz
+
+# ${ANTSPATH}/WarpImageMultiTransform
+$movfile
+-R $fixfile
+${outbase_pse}Warp.nii.gz ${outbase_pse}Affine.txt
+-> ${outbase_pse}Warped.nii.gz
+
+# ${ANTSPATH}/WarpImageMultiTransform
+$fixfile
+-R $movfile
+-i ${outbase_pse}Affine.txt ${outbase_pse}InverseWarp.nii.gz
+-> ${outbase_pse}InverseWarped.nii.gz
+
+# ${ANTSPATH}/WarpImageMultiTransform
+${outbase_affine}restore.nii.gz
+-R $high_res_template
+${outbase_pse}Warp.nii.gz ${outbase_pse}Affine.txt
+-> ${outbase_pse}Xfm_Warped.nii.gz
+
+# ${ANTSPATH}/WarpImageMultiTransform
+$high_res_template
+-R ${outbase_affine}restore.nii.gz
+-i ${outbase_pse}Affine.txt ${outbase_pse}InverseWarp.nii.gz
+-> ${outbase_pse}Xfm_InverseWarped.nii.gz
+
+# ${ANTSPATH}/CreateWarpedGridImage
+${outbase_pse}Warp.nii.gz
+-> ${outbase_pse}grid.nii.gz
+
+# ${ANTSPATH}/CreateWarpedGridImage
+${outbase_pse}InverseWarp.nii.gz
+-> ${outbase_pse}grid_inv.nii.gz
+
+c) Diffeomorphic
+--------------------------------------------------------------------------------
+movfile=${outbase_pse}Xfm_Warped.nii.gz
+
+# antsRegistrationSyN.sh (diffeomorphic)
+-f $high_res_template
+-m $movfile 
+-> ${outbase_diff}0GenericAffine.mat
+-> ${outbase_diff}1Warp.nii.gz
+-> ${outbase_diff}1InverseWarp.nii.gz
+-> ${outbase_diff}Warped.nii.gz
+-> ${outbase_diff}InverseWarped.nii.gz
+
+# ${ANTSPATH}/CreateWarpedGridImage
+${outbase_diff}1Warp.nii.gz
+-> ${outbase_diff}grid.nii.gz
+
+# ${ANTSPATH}/CreateWarpedGridImage
+${outbase_diff}1InverseWarp.nii.gz
+-> ${outbase_diff}grid_inv.nii.gz
+
+# ${ANTSPATH}/antsApplyTransforms
+-i ${subject_anat}.nii
+-r $high_res_template
+-t ${outbase_diff}1Warp.nii.gz -t ${outbase_diff}0GenericAffine.mat -t ${outbase_pse}Warp.nii.gz -t ${outbase_affine}0GenericAffine.mat
+-> Warped_${subject_anat}.nii
+
+# ${ANTSPATH}/antsApplyTransforms
+-i $atlas_labels_ambmc
+-r ${subject_anat}.nii
+-t [${outbase_affine}0GenericAffine.mat,1] -t ${outbase_pse}InverseWarp.nii.gz -t [${outbase_diff}0GenericAffine.mat,1] -t ${outbase_diff}1InverseWarp.nii.gz -t $atlas_to_template_warp -t $atlas_to_template_affine
+-> Warped_$(basename $atlas_labels_ambmc)
+
+# ${ANTSPATH}/antsApplyTransforms
+-i $atlas_labels_c57
+-r ${subject_anat}.nii
+-t [${outbase_affine}0GenericAffine.mat,1] -t ${outbase_pse}InverseWarp.nii.gz -t [${outbase_diff}0GenericAffine.mat,1] -t ${outbase_diff}1InverseWarp.nii.gz -t $atlas_to_template_warp -t $atlas_to_template_affine
+-> Warped_$(basename $atlas_labels_c57)
+
+# ${ANTSPATH}/antsApplyTransforms 
+-i $atlas_labels_ambmc
+-r EPIMean.${subject_func}.nii.gz
+-t [${outbase_rigid}0GenericAffine.mat,1] -t [${outbase_affine}0GenericAffine.mat,1] -t ${outbase_pse}InverseWarp.nii.gz -t [${outbase_diff}0GenericAffine.mat,1] -t ${outbase_diff}1InverseWarp.nii.gz -t $atlas_to_template_warp -t $atlas_to_template_affine
+-> Warped.cortex.reg.${subject_func}.nii.gz
+
+# ${ANTSPATH}/antsApplyTransforms
+-i $atlas_labels_c57 
+-r EPIMean.${subject_func}.nii.gz
+-t [${outbase_rigid}0GenericAffine.mat,1] -t [${outbase_affine}0GenericAffine.mat,1] -t ${outbase_pse}InverseWarp.nii.gz -t [${outbase_diff}0GenericAffine.mat,1] -t ${outbase_diff}1InverseWarp.nii.gz -t $atlas_to_template_warp -t $atlas_to_template_affine
+-> Warped.striatum.reg.${subject_func}.nii.gz
+
+antsRegistrationSyN.sh
+--------------------------------------------------------------------------------
+-n 4: Number of threads (default = 1)
+-t a: Transform type (‘s’ or ‘t’ or ‘r’ or ‘a’ or ‘sr’ or ‘b’ or ‘br’; default = s)
+      t: translation
+      r: rigid
+      a: rigid + affine
+      s: rigid + affine + deformable syn (default)
+      sr: rigid + deformable syn
+      b: rigid + affine + deformable b-spline syn
+      br: rigid + deformable b-spline syn
+-d 3: Image dimension (2 or 3; default = 3)
+-f:   Fixed image (a list of items which are a pathlike object or string representing an existing file: Fixed image or source image or reference image)
+-m:   Moving image (a list of items which are a pathlike object or string representing an existing file: Moving image or target image)
+-o:   Output prefix (a string: A prefix that is prepended to all output files; default = transform)
+-p:   Precision type (‘double’ or ‘float’; default = double)
+
+${ANTSPATH}/antsApplyTransforms
+--------------------------------------------------------------------------------
+-d 3: Image dimension (2 or 3 or 4)
+-e 0: Input image type (0: scalar, 1: vector, 2: tensor, 3: time-series; default = 0)
+--float 1: Use float instead of double for computations
+-i:   Input image (a pathlike object or string representing an existing file: Image to apply transformation to (generally a coregistered functional))
+-o:   Output image (a string: Output file name)
+-r:   Reference image (a pathlike object or string representing an existing file: Reference image space that you wish to warp INTO)
+-n:   Interpolation (‘Linear’ or ‘NearestNeighbor’ or ‘CosineWindowedSinc’ or ‘WelchWindowedSinc’ or ‘HammingWindowedSinc’ or ‘LanczosWindowedSinc’ or ‘MultiLabel’ or ‘Gaussian’ or ‘BSpline’; default = Linear)
+-t:   Transforms (a list of items which are a pathlike object or string representing an existing file or ‘identity’: Transform files will be applied in reverse order, the last specified transform will be applied first)
+
+${ANTSPATH}/ANTS (PSE)
+--------------------------------------------------------------------------------
+3:    Image dimension 
+-o:   Output image (a string: Output file name)
+-i 91x70x55x40x30 
+-r:   Regularization (‘Gauss’ or ‘DMFFD’)
+-t:   Transformation model (‘Diff’ or ‘Elast’ or ‘Exp’ or ‘Greedy Exp’ or ‘SyN’)
+-m:   metric (a list of items which are ‘CC’ or ‘MI’ or ‘SMI’ or ‘PR’ or ‘SSD’ or ‘MSQ’ or ‘PSE’)
+--number-of-affine-iterations 0
+
+${ANTSPATH}/WarpImageMultiTransform
+--------------------------------------------------------------------------------
+3:    Image dimension (2 or 3; default = 3)
+      Input image (a pathlike object or string representing a file: Image to apply transformation to (generally a coregistered functional); position 2)
+      Transformation series (a list of items which are a pathlike object or string representing an existing file: Transformation file(s) to be applied; position -1).
+-i    Invert affine text file
+      Output image (a pathlike object or string representing a file: Name of the output warped image; position: 3)
+-R:   Reference image (a pathlike object or string representing a file: Reference image space that you wish to warp INTO)
+
+${ANTSPATH}/CreateWarpedGridImage
+--------------------------------------------------------------------------------
