@@ -117,7 +117,7 @@ if __name__ == "__main__":
         
     #Konfiguriere das Logging-Modul
     log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') 
 
     frac = args.frac
     radius = args.radius
@@ -130,6 +130,7 @@ if __name__ == "__main__":
     logging.info("Orientation resetted to RAS")
 
     #intensity correction using non parametric bias field correction algorithm
+    logging.info("Starting Biasfieldcorrection:")
     if bias_skip == 0:
         try:
             outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))

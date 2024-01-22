@@ -78,11 +78,10 @@ def findData(projectPath, sessions, dataTypes):
 def run_subprocess(command):
     command_args = shlex.split(command)
     try:
-        #process = subprocess.Popen(command_args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        #output, error = process.communicate()
-        #logging.info(f"Output preprocessing:\n{output}")
-        os.system(command)
         logging.info(f"Running command: {command}")
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        logging.info(f"Output {command}:\n{result.stdout}")
+        logging.error(f"Errors {command}:\n{result.stderr}")
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
@@ -297,9 +296,8 @@ if __name__ == "__main__":
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
     logging.info(f"Processing following datasets:\n{all_files}")
 
-    num_processes = 6
-    if multiprocessing.cpu_count() < num_processes:
-        num_processes = multiprocessing.cpu_count()
+ 
+    num_processes = multiprocessing.cpu_count()
         
     steps = ["preprocess","registration","process"]
 
