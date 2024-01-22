@@ -38,9 +38,6 @@ def extractT2Mapdata(img,rois,outfile,txt_file):
     fileID.write("%s values for %i given regions:\n\n" % (str.upper(outfile[-6:-4]),np.size(regions)))
     
     for r in regions:
-        print(rois)
-        print(r)
-        test = test3234
         paramValue = np.mean(img[rois==r])
         if indices is not None:
             if len(np.argwhere(indices==r)) == 0:
@@ -82,10 +79,6 @@ if __name__ == '__main__':
 
     parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit_t2map.nii*"))[0]
     non_parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit.nii*"))[0]
-
-    print(parental_atlas)
-    print(non_parental_atlas)
-    
 
     for acronmys in acronyms_files:
         try:
