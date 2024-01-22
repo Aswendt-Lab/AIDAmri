@@ -315,8 +315,6 @@ if __name__ == "__main__":
                     futures = [executor.submit(executeScripts, path, key, step, stc) for path in value]
 
                     for future in concurrent.futures.as_completed(futures):
-                        if future.result():
-                            error_list.append(future.result())
                         progress_bar.update(1)
                         
                     concurrent.futures.wait(futures)
@@ -325,9 +323,6 @@ if __name__ == "__main__":
                 print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
                 logging.info(f"{key} {step} processing completed")
             logging.info(f"{key} processing completed")
-            
-            print('Errors:')
-            print(error_list)
             print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
                 
 
