@@ -18,6 +18,7 @@ import numpy as np
 import nibabel as nib
 
 from datetime import datetime
+import logging
 
 def get_date():
     now = datetime.now()
@@ -39,7 +40,7 @@ def save_nifti(sFilename, data, index, ext_nii):
     header = image.get_header()
     header.set_xyzt_units(xyz=None, t=None)
     image.to_filename(sFilename + '_%03d' % (index + 1,) + ext_nii)
-    print("Output:", image.get_filename())
+    logging.info("Output:", image.get_filename())
 
 def get_seed_stat(sPathMatrix, sPathTS, data, seed, ext_nii, r_to_z=False, save_mat=False, ignore_nan=False):
     seed_stat = np.zeros((5, seed.shape[3]), dtype=np.float64)

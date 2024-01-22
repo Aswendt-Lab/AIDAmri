@@ -1,7 +1,15 @@
 """
 Created on 10/08/2017
 
+<<<<<<< HEAD
 @author: Niklas Pallast, Markus Aswendt
+=======
+<<<<<<<< HEAD:bin/PV2NIfTiConverter/pv_conv2Nifti.py
+@author: Niklas Pallast, Marc Schneider, Markus Aswendt
+========
+@author: Niklas Pallast, Markus Aswendt
+>>>>>>>> production:bin/PV2NIfTiConverter/pv_conv2Nifti_bval_bvec.py
+>>>>>>> production
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
@@ -264,9 +272,15 @@ class Bruker2Nifti:
                 fid = open(os.path.join(procfolder, fname),mode='w',buffering=-1)
 
                 for i in range(nd):
+<<<<<<< HEAD
                     fid.write("%.4f" % (bvals[i],) + " %.8f %.8f %.8f\n" % tuple(dwdir[i]))
                     #print("%.4f" % (bvals[i],) + " %.8f %.8f %.8f" % tuple(dwdir[i]), end="\r\n", file=fid) - py 2.6
                 fid.truncate(fid.tell() - 1)
+=======
+                    fid.write("%.4f" % (bvals[i],) + " %.8f %.8f %.8f" % tuple(dwdir[i]))
+                    #print("%.4f" % (bvals[i],) + " %.8f %.8f %.8f" % tuple(dwdir[i]), end="\r\n", file=fid) - py 2.6
+
+>>>>>>> production
                 # Close file
                 fid.close()
 

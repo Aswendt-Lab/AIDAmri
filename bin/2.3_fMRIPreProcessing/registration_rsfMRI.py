@@ -11,6 +11,9 @@ University Hospital Cologne
 import sys,os
 import glob
 import shutil as sh
+import subprocess
+import shlex
+import logging
 
 
 def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, splitAnno_rsfMRI, anno_rsfMRI,
@@ -22,13 +25,25 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*T2w.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputT2w)
     else:
-        os.system(
-            'reg_aladin -ref ' + inputVolume + ' -flo ' + T2data + ' -res ' + outputT2w + ' -aff ' + outputAff)  # + -rigOnly' -fmask ' +MPITemplateMask+ ' -rmask ' + find_mask(inputVolume))
+        command = f"reg_aladin -ref {inputVolume} -flo {T2data} -res {outputT2w} -aff {outputAff}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
         #  resample Annotation
         outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
-        os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + brain_anno +
-        ' -cpp ' + outputAff + ' -inter 0 -res ' + outputAnno)
+
+        command = f"reg_resample -ref {inputVolume} -flo {brain_anno} -cpp {outputAff} -inter 0 -res {outputAnno}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
 
     # resample split annotation
     outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
@@ -36,12 +51,23 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*AnnoSplit.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputAnnoSplit)
     else:
-        os.system(
-        'reg_resample -ref ' + brain_anno + ' -flo ' + splitAnno +
-        ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit)
-        os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit +
-        ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit)
+        command = f"reg_resample -ref {brain_anno} -flo {splitAnno} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
+      
+        command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
 
     # resample split rsfMRI annotation
     outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_rsfMRI.nii.gz')
@@ -49,12 +75,23 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*AnnoSplit_rsfMRI.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputAnnoSplit_rsfMRI)
     else:
-        os.system(
-        'reg_resample -ref ' + brain_anno + ' -flo ' + splitAnno_rsfMRI +
-        ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
-        os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnnoSplit_rsfMRI +
-        ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnnoSplit_rsfMRI)
+        command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
+        
+        command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
 
     # resample rsfMRI annotation
     outputAnno_rsfMRI = os.path.join(outfile,
@@ -62,18 +99,36 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
     if dref:
         pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*Anno_rsfMRI.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputAnno_rsfMRI)
-    else:
-        os.system(
-        'reg_resample -ref ' + brain_anno + ' -flo ' + anno_rsfMRI +
-        ' -trans ' + bsplineMatrix + ' -inter 0 -res ' + outputAnno_rsfMRI)
-        os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + outputAnno_rsfMRI +
-        ' -trans ' + outputAff + ' -inter 0 -res ' + outputAnno_rsfMRI)
+    else: 
+        command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
+        
+        command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
+        
         # resample in-house developed tempalate
         outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
-        os.system(
-        'reg_resample -ref ' + inputVolume + ' -flo ' + brain_template +
-        ' -cpp ' + outputAff + ' -res ' + outputTemplate)
+        
+        command = f"reg_resample -ref {inputVolume} -flo {brain_template} -trans {outputAff} -res {outputTemplate}"
+        command_args = shlex.split(command)
+        try:
+            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+            logging.info(f"Output of {command}:\n{result.stdout}")
+        except Exception as e:
+            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            raise
 
 
     return outputAnnoSplit
@@ -92,11 +147,11 @@ def find_RefTemplate(inputVolume):
 
 
 def find_relatedData(pathBase):
-    pathT2 =  glob.glob(pathBase+'*/T2w/*Bet.nii.gz', recursive=False)
-    pathStroke_mask = glob.glob(pathBase + '*/T2w/*Stroke_mask.nii.gz', recursive=False)
-    pathAnno = glob.glob(pathBase + '*/T2w/*Anno.nii.gz', recursive=False)
-    pathAllen = glob.glob(pathBase + '*/T2w/*Allen.nii.gz', recursive=False)
-    bsplineMatrix =  glob.glob(pathBase + '*/T2w/*MatrixBspline.nii', recursive=False)
+    pathT2 =  glob.glob(pathBase+'*/anat/*Bet.nii.gz', recursive=False)
+    pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
+    pathAnno = glob.glob(pathBase + '*/anat/*Anno.nii.gz', recursive=False)
+    pathAllen = glob.glob(pathBase + '*/anat/*Allen.nii.gz', recursive=False)
+    bsplineMatrix =  glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
     return pathT2,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
 
 
@@ -131,16 +186,14 @@ if __name__ == "__main__":
 
     if args.inputVolume is not None:
         inputVolume = args.inputVolume
+        log_file_path = os.path.join(os.path.dirname(inputVolume), "registration.txt")
+        logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     if not os.path.exists(inputVolume):
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
     outfile = os.path.join(os.path.dirname(inputVolume))
     if not os.path.exists(outfile):
         os.makedirs(outfile)
-
-    print("rsfMRI Registration  \33[5m...\33[0m (wait!)", end="\r")
-    # generate log - file
-    sys.stdout = open(os.path.join(os.path.dirname(inputVolume), 'registration.log'), 'w')
 
 
     # find related  data
@@ -153,7 +206,7 @@ if __name__ == "__main__":
 
     if len(pathStroke_mask) is 0:
         pathStroke_mask = []
-        print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+        logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
     else:
         stroke_mask = pathStroke_mask[0]
 
@@ -187,7 +240,7 @@ if __name__ == "__main__":
         refStroke_mask = find_RefStroke(refStrokePath, inputVolume)
         if len(refStroke_mask) is 0:
             refStroke_mask = []
-            print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+            logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
         else:
             refStroke_mask = refStroke_mask[0]
 
@@ -208,9 +261,22 @@ if __name__ == "__main__":
 
     output = regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, splitAnno_rsfMRI,
                            anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile)
-    print(output + '...DONE!')
     sys.stdout = sys.__stdout__
-    print('rsfMRI Registration  \033[0;30;42m COMPLETED \33[0m')
+
+    current_dir = os.path.dirname(inputVolume)
+    search_string = os.path.join(current_dir, "*EPI.nii.gz")
+    currentFile = glob.glob(search_string)
+
+    search_string = os.path.join(current_dir, "*.nii*")
+    created_imgs = glob.glob(search_string, recursive=True)
+
+    os.chdir(os.path.dirname(os.getcwd()))
+    for idx, img in enumerate(created_imgs):
+        if img == None:
+            continue
+        #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
+
+    logging.info("Registration done")
 
 
 

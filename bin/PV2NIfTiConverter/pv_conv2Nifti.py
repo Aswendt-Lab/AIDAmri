@@ -1,7 +1,11 @@
 """
 Created on 10/08/2017
 
+<<<<<<<< HEAD:bin/PV2NIfTiConverter/pv_conv2Nifti.py
 @author: Niklas Pallast, Marc Schneider, Markus Aswendt
+========
+@author: Niklas Pallast, Markus Aswendt
+>>>>>>>> production:bin/PV2NIfTiConverter/pv_conv2Nifti_bval_bvec.py
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
