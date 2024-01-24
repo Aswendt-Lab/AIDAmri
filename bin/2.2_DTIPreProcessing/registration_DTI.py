@@ -167,7 +167,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
             raise 
 
         # Superposition of annotations and mask
-        dataAnno = nii.load(outputAnnoSplit)
+        dataAnno = nii.load(outputAnnoSplit_rsfMRI)
         dataStroke = nii.load(outputStrokeMask)
         imgAnno = dataAnno.get_fdata()
         imgStroke = dataStroke.get_fdata()
