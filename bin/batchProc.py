@@ -30,7 +30,6 @@ import shlex
 import time
 
 
-
 def findData(projectPath, sessions, dataTypes):
     # This function screens all existing paths. Within these paths, this function collects all subject
     # folders, which are all folders that are not named 'Physio'.
@@ -77,10 +76,12 @@ def findData(projectPath, sessions, dataTypes):
 
     return all_files
     
-def run_subprocess(command,step):
+def run_subprocess(command,datatype, step):
     command_args = shlex.split(command)
     file = command_args[-1]
     log_file = os.path.join(os.path.dirname(file), step + ".log")
+    if datatype == "anat" and step == "process":
+        log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
     try:
         logging.info(f"Running command: {command}.\nCheck {log_file} for further information.")
         with open(log_file, 'w') as outfile:
@@ -108,7 +109,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_T2.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                     preprocessing = True
                 else:
                     message = 'Could not find *T2w.nii.gz in {currentPath_wData}';
@@ -120,7 +121,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_T2.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                     registration = True
                 else:
                     message = 'Could not find *BiasBet.nii.gz in {currentPath_wData}';
@@ -131,9 +132,9 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             elif step == "process":
                 os.chdir(cwd + '/3.1_T2Processing')
                 command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
-                run_subprocess(command,step)
+                run_subprocess(command,dataFormat,step)
                 command = f'python getIncidenceSize.py -i {currentPath_wData}'
-                run_subprocess(command,step)
+                run_subprocess(command,dataFormat,step)
                 os.chdir(cwd)
                 return
         elif dataFormat == 'func':
@@ -142,7 +143,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_fMRI.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 else:
                     message = 'Could not find *EPI.nii.gz in {currentPath_wData}';
                     logging.error(message)
@@ -153,7 +154,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*SmoothBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_rsfMRI.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 else:
                     message = 'Could not find *SmoothBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
@@ -165,7 +166,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 if len(currentFile)>0:
                     os.chdir(cwd + '/3.3_fMRIActivity')
                     command = f'python process_fMRI.py -i {currentFile[0]} -stc {stc}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 os.chdir(cwd)
                 return
         elif dataFormat == 't2map':
@@ -174,7 +175,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*MEMS.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_T2MAP.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 else:
                     message = f'Could not find *MEMS.nii.gz in {currentPath_wData}';
                     logging.error(message)
@@ -185,7 +186,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_T2MAP.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 else:
                     message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
                     print(message)
@@ -196,7 +197,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*T2w_MAP.nii.gz"))
                 if len(currentFile)>0:
                         command = f'python t2map_data_extract.py -i {currentFile[0]}'
-                        run_subprocess(command,step)
+                        run_subprocess(command,dataFormat,step)
                 else:
                     message = f'Could not find *T2w_MAP.nii.gz in {currentPath_wData}';
                     logging.error(message)
@@ -209,7 +210,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_DTI.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 else:
                     message = f'Could not find *dwi.nii.gz in {currentPath_wData}';
                     logging.error(message)
@@ -220,7 +221,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_DTI.py -i {currentFile[0]}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 else:
                     message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
@@ -234,7 +235,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     cli_str = f'dsi_main.py -i {currentFile[0]}'
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
-                    run_subprocess(command,step)
+                    run_subprocess(command,dataFormat,step)
                 os.chdir(cwd)
                 return
         else:
