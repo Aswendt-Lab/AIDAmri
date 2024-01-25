@@ -22,7 +22,6 @@ import create_seed_rois
 import fsl_mean_ts
 from pathlib import Path 
 import json
-import logging
 
 def copyAtlasOfData(path,post,labels):
     fileALL = glob.glob(path + '/*' + post + '.nii.gz')
@@ -31,7 +30,7 @@ def copyAtlasOfData(path,post,labels):
     else:
         fileALL = fileALL[0]
 
-    logging.info("Copy Atlas Data and generate seed ROIs")
+    print("Copy Atlas Data and generate seed ROIs")
     #pathfMRI = os.path.join(os.path.dirname(path),'fMRI')
     outputRois = create_seed_rois.startSeedPoint(in_atlas=os.path.join(path, os.path.basename(fileALL)),in_labels=labels)
     return outputRois
@@ -86,7 +85,7 @@ def getRASorientation(file_name,proc_Path):
     hdrIn = epiData.header
     hdrIn.set_xyzt_units('mm')
     epiData_RAS = nii.as_closest_canonical(epiData)
-    logging.info('Orientation:' + str(nii.aff2axcodes(epiData_RAS.affine)))
+    print('Orientation:' + str(nii.aff2axcodes(epiData_RAS.affine)))
     output_file = os.path.join(proc_Path, os.path.basename(file_name))
     nii.save(epiData, output_file)
     return output_file
@@ -94,7 +93,7 @@ def getRASorientation(file_name,proc_Path):
 def getEPIMean(file_name,proc_Path):
     output_file = os.path.join(proc_Path, os.path.basename(file_name).split('.')[0]) + 'mean.nii.gz'
     myMean = fsl.MeanImage(in_file=file_name, out_file=output_file)
-    logging.info(myMean.cmdline)
+    print(myMean.cmdline)
     myMean.run()
     return output_file
 
@@ -107,7 +106,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     maskFile = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + 'Bet_mask.nii.gz'
     myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
                     vertical_gradient=vertical_gradient,robust=True, mask = True)
-    logging.info(myBet.cmdline)
+    print(myBet.cmdline)
     myBet.run()
     os.remove(fslPath)
     # unscale result data by factor 10ˆ(-1)
@@ -119,7 +118,7 @@ def applyMask(input_file,mask_file):
     # maks apply
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + 'BET.nii.gz'
     myMaskapply = fsl.ApplyMask(in_file=fslPath, out_file=output_file, mask_file=mask_file)
-    logging.info(myMaskapply.cmdline)
+    print(myMaskapply.cmdline)
     myMaskapply.run()
     os.remove(fslPath)
     # unscale result data by factor 10ˆ(-1)
@@ -138,7 +137,7 @@ def fsl_SeparateSliceMoCo(input_file,par_folder):
     fslPath = scaleBy10(input_file, inv=False)
     os.chdir(temp_dir)
     mySplit= fsl.Split(in_file=fslPath,dimension='z',out_base_name = dataName)
-    logging.info(mySplit.cmdline)
+    print(mySplit.cmdline)
     mySplit.run()
     os.remove(fslPath)
 
@@ -163,7 +162,7 @@ def fsl_SeparateSliceMoCo(input_file,par_folder):
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
     myMerge = fsl.Merge(in_files=mcf_sliceFiles,dimension='z',merged_file =output_file)
-    logging.info(myMerge.cmdline)
+    print(myMerge.cmdline)
     myMerge.run()
 
     for slc in mcf_sliceFiles: os.remove(slc)
@@ -201,11 +200,11 @@ def copyRawPhysioData(file_name,i32_Path):
     if len(relatedPhysioData)>1:
         sys.exit("Warning: '%s' has no unique physio data for scan %s." % (physioPath, scanid,))
     if len(relatedPhysioData) is 0:
-        logging.error("Error: '%s' has no related physio data for scan %s." % (physioPath, scanid,))
+        print("Error: '%s' has no related physio data for scan %s." % (physioPath, scanid,))
         return []
 
     physioFile_name = relatedPhysioData[0]
-    logging.info('Copy related physio data %s to rawMoData' % (physioFile_name,))
+    print('Copy related physio data %s to rawMoData' % (physioFile_name,))
     shutil.copyfile(physioFile_name, os.path.join(i32_Path,os.path.basename(physioFile_name)))
 
     return physioFile_name
@@ -274,7 +273,7 @@ def startProcess(Rawfile_name):
     if len(relatedPhysioFolder) is not 0:
         getSingleRegTable.getRegrTable(os.path.dirname(Rawfile_name),relatedPhysioFolder,par_Path)
     else:
-        logging.error("Error: Processing not possible, because either there is no folder called Physio or the related physio data for the scan is missing there.")
+        print("Error: Processing not possible, because either there is no folder called Physio or the related physio data for the scan is missing there.")
 
     return mcfFile_name
 
@@ -314,16 +313,12 @@ if __name__ == "__main__":
     if not os.path.exists(input_file):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
 
-    #Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(os.path.dirname(input_file), "process.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')    
-
     mcfFile_name = startProcess(input_file)
 
     
     # if stc is activated find parameters
     if stc: 
-        logging.info("Starting Regression with slice time correction:")
+        print("Starting Regression with slice time correction:")
         # find meta data json file
         meta_data_file_name = Path(args.input).name.replace(".nii.gz", ".json")
         meta_data_file = os.path.join(Path(args.input).parent, meta_data_file_name)
@@ -351,9 +346,9 @@ if __name__ == "__main__":
         delete_txt_file(slice_order_path)
 
     else:
-        logging.info("Starting Regression without slice time correction:")
+        print("Starting Regression without slice time correction:")
         rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, stc)
-        logging.info(f"sfrgr_file {sfrgr_file}")
+        print(f"sfrgr_file {sfrgr_file}")
 
     
 

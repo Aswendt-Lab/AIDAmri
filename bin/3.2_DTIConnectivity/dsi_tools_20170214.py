@@ -30,7 +30,6 @@ import glob
 import nibabel as nii
 import numpy as np
 import nipype.interfaces.fsl as fsl
-
 import shutil
 import subprocess
 

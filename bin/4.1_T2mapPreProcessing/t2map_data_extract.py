@@ -3,8 +3,6 @@ import numpy as np
 import argparse
 import os
 import glob
-import logging
-
 
 
 def getOutfile(roi_file,img_file, acronmys):
@@ -61,12 +59,9 @@ if __name__ == '__main__':
     requiredNamed.add_argument('-i','--input', help='Input t2map, should be a nifti file')
     args = parser.parse_args()
 
-    log_file_path = os.path.join(os.path.dirname(args.input), "process.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
     acronyms_files = glob.glob(os.path.join(os.getcwd(),"*.txt"))
-    logging.info(f"Extracting T2values for: {args.input}")
-    logging.info(f"Acronym files: {acronyms_files}")
+    print(f"Extracting T2values for: {args.input}")
+    print(f"Acronym files: {acronyms_files}")
   
     # read image data
     if args.input is not None:
@@ -91,10 +86,10 @@ if __name__ == '__main__':
             rois = roi_data.dataobj.get_unscaled()
                
             outFile = getOutfile(atlas, image_file, acronmys)
-            logging.info(f"Outifle: {outFile}")
+            print(f"Outifle: {outFile}")
             file = extractT2Mapdata(img,rois,outFile,acronmys)
         except Exception as e:
-            logging.error(f'Error while processing the T2values Errorcode: {str(e)}')
+            print(f'Error while processing the T2values Errorcode: {str(e)}')
             raise
 
-    logging.info("Finished t2map processing")
+    print("Finished t2map processing")

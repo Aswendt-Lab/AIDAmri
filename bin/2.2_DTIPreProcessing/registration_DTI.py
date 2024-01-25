@@ -27,7 +27,6 @@ import shutil
 import glob
 import subprocess
 import shlex
-import logging
 
 def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
@@ -38,9 +37,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     # resample Annotation
@@ -56,18 +55,18 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
         
     command = f"reg_aladin -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise    
         
 
@@ -78,18 +77,18 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise 
         
     command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise 
 
 
@@ -101,18 +100,18 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise     
        
     command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise   
 
 
@@ -124,9 +123,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise  
 
     # Some scaled data for DSI Studio
@@ -144,9 +143,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise 
 
         stroke_mask = outputRefStrokeMaskAff
@@ -161,9 +160,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise 
 
         # Superposition of annotations and mask
@@ -353,8 +352,6 @@ if __name__ == "__main__":
 
     if args.inputVolume is not None:
         inputVolume = args.inputVolume
-        log_file_path = os.path.join(os.path.dirname(inputVolume), "registration.txt")
-        logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     if not os.path.exists(inputVolume):
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
@@ -372,7 +369,7 @@ if __name__ == "__main__":
 
     if len(pathStroke_mask) is 0:
         pathStroke_mask = []
-        logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+        print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
     else:
         stroke_mask = pathStroke_mask[0]
 
@@ -406,7 +403,7 @@ if __name__ == "__main__":
         refStroke_mask = find_RefStroke(refStrokePath, inputVolume)
         if len(refStroke_mask) is 0:
             refStroke_mask = []
-            logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+            print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
         else:
             refStroke_mask = refStroke_mask[0]
 
@@ -441,7 +438,7 @@ if __name__ == "__main__":
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
         continue
 
-    logging.info("Registration completed")
+    print("Registration completed")
 
 
 

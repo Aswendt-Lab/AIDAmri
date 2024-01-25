@@ -15,7 +15,6 @@ import nibabel as nii
 import glob
 import subprocess
 import shlex
-import logging
 
 def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,allenBrain_anno,allenBrain_annorsfMRI,outfile,opt):
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
@@ -25,9 +24,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     # Inverse registration
@@ -38,9 +37,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     # if region such as stroke_mask is defined
@@ -51,9 +50,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
 
@@ -75,9 +74,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     # resmaple Allen Brain Reference Template
@@ -87,9 +86,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     # resample parental annotations
@@ -99,9 +98,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     # resample annotations
@@ -111,9 +110,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        logging.info(f"Output of {command}:\n{result.stdout}")
+        print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
     return outputAnno
@@ -184,35 +183,27 @@ if __name__ == "__main__":
 
     if args.inputVolume is not None:
         inputVolume = args.inputVolume
-  
-        log_file_path = os.path.join(os.path.dirname(inputVolume), "registration.txt")
-        logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     if not os.path.exists(inputVolume):
-        logging.error("Error: '%s' is not an existing directory." % (inputVolume,))
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
     if args.allenBrain_template is not None:
         allenBrain_template = args.allenBrain_template
     if not os.path.exists(allenBrain_template):
-        logging.error("Error: '%s' is not an existing directory." % (allenBrain_template,))
         sys.exit("Error: '%s' is not an existing directory." % (allenBrain_template,))
         
     if args.allenBrain_anno is not None:
         allenBrain_anno = args.allenBrain_anno
     if not os.path.exists(allenBrain_anno):
-        logging.error("Error: '%s' is not an existing directory." % (allenBrain_anno,))
         sys.exit("Error: '%s' is not an existing directory." % (allenBrain_anno,))
 
     if args.allenBrain_annorsfMRI is not None:
         allenBrain_annorsfMRI = args.allenBrain_annorsfMRI
     if not os.path.exists(allenBrain_annorsfMRI):
-        logging.error("Error: '%s' is not an existing directory." % (allenBrain_annorsfMRI,))
         sys.exit("Error: '%s' is not an existing directory." % (allenBrain_annorsfMRI,))
 
     if args.template is not None:
         brain_template = args.template
     if not os.path.exists(brain_template):
-        logging.error("Error: '%s' is not an existing directory." % (brain_template,))
         sys.exit("Error: '%s' is not an existing directory." % (brain_template,))
         
 
@@ -223,7 +214,7 @@ if __name__ == "__main__":
     stroke_mask = find_mask(inputVolume)
     if len(stroke_mask) is 0:
         stroke_mask = []
-        logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
+        print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
     else:
         stroke_mask = stroke_mask[0]
 
@@ -242,7 +233,7 @@ if __name__ == "__main__":
             continue
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
         
-    logging.info("Registration completed")
+    print("Registration completed")
 
 
 

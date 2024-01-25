@@ -18,7 +18,6 @@ import cv2
 from pathlib import Path
 import subprocess
 import shutil
-import logging
 
 
 def reset_orientation(input_file):
@@ -147,38 +146,34 @@ if __name__ == "__main__":
     if not os.path.exists(input_file):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
         
-    #Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     output_path = os.path.dirname(input_file)
 
-    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
+    print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
     reset_orientation(input_file)
-    logging.info("Orientation resetted to RAS")
+    print("Orientation resetted to RAS")
 
     try:
         output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
-        logging.info("Smoothing completed")
+        print("Smoothing completed")
     except Exception as e:
-        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
         raise
 
     # intensity correction using non parametric bias field correction algorithm
     try:
         output_mico = applyMICO.run_MICO(output_smooth,output_path)
-        logging.info("Biasfieldcorrecttion was successful")
+        print("Biasfieldcorrecttion was successful")
     except Exception as e:
-        logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
         raise
 
     # get rid of your skull         
     outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
-    logging.info("Brainextraction was successful")
+    print("Brainextraction was successful")
 
 
 

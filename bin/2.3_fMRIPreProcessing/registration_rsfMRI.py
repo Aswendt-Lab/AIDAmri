@@ -13,7 +13,6 @@ import glob
 import shutil as sh
 import subprocess
 import shlex
-import logging
 
 
 def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, splitAnno_rsfMRI, anno_rsfMRI,
@@ -29,9 +28,9 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
         #  resample Annotation
         outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
@@ -40,9 +39,9 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
     # resample split annotation
@@ -55,18 +54,18 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
       
         command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
     # resample split rsfMRI annotation
@@ -79,18 +78,18 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
         
         command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
     # resample rsfMRI annotation
@@ -104,18 +103,18 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
         
         command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
         
         # resample in-house developed tempalate
@@ -125,9 +124,9 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            logging.info(f"Output of {command}:\n{result.stdout}")
+            print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            logging.error(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
 
@@ -186,8 +185,6 @@ if __name__ == "__main__":
 
     if args.inputVolume is not None:
         inputVolume = args.inputVolume
-        log_file_path = os.path.join(os.path.dirname(inputVolume), "registration.txt")
-        logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     if not os.path.exists(inputVolume):
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
@@ -206,7 +203,7 @@ if __name__ == "__main__":
 
     if len(pathStroke_mask) is 0:
         pathStroke_mask = []
-        logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+        print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
     else:
         stroke_mask = pathStroke_mask[0]
 
@@ -240,7 +237,7 @@ if __name__ == "__main__":
         refStroke_mask = find_RefStroke(refStrokePath, inputVolume)
         if len(refStroke_mask) is 0:
             refStroke_mask = []
-            logging.warning("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
+            print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
         else:
             refStroke_mask = refStroke_mask[0]
 
@@ -276,7 +273,7 @@ if __name__ == "__main__":
             continue
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
 
-    logging.info("Registration done")
+    print("Registration done")
 
 
 

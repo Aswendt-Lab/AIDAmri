@@ -15,8 +15,6 @@ import nipype.interfaces.fsl as fsl
 import glob
 import shutil
 from pathlib import Path
-import logging
-
 
 
 def scaleBy10(input_path,inv):
@@ -64,7 +62,7 @@ def delete5Slides(input_file,regr_Path):
     # delete 5 slides
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + '_f.nii.gz'
     myROI = fsl.ExtractROI(in_file=fslPath, roi_file=output_file, t_min=5, t_size=-1)
-    logging.info(myROI.cmdline)
+    print(myROI.cmdline)
     myROI.run()
     os.remove(fslPath)
     # unscale result data by factor 10ˆ(-1)
@@ -84,7 +82,7 @@ def fsl_RegrSliceWise(input_file,txtregr_Path,regr_Path):
     # proof  data existence
     regrTextFiles = findRegData(txtregr_Path)
     if len(regrTextFiles) == 0:
-        logging.info('No regression with physio data!')
+        print('No regression with physio data!')
         output_file = os.path.join(regr_Path,
                                    os.path.basename(input_file).split('.')[0]) + '_RGR.nii.gz'
         shutil.copyfile(input_file, output_file)
@@ -94,7 +92,7 @@ def fsl_RegrSliceWise(input_file,txtregr_Path,regr_Path):
     fslPath = scaleBy10(input_file, inv=False)
     # split input_file in slices
     mySplit = fsl.Split(in_file=fslPath, dimension='z', out_base_name=dataName)
-    logging.info(mySplit.cmdline)
+    print(mySplit.cmdline)
     mySplit.run()
     os.remove(fslPath)
 
@@ -107,17 +105,17 @@ def fsl_RegrSliceWise(input_file,txtregr_Path,regr_Path):
     if not len(regrTextFiles) == len(sliceFiles):
         sys.exit('Error: Not enough .txt-Files in %s' % txtregr_Path)
 
-    logging.info('Start separate slice Regression ... ')
+    print('Start separate slice Regression ... ')
 
     # start to regression slice by slice
-    logging.info('For all slices ...')
+    print('For all slices ...')
     for i in range(len(sliceFiles)):
         slc = sliceFiles[i]
         regr = regrTextFiles[i]
         # only take the columns [1,2,7,9,11,12,13] of the reg-.txt Files
         output_file = os.path.join(regr_Path, os.path.basename(slc))
         myRegr = fsl.FilterRegressor(in_file=slc,design_file=regr,out_file=output_file,filter_columns=[1,2,7,9,11,12,13])
-        logging.info(myRegr.cmdline)
+        print(myRegr.cmdline)
         myRegr.run()
         os.remove(slc)
 
@@ -127,7 +125,7 @@ def fsl_RegrSliceWise(input_file,txtregr_Path,regr_Path):
     output_file = os.path.join(regr_Path,
                                os.path.basename(input_file).split('.')[0]) + '_RGR.nii.gz'
     myMerge = fsl.Merge(in_files=mcf_sliceFiles, dimension='z', merged_file=output_file)
-    logging.info(myMerge.cmdline)
+    print(myMerge.cmdline)
     myMerge.run()
 
     for slc in mcf_sliceFiles: os.remove(slc)
@@ -143,28 +141,28 @@ def getMask(input_file,threshold):
     threshold = threshold/10
     output_file = os.path.join(os.path.dirname(input_file), 'mask.nii.gz')
     thres = fsl.Threshold(in_file=input_file,thresh=threshold,out_file=output_file,output_datatype='char',args='-Tmin -bin')
-    logging.info(thres.cmdline)
+    print(thres.cmdline)
     thres.run()
     return output_file
 
 def dilF(input_file):
     output_file = os.path.join(os.path.dirname(input_file), 'mask.nii.gz')
     mydilf = fsl.DilateImage(in_file=input_file, operation='max', out_file=output_file)
-    logging.info(mydilf.cmdline)
+    print(mydilf.cmdline)
     mydilf.run()
     return output_file
 
 def applyMask(input_file,mask_file,appendix):
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + appendix+ '.nii.gz'
     myMaskapply = fsl.ApplyMask(in_file=input_file, out_file=output_file, mask_file=mask_file)
-    logging.info(myMaskapply.cmdline)
+    print(myMaskapply.cmdline)
     myMaskapply.run()
     return output_file
 
 def getMean(input_file,appendix):
     output_file = os.path.join(os.path.dirname(input_file), appendix+'.nii.gz')
     myMean = fsl.MeanImage(in_file=input_file, out_file=output_file)
-    logging.info(myMean.cmdline)
+    print(myMean.cmdline)
     myMean.run()
     return output_file
 
@@ -177,7 +175,7 @@ def applySusan(input_file,meanintensity,FWHM,mean_func):
 
     mySusan = fsl.SUSAN(in_file=fslPath, brightness_threshold=meanintensity, fwhm=FWHM, dimension=2,
                         use_median=1, usans=[(meanPath, meanintensity), ], out_file=output_file)
-    logging.info(mySusan.cmdline)
+    print(mySusan.cmdline)
     mySusan.run()
     os.remove(fslPath)
     os.remove(meanPath)
@@ -187,7 +185,7 @@ def applySusan(input_file,meanintensity,FWHM,mean_func):
 def mathOperation(input_file,scale_factor):
     output_file = os.path.join(os.path.dirname(input_file),  os.path.basename(input_file).split('.')[0])+'_intnorm.nii.gz'
     myMath = fsl.BinaryMaths(in_file=input_file,operand_value =scale_factor,operation='mul',out_file=output_file)
-    logging.info(myMath.cmdline)
+    print(myMath.cmdline)
     myMath.run()
     return output_file
 
@@ -203,13 +201,13 @@ def fsl_slicetimeCorrector(input_file, costum_timings, slice_order, TR):
 def filterFSL(input_file,highpass,tempMean):
     outputSFRGR = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('SRGR')[0])+'SFRGR.nii.gz'
     myHP = fsl.TemporalFilter(in_file = input_file,highpass_sigma=highpass, args='-add '+tempMean,out_file=outputSFRGR)
-    logging.info(myHP.cmdline)
+    print(myHP.cmdline)
     myHP.run()
     input_file = outputSFRGR
     output_file = os.path.join(os.path.dirname(input_file),  os.path.basename(input_file).split('.')[0])+'_thres_mask.nii.gz'
     #input_file = getMean(input_file,'HPmean')
     thres = fsl.Threshold(in_file=input_file, thresh=17, out_file=output_file, output_datatype='float',use_robust_range=True,args='-Tmean -bin')
-    logging.info(thres.cmdline)
+    print(thres.cmdline)
     thres.run()
 
     return outputSFRGR
@@ -224,7 +222,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     maskFile = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + 'Bet_mask.nii.gz'
     myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
                     vertical_gradient=vertical_gradient,robust=True, mask = True)
-    logging.info(myBet.cmdline)
+    print(myBet.cmdline)
     myBet.run()
     os.remove(fslPath)
     # unscale result data by factor 10ˆ(-1)
@@ -243,12 +241,7 @@ def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, c
         shutil.rmtree(regr_Path)
     os.mkdir(regr_Path)
 
-    #Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(os.path.dirname(regr_Path), "regress.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') 
-    logging.info("Regression started (wait!)")
-
-
+    print("Regression started (wait!)")
     # perform slice time correction
     if stc:
         input_File = fsl_slicetimeCorrector(input_File, costum_timings, slice_order, TR)
@@ -272,7 +265,7 @@ def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, c
 
     #  "robust intensity range" which calculates values similar to the 98% percentiles
     myStat = fsl.ImageStats(in_file=regr_File,op_string='-p 98',terminal_output='allatonce')
-    logging.info(myStat.cmdline)
+    print(myStat.cmdline)
     stat_result = myStat.run()
     upperp = stat_result.outputs.out_stat
 
@@ -281,7 +274,7 @@ def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, c
 
     # "robust intensity range" which calculates values similar to the 50% percentiles with mask
     myStat = fsl.ImageStats(in_file=regr_File, op_string=' -k ' +mask+ ' -p 50 ',mask_file=mask ,terminal_output='allatonce')
-    logging.info(myStat.cmdline)
+    print(myStat.cmdline)
     stat_result = myStat.run()
     meanintensity = stat_result.outputs.out_stat
     meanintensity = meanintensity*0.75
@@ -314,7 +307,7 @@ def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, c
     #highpass = 17.6056338028
     filtered_image = filterFSL(intnormSrgr_file,highpass,tempMean)
 
-    logging.info('Regression completed!')
+    print('Regression completed!')
     return regr_FileReal, srgr_file ,filtered_image
 
 if __name__ == "__main__":

@@ -16,8 +16,6 @@ import numpy as np
 import applyMICO
 import subprocess
 import shutil
-import logging
-
 
 def reset_orientation(input_file):
 
@@ -138,43 +136,39 @@ if __name__ == "__main__":
         input_file = args.input_file
     if not os.path.exists(input_file):
         sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
-        
-    #Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(os.path.dirname(input_file), "preprocess.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s') 
 
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     bias_skip = args.bias_skip
 
-    logging.info(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
+    print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
     reset_orientation(input_file)
-    logging.info("Orientation resetted to RAS")
+    print("Orientation resetted to RAS")
 
     #intensity correction using non parametric bias field correction algorithm
-    logging.info("Starting Biasfieldcorrection:")
+    print("Starting Biasfieldcorrection:")
     if bias_skip == 0:
         try:
             outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))
-            logging.info("Biasfieldcorrecttion was successful")
+            print("Biasfieldcorrecttion was successful")
         except Exception as e:
-            logging.error(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+            print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
             raise
     else:
         outputMICO = input_file
         
     # brain extraction
-    logging.info("Starting brain extraction")
+    print("Starting brain extraction")
     try:
         outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
-        logging.info("Brain extraction was successful")
+        print("Brain extraction was successful")
     except Exception as e:
-        logging.error(f'Error in brain extraction\nFehlermeldung: {str(e)}')
+        print(f'Error in brain extraction\nFehlermeldung: {str(e)}')
         raise
     
-    logging.info("Preprocessing completed")
+    print("Preprocessing completed")
  
 
 
