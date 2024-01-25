@@ -50,7 +50,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
     #    ' -cpp ' + outputAff + ' -inter 0 -res ' + outputAnno)
 
     # resample split  Annotation
-    outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
+    outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz')
     
     command = f"reg_resample -ref {brain_anno} -flo {splitAnno} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit}"
     command_args = shlex.split(command)
@@ -61,7 +61,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
         
-    command = f"reg_aladin -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
+    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -72,7 +72,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         
 
     # resample split rsfMRI Annotation
-    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map.nii.gz')
+    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_t2map_parental.nii.gz')
     
     command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
     command_args = shlex.split(command)
