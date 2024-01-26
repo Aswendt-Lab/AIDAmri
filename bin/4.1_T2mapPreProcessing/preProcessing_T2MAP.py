@@ -1,7 +1,7 @@
 """
-Created on 10/08/2017
+Created on 11/09/2023
 
-@author: Niklas Pallast
+@author: Marc Schneider
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
