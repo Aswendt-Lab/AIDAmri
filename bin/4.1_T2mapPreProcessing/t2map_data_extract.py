@@ -1,3 +1,12 @@
+"""
+Created on 11/09/2023
+
+@author: Marc Schneider
+Neuroimaging & Neuroengineering
+Department of Neurology
+University Hospital Cologne
+"""
+
 import nibabel as nii
 import numpy as np 
 import argparse
