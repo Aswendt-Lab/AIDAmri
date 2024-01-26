@@ -54,13 +54,13 @@ def extractT2Mapdata(img,rois,outfile,txt_file):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extracts the intensity of the t2map of every region')
+    parser = argparse.ArgumentParser(description='Extracts the T2 values from the T2 map for every atlas region')
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i','--input', help='Input t2map, should be a nifti file')
+    requiredNamed.add_argument('-i','--input', help='Input T2 map, should be a nifti file')
     args = parser.parse_args()
 
     acronyms_files = glob.glob(os.path.join(os.getcwd(),"*.txt"))
-    print(f"Extracting T2values for: {args.input}")
+    print(f"Extracting T2 values for: {args.input}")
     print(f"Acronym files: {acronyms_files}")
   
     # read image data
@@ -89,7 +89,7 @@ if __name__ == '__main__':
             print(f"Outifle: {outFile}")
             file = extractT2Mapdata(img,rois,outFile,acronmys)
         except Exception as e:
-            print(f'Error while processing the T2values Errorcode: {str(e)}')
+            print(f'Error while processing the T2 values Errorcode: {str(e)}')
             raise
 
-    print("Finished t2map processing")
+    print("Finished T2 map processing")
