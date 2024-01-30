@@ -1,0 +1,1 @@
+Stroke_mask.nii.gz testData.5.1.nii.gz preprocess.log testDataBias.nii.gz testDataBiasBet.nii.gz testDataBiasBet_mask.nii.gz
