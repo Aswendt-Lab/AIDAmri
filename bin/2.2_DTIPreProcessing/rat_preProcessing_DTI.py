@@ -73,6 +73,7 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     # unscale result data by factor 10ˆ(-1)
     dataOut = nii.load(output_file)
     imgOut = dataOut.get_fdata()
+    imgOut = np.flip(imgOut, 2)
     scale = np.eye(4)/ 10
     scale[3][3] = 1
 
@@ -87,7 +88,7 @@ def smoothIMG(input_file, output_path):
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
     """
     data = nii.load(input_file)
-    vol = data.get_fdata()
+    vol = data.dataobj.get_unscaled()
     ImgSmooth = np.min(vol, 3)
 
     unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)

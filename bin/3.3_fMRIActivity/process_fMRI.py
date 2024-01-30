@@ -45,7 +45,7 @@ def imgScaleResize(img):
 
 def scaleBy10(input_path,inv):
     data = nii.load(input_path)
-    imgTemp = data.get_ffdata()
+    imgTemp = data.get_fdata()
     if inv is False:
         scale = np.eye(4) * 10
         scale[3][3] = 1
@@ -76,7 +76,7 @@ def findSlicesData(path,pre):
 
 def getRASorientation(file_name,proc_Path):
     data = nii.load(file_name)
-    imgData = data.get_ffdata()
+    imgData = data.get_fdata()
 
     imgData = np.flip(imgData, 2)
     imgData = np.flip(imgData, 0)
