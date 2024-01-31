@@ -99,6 +99,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
     # cwd should contain the path of the /bin folder (the user needs to navigate to the /bin folder before executing this script)
+    #KEEP IN MIND DUE TO PARALLEL COMPUTING NO ERRORS IN THIS FUNCTION WILL BE PRINTED OUT => GREY ZONE
     errorList = [];
     message = '';
     cwd = str(os.getcwd())
@@ -210,7 +211,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             os.chdir(cwd + '/2.2_DTIPreProcessing')
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
-                currentFile = [file for file in currentFile if "AnnoSplit" not in file]
                 if len(currentFile)>0:
                     command = f'python preProcessing_DTI.py -i {currentFile[0]}'
                     run_subprocess(command,dataFormat,step)

@@ -75,6 +75,8 @@ if __name__ == '__main__':
         dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
         if not dir_seeds:
             dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f + '.gz')) # check for ending (either .nii or .nii.gz)
+        if not dir_seeds:
+            continue
         dir_seeds = dir_seeds[0]
         dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
