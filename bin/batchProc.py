@@ -208,6 +208,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             os.chdir(cwd + '/2.2_DTIPreProcessing')
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
+                currentFile = [file for file in currentFile if "AnnoSplit" not in file]
                 if len(currentFile)>0:
                     command = f'python preProcessing_DTI.py -i {currentFile[0]}'
                     run_subprocess(command,dataFormat,step)
@@ -272,6 +273,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-stc', '--slicetimecorrection', default = "False", type=str,
                                help='Set True or False if a slice time correction should be performed. Only set true if you converted raw bruker data with conv2nifti.py from aidamri beforehand. Otherwise choose False')
     optionalNamed.add_argument('-t', '--dataTypes', required=False, nargs='+', help='Data types to be processed e.g. anat, dwi and/or func. Multiple specifications are possible.')
+    optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
 
     args = parser.parse_args()
     pathToData = args.input
@@ -289,11 +291,17 @@ if __name__ == "__main__":
         dataTypes = ["anat", "dwi", "func", "t2map"]
     else:
         dataTypes = args.dataTypes
+
+    if args.debug_steps is None:
+        steps = ["preprocess","registration","process"]
+    else:
+        steps = args.debug_steps
     
     print('Entered information:')
     print(pathToData)
     print('dataTypes %s' % dataTypes)
     print('Slice time correction [%s]' % stc)
+    print('Steps %s' % steps)
     print()
 
     all_files = findData(pathToData, sessions, dataTypes)
@@ -301,10 +309,7 @@ if __name__ == "__main__":
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
     logging.info(f"Processing following datasets:\n{all_files}")
 
- 
     num_processes = multiprocessing.cpu_count()
-        
-    steps = ["preprocess","registration","process"]
 
     for key, value in all_files.items():
         if value:
