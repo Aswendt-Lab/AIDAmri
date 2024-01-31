@@ -70,7 +70,7 @@ if __name__ == '__main__':
     dsi_tools_20170214.tracking(dsi_studio, file_in)
 
     # Calculating connectivity
-    suffixes = ['*StrokeMask_scaled.nii', '*rsfMRI_Mask_scaled.nii', '*Anno_scaled.nii', '*Anno_rsfMRISplit_scaled.nii']
+    suffixes = ['*StrokeMask_scaled.nii', '*dwi_Mask_scaled.nii', '*Anno_scaled.nii', '*Anno_rsfMRISplit_scaled.nii']
     for f in suffixes:
         dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
         if not dir_seeds:
