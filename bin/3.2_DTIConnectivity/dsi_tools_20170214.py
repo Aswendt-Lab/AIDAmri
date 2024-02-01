@@ -259,7 +259,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     os.chdir(os.path.dirname(dir_in))
 
     cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s'
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --check_btable=%d --half_sphere=%d'
+    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --check_btable=%d --half_sphere=%d --cmd=%s'
 
     # create source files
     filename = os.path.basename(dir_in)
