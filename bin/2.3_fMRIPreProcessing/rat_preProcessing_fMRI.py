@@ -51,9 +51,12 @@ def applyBET(input_file,frac,radius,outputPath):
     imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
-    #imgTemp = np.rot90(imgTemp,2)
-    imgTemp = np.flip(imgTemp, 2)
+    
+    # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
+    imgTemp = np.flip(imgTemp,2)
     #imgTemp = np.flip(imgTemp, 0)
+    #imgTemp = np.rot90(imgTemp, 2)
+    
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
@@ -96,7 +99,7 @@ def smoothIMG(input_file,outputPath):
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
     """
     data = nii.load(input_file)
-    vol = data.get_fdata()
+    vol = data.dataobj.get_unscaled()
     ImgSmooth = np.min(vol, 3)
 
     unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
