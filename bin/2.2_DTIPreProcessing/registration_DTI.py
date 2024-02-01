@@ -60,7 +60,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
         
-    command = f"reg_aladin -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
+    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -274,12 +274,12 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     imgTempAllen = np.flip(imgTempAllen, 2)
     imgTempAnno = np.flip(imgTempAnno, 2)
     imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 2)
-    # imgTempAllen = np.rot90(imgTempAllen, 2)
-    # imgTempAnno = np.rot90(imgTempAnno, 2)
-    # imgTempAnnorsfMRI = np.rot90(imgTempAnnorsfMRI, 2)
-    # imgTempAllen = np.flip(imgTempAllen, 0)
-    # imgTempAnno = np.flip(imgTempAnno, 0)
-    #imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 0)
+    imgTempAllen = np.flip(imgTempAllen, 0)
+    imgTempAnno = np.flip(imgTempAnno, 0)
+    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 0)
+    imgTempAllen = np.flip(imgTempAllen, 1)
+    imgTempAnno = np.flip(imgTempAnno, 1)
+    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 1)
     scale = np.eye(4) * 10
     scale[3][3] = 1
 
