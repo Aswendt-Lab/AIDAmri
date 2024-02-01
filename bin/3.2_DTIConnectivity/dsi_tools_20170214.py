@@ -270,7 +270,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '16', 0, 1)
+    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '16', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
