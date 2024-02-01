@@ -196,6 +196,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
     os.chdir(dir_in)
 
     cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s'
+    # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, --thread_count: number of multi-threads used to conduct reconstruction 
     cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --thread_count=%d --check_btable=%d'
 
     file_list = [x for x in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, x)) and re.match(pattern_in, x)]
@@ -211,7 +212,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
 
         # create fib files
         file_msk = os.path.join(dir_msk, pre_msk + filename[:pos] + ext_nii)
-        parameters = (dsi_studio, 'rec', file_src, file_msk, 3, '16', 2, 0)
+        parameters = (dsi_studio, 'rec', file_src, file_msk, 3, '1.25', 2, 0)
         subprocess.call(cmd_rec % parameters)
 
     # extracts maps: 2 ways:
@@ -259,6 +260,9 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     os.chdir(os.path.dirname(dir_in))
 
     cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s'
+    # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
+    # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
+    # flip image orientation in x, y or z direction !! needs to be adjusted according to your data, check fiber tracking result to be anatomically meaningful
     cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --check_btable=%d --half_sphere=%d --cmd=%s'
 
     # create source files
@@ -270,7 +274,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '16', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
+    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '1.25', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
