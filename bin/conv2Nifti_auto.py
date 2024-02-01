@@ -334,7 +334,7 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description='This script automates the conversion from the raw bruker data format to the NIfTI format using 1_PV2NIfTiConverter/pv_conv2Nifti.py. The raw data needs to be in the following structure: projectfolder/days/subjects/data/. For this script to work, the groupMapping.csv needs to be adjusted, where the group name of every subject''s folder in the raw data structure needs to be specified. This script computes the converison either for all data in the raw project folder or for certain days and/or groups specified through the optional arguments -d and -g. During the processing a new folder called proc_data is being created in the same directory where the raw data folder is located. Example: python conv2Nifti_auto.py -f /Volumes/Desktop/MRI/raw_data -d Baseline P1 P7 P14 P28')
     parser.add_argument('-i', '--input', required=True,
-                        help='Path to the parent project folder of the dataset, e.g. raw_data', type=str)                 
+                        help='Path to the parent project folder of the dataset, e.g. raw_data, WARNING:  all of the raw subjects have to be in one folder and not to have a subfolder structure. otherwise the conversion to bids wont work.', type=str)                 
     parser.add_argument('-s', '--sessions',
                         help='Select which sessions of your data should be processed, if no days are given all data will be used.', type=str, required=False)
     parser.add_argument('-o', '--output', type=str, required=False, help='Output directory where the results will be saved.')
@@ -357,12 +357,12 @@ if __name__ == "__main__":
     # get list of raw data in input folder
     #list_of_raw = sorted([d for d in os.listdir(pathToRawData) if os.path.isdir(os.path.join(pathToRawData, d)) \
     #                          or (os.path.isfile(os.path.join(pathToRawData, d)) and (('zip' in d) or ('PvDataset' in d)))])
-    list_of_raw = glob.glob(os.path.join(pathToRawData,"**","subject"),recursive=True)
-    list_of_data = []
-    for path in list_of_raw:
-        list_of_data.append(os.path.dirname(path))
+    #list_of_raw = glob.glob(os.path.join(pathToRawData,"**","subject"),recursive=True)
+    #list_of_data = []
+    #for path in list_of_raw:
+    #    list_of_data.append(os.path.dirname(path))
 
-    fileCopy(list_of_data,pathToRawData)
+    #fileCopy(list_of_data,pathToRawData)
 
     list_of_raw = glob.glob(os.path.join(pathToRawData,"**","subject"),recursive=True)
     list_of_data = []
