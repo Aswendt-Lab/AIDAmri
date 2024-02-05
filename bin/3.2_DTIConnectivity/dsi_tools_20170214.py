@@ -309,7 +309,35 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     move_files(dir_fib, dir_qa, '/*md.nii.gz')
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
     move_files(dir_fib, dir_qa, '/*rd.nii.gz')
-
+    
+    fa_file = nii.load(glob.glob(os.path.join(dir_qa,"*fa.nii*"))[0])
+    fa_data = fa_file.get_fdata()
+    fa_data_flipped = np.flip(fa_data,0)
+    fa_data_flipped = np.flip(fa_data_flipped,1)
+    fa_file_flipped = nii.Nifti1Image(fa_data_flipped, fa_file.affine)
+    nii.save(fa_file_flipped,os.path.join(dir_qa,"fa_flipped.nii.gz"))
+    
+    md_file = nii.load(glob.glob(os.path.join(dir_qa,"*md.nii*"))[0])
+    md_data = md_file.get_fdata()
+    md_data_flipped = np.flip(md_data,0)
+    md_data_flipped = np.flip(md_data_flipped,1)
+    md_file_flipped = nii.Nifti1Image(md_data_flipped, md_file.affine)
+    nii.save(md_file_flipped,os.path.join(dir_qa,"md_flipped.nii.gz"))
+    
+    ad_file = nii.load(glob.glob(os.path.join(dir_qa,"*ad.nii*"))[0])
+    ad_data = ad_file.get_fdata()
+    ad_data_flipped = np.flip(ad_data,0)
+    ad_data_flipped = np.flip(ad_data_flipped,1)
+    ad_file_flipped = nii.Nifti1Image(ad_data_flipped, ad_file.affine)
+    nii.save(ad_file_flipped,os.path.join(dir_qa,"ad_flipped.nii.gz"))
+    
+    rd_file = nii.load(glob.glob(os.path.join(dir_qa,"*rd.nii*"))[0])
+    rd_data = rd_file.get_fdata()
+    rd_data_flipped = np.flip(rd_data,0)
+    rd_data_flipped = np.flip(rd_data_flipped,1)
+    rd_file_flipped = nii.Nifti1Image(rd_data_flipped, rd_file.affine)
+    nii.save(rd_file_flipped,os.path.join(dir_qa,"rd_flipped.nii.gz"))
+    
 def tracking(dsi_studio, dir_in):
     """
     Performs seed-based fiber-tracking.
