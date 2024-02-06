@@ -37,8 +37,8 @@ if __name__ == '__main__':
                                )
     parser.add_argument('-b',
                         '--b_table',
-                        default = b_table,
-                        help='b-table in input directory: %s' % (b_table,)
+                        default='auto',  # Default to 'auto' for automatic selection
+                        help='Specify the b-table source: "auto" (will look for bvec and bval, create the btable. If val or vec can not be found, it uses the Jones30 file)'
                         )
     parser.add_argument('-o',
                         '--optional',
@@ -46,6 +46,15 @@ if __name__ == '__main__':
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
                         )    
     args = parser.parse_args()
+        
+     # Determine the btable source based on the -b option
+    if args.b_table.lower() == 'auto':
+        # Use the merge_bval_bvec_to_btable function with folder_path as file_in
+        b_table = dsi_tools.merge_bval_bvec_to_btable(os.path.dirname(args.file_in))
+        if b_table is False:
+        # Use the default "Jones30" btable
+            b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/DTI_Jones30.txt'
+
 
     # Preparing directories
     file_cur = os.path.dirname(args.file_in)

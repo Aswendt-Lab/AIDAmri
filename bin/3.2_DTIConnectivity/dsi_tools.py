@@ -32,7 +32,7 @@ import numpy as np
 import nipype.interfaces.fsl as fsl
 import shutil
 import subprocess
-
+import pandas as pd
 
 def scaleBy10(input_path, inv):
     data = nii.load(input_path)
@@ -354,6 +354,61 @@ def tracking(dsi_studio, dir_in):
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
     os.system(cmd_trk % parameters)
+
+def merge_bval_bvec_to_btable(folder_path):
+    # List files in the specified folder
+    files = os.listdir(folder_path)
+
+    # Find bval and bvec files in the folder
+    bval_file = None
+    bvec_file = None
+
+    for file in files:
+        if file.endswith(".bval"):
+            bval_file = os.path.join(folder_path, file)
+        elif file.endswith(".bvec"):
+            bvec_file = os.path.join(folder_path, file)
+
+    # Check if both bval and bvec files were found
+    if bval_file is not None or bvec_file is not None:
+        print("Both bval and bvec files must be present in the folder.")
+        fileName = os.path.basename(bvec_file).replace(".bvec","")
+       
+    try:
+        with open(bval_file, 'r') as bval_file:
+            bval_contents = bval_file.read()
+            # Split the content into a list of values (assuming it's space-separated)
+            bval_values = bval_contents.strip().split()
+            # Convert the list to a Pandas DataFrame and cast the 'bval' column to integers
+            bval_table = pd.DataFrame({'bval': bval_values}).astype(float)
+
+        with open(bvec_file, 'r') as bvec_file:
+            # Read lines and split each line into values
+            bvec_lines = bvec_file.readlines()
+            bvec_values = [line.strip().split() for line in bvec_lines]
+
+            # Create a Pandas DataFrame from the values
+            bvec_table = pd.DataFrame(bvec_values, columns=[f'bvec_{i+1}' for i in range(len(bvec_values[0]))])
+            # Transpose the bvec_table
+            bvec_table = bvec_table.T
+
+        # Merge bval_table and bvec_table
+        merged_table = np.hstack((bval_table, bvec_table))
+        # Convert the merged_table content to float
+        merged_table = merged_table.astype(float)
+        # Define the path for the final merged table
+        final_path = os.path.join(folder_path, fileName + "_btable.txt")
+
+        # Save the merged table to the final file
+        np.savetxt(final_path, merged_table, fmt='%f', delimiter='\t')
+        print(f"Merged table saved to {final_path}")
+        return final_path
+    except FileNotFoundError:
+        print("One or both of the bval and bvec files were not found.")
+        return False
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return False
 
 if __name__ == '__main__':
     pass
