@@ -12,7 +12,7 @@ from __future__ import print_function
 import argparse
 import os
 import glob
-import dsi_tools_20170214
+import dsi_tools
 import shutil
 
 if __name__ == '__main__':
@@ -61,13 +61,13 @@ if __name__ == '__main__':
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
-    file_in = dsi_tools_20170214.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    dsi_tools_20170214.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
+    file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
+    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools_20170214.tracking(dsi_studio, file_in)
+    dsi_tools.tracking(dsi_studio, file_in)
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*par_Mask_scaled.nii', '*Anno_scaled.nii', '*Anno_par_scaled.nii']
@@ -78,7 +78,7 @@ if __name__ == '__main__':
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
-        dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
     # rename files to reduce path length
     confiles = os.path.join(file_cur,dir_con)
