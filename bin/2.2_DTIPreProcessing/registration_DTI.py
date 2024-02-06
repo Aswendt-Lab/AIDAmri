@@ -251,7 +251,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     # Allen Brain
     outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     outputAnnorparScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
-        0] + 'Anno_par_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+        0] + 'AnnoSplit_par_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     outputAllenBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
