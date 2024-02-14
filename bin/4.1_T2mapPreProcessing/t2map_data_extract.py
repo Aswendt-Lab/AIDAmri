@@ -81,7 +81,7 @@ if __name__ == '__main__':
     img_data = nii.load(image_file)
     img = img_data.dataobj.get_unscaled()
 
-    parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit_par.nii*"))[0]
+    parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit_parental.nii*"))[0]
     non_parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit.nii*"))[0]
 
     for acronmys in acronyms_files:

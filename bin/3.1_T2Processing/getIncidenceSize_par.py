@@ -197,7 +197,7 @@ def findRegisteredData(path):
 def findRegisteredAnno(path):
     regANNO_list = []
 
-    for filename in glob.iglob(path + '*/*_AnnorsfMRI.nii.gz', recursive=True):
+    for filename in glob.iglob(path + '*/*_Anno_parental.nii.gz', recursive=True):
         regANNO_list.append(filename)
 
     return regANNO_list
