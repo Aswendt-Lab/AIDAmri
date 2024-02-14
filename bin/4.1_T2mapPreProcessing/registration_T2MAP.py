@@ -72,7 +72,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         
 
     # resample split rsfMRI Annotation
-    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_par.nii.gz')
+    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
     
     command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
     command_args = shlex.split(command)
@@ -95,7 +95,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
 
     # resample rsfMRI Annotation
     outputAnno_rsfMRI = os.path.join(outfile,
-                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_par.nii.gz')
+                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
         
     command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
     command_args = shlex.split(command)
@@ -212,12 +212,12 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_par_mask.nii.gz'))
+                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_parental_mask.nii.gz'))
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
 
         # Stroke Mask
         outputMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'par_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+                                        os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
         #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
@@ -229,7 +229,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
         src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
-        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'par_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         shutil.copyfile(src_file, dst_file)
 
@@ -252,7 +252,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
     # Allen Brain
     outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     outputAnnorsfMRIScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
-        0] + 'AnnoSplit_par_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+        0] + 'AnnoSplit_parental_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     outputAllenBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
@@ -260,12 +260,12 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
     shutil.copyfile(src_file, dst_file)
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'AnnoSplit_par_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'AnnoSplit_parental_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
     shutil.copyfile(src_file, dst_file)
 
 
     dataAnno = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz'))
-    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_par.nii.gz'))
+    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz'))
     dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
 
     imgTempAnno = dataAnno.get_fdata()

@@ -92,7 +92,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         raise
 
     # resample parental annotations
-    outputAnnorsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnorsfMRI.nii.gz')
+    outputAnnorsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
 
     command = f"reg_resample -ref {inputVolume} -flo {allenBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI}"
     command_args = shlex.split(command)
