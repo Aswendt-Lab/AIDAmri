@@ -353,10 +353,10 @@ if __name__ == "__main__":
     
 
     atlasPath = os.path.dirname(input_file)
-    roisPath = copyAtlasOfData(atlasPath,'Anno_rsfMRI',labels)
+    roisPath = copyAtlasOfData(atlasPath,'Anno_parental',labels)
 
     fslMeantsFile = fsl_mean_ts.start_fsl_mean_ts(sfrgr_file, roisPath, labelNames, 'MasksTCs.')
 
-    roisPath = copyAtlasOfData(atlasPath, 'AnnoSplit_rsfMRI', labels2000)
+    roisPath = copyAtlasOfData(atlasPath, 'AnnoSplit_parental', labels2000)
 
     fslMeantsFile = fsl_mean_ts.start_fsl_mean_ts(sfrgr_file, roisPath, labelNames2000, 'MasksTCsSplit.')

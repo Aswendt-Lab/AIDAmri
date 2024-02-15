@@ -68,10 +68,10 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
             print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
-    # resample split rsfMRI annotation
-    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_rsfMRI.nii.gz')
+    # resample split parental annotation
+    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
     if dref:
-        pathT2 = glob.glob(os.path.dirname(outfile) + '*/dwi/*AnnoSplit_rsfMRI.nii.gz', recursive=False)
+        pathT2 = glob.glob(os.path.dirname(outfile) + '*/dwi/*AnnoSplit_parental.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputAnnoSplit_rsfMRI)
     else:
         command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
@@ -92,11 +92,11 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
             print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
             raise
 
-    # resample rsfMRI annotation
+    # resample parental annotation
     outputAnno_rsfMRI = os.path.join(outfile,
-                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_rsfMRI.nii.gz')
+                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
     if dref:
-        pathT2 = glob.glob(os.path.dirname(outfile) + '*/DTI/*Anno_rsfMRI.nii.gz', recursive=False)
+        pathT2 = glob.glob(os.path.dirname(outfile) + '*/dwi/*Anno_parental.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputAnno_rsfMRI)
     else: 
         command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"

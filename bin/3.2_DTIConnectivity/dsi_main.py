@@ -32,7 +32,7 @@ if __name__ == '__main__':
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument('-i',
                                '--file_in',
-                               help = 'path to the raw NIfTI DTI file (ends with *1.nii.gz)',
+                               help = 'path to the raw NIfTI DTI file (ends with *dwi.nii.gz)',
                                required=True
                                )
     parser.add_argument('-b',
@@ -71,7 +71,7 @@ if __name__ == '__main__':
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
     file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
+    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
     # Fiber tracking
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     dsi_tools.tracking(dsi_studio, file_in)
 
     # Calculating connectivity
-    suffixes = ['*StrokeMask_scaled.nii', '*par_Mask_scaled.nii', '*Anno_scaled.nii', '*Anno_par_scaled.nii']
+    suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
     for f in suffixes:
         dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
         if not dir_seeds:
