@@ -77,6 +77,7 @@ def findData(projectPath, sessions, dataTypes):
     return all_files
     
 def run_subprocess(command,datatype, step):
+    timeout = 3600 # set maximum time in seconds after which the subprocess will be terminated
     command_args = shlex.split(command)
     file = command_args[-1]
     if datatype == "func" and step =="process":
@@ -88,7 +89,9 @@ def run_subprocess(command,datatype, step):
         logging.info(f"Running command: {command}.\nCheck {log_file} for further information.")
         with open(log_file, 'w') as outfile:
             time.sleep(2) # make sure logging file is created before starting the subprocess
-            result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True)
+            result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        logging.error(f'Timeout expired for command: {command_args}')
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
@@ -307,11 +310,11 @@ if __name__ == "__main__":
     print()
 
     all_files = findData(pathToData, sessions, dataTypes)
+    num_processes = max(1, int(multiprocessing.cpu_count() / 2))  # Use half of available CPUs, but at least one
     
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
+    logging.info(f"Using {num_processes} CPUs for the parallelization")
     logging.info(f"Processing following datasets:\n{all_files}")
-
-    num_processes = multiprocessing.cpu_count()
 
     for key, value in all_files.items():
         if value:
