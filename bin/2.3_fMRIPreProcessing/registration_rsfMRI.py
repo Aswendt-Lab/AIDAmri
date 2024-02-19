@@ -53,7 +53,7 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
   
-    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
+    command = f"reg_resample -ref {inputVolume} -flo {splitAnno} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -75,7 +75,7 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
     
-    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {splitAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -97,7 +97,7 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
     
-    command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {anno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -138,7 +138,7 @@ def find_relatedData(pathBase):
     pathRestingStateTPL =  os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0_restingStateTPL.nii.gz'
     pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
     pathAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_restingStateAtlas.nii.gz'
-    pathAllen = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/average_template_50.nii.gz'
+    pathAllen = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/average_template_50_restingStateAtlas.nii.gz'
     bsplineMatrix =  os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0_to_RS_MatrixBspline.nii'
     return pathRestingStateTPL,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
 
@@ -153,11 +153,11 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000_restingStateAtlas.nii.gz')
     parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI_restingStateAtlas.nii.gz')
     parser.add_argument('-a', '--anno_rsfMRI', help='Annotations atlas for rsfMRI', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume_restingStateAtlas.nii.gz')
 
 
 
