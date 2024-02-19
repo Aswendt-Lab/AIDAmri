@@ -139,7 +139,7 @@ def find_relatedData(pathBase):
     pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
     pathAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_restingStateAtlas.nii.gz'
     pathAllen = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/average_template_50.nii.gz'
-    bsplineMatrix =  glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
+    bsplineMatrix =  os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0_to_RS_MatrixBspline.nii'
     return pathRestingStateTPL,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
 
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
         restingStateTPL = []
         sys.exit("Error: %s' has no reference T2 template." % (os.path.basename(inputVolume),))
     else:
-        restingStateTPL = pathRestingStateTPL[0]
+        restingStateTPL = pathRestingStateTPL
 
     if len(pathStroke_mask) is 0:
         pathStroke_mask = []
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         pathAnno = []
         sys.exit("Error: %s' has no reference annotations." % (os.path.basename(inputVolume),))
     else:
-        brain_anno = pathAnno[0]
+        brain_anno = pathAnno
 
     if len(pathTemplate) is 0:
         pathTemplate = []
@@ -212,7 +212,7 @@ if __name__ == "__main__":
         bsplineMatrix = []
         sys.exit("Error: %s' has no bspline Matrix." % (os.path.basename(inputVolume),))
     else:
-        bsplineMatrix = bsplineMatrix[0]
+        bsplineMatrix = bsplineMatrix
 
 
     # find reference stroke mask
