@@ -77,6 +77,7 @@ def findData(projectPath, sessions, dataTypes):
     return all_files
     
 def run_subprocess(command,datatype, step):
+    timeout = 3600 # set maximum time in seconds after which the subprocess will be terminated
     command_args = shlex.split(command)
     file = command_args[-1]
     if datatype == "func" and step =="process":
@@ -88,7 +89,9 @@ def run_subprocess(command,datatype, step):
         logging.info(f"Running command: {command}.\nCheck {log_file} for further information.")
         with open(log_file, 'w') as outfile:
             time.sleep(2) # make sure logging file is created before starting the subprocess
-            result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True)
+            result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        logging.error(f'Timeout expired for command: {command_args}')
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
@@ -276,6 +279,9 @@ if __name__ == "__main__":
                                help='Set True or False if a slice time correction should be performed. Only set true if you converted raw bruker data with conv2nifti.py from aidamri beforehand. Otherwise choose False')
     optionalNamed.add_argument('-t', '--dataTypes', required=False, nargs='+', help='Data types to be processed e.g. anat, dwi and/or func. Multiple specifications are possible.')
     optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
+    optionalNamed.add_argument('-cpu', '--cpu_cores', required=False, default = "Half", help='Define how many parallel processes should be use to process your data. CAUTION: Too many processes will slow down your computer noticeably. Select between: ["Min", "Half", "Max"]')
+    optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
+    
 
     args = parser.parse_args()
     pathToData = args.input
@@ -307,11 +313,22 @@ if __name__ == "__main__":
     print()
 
     all_files = findData(pathToData, sessions, dataTypes)
-    
-    logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
-    logging.info(f"Processing following datasets:\n{all_files}")
 
-    num_processes = multiprocessing.cpu_count()
+    if args.cpu_cores.upper() == "MIN":
+        num_processes = 1
+    elif args.cpu_cores.upper() == "HALF":
+        num_processes = int(multiprocessing.cpu_count() / 2)
+    elif args.cpu_cores.upper() == "MAX":
+        num_processes = multiprocessing.cpu_count()
+
+    if args.expert_cpu:
+        num_processes = int(args.expert_cpu)
+    
+    print(f"Running with {num_processes} parallel processes!")
+
+    logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
+    logging.info(f"Using {num_processes} CPUs for the parallelization")
+    logging.info(f"Processing following datasets:\n{all_files}")
 
     for key, value in all_files.items():
         if value:

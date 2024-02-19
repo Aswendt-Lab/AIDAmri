@@ -39,7 +39,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise
 
     # resample Annotation
@@ -57,7 +57,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise
         
     command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
@@ -66,52 +66,52 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise    
         
 
-    # resample split rsfMRI Annotation
-    outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_dwi.nii.gz')
+    # resample split par Annotation
+    outputAnnoSplit_par = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
     
-    command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+    command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_par}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise 
         
-    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_par} -trans {outputAff} -inter 0 -res {outputAnnoSplit_par}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise 
 
 
-    # resample rsfMRI Annotation
-    outputAnno_rsfMRI = os.path.join(outfile,
-                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_dwi.nii.gz')
+    # resample par Annotation
+    outputAnno_par = os.path.join(outfile,
+                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
         
-    command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
+    command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_par}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise     
        
-    command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {outputAnno_par} -trans {outputAff} -inter 0 -res {outputAnno_par}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise   
 
 
@@ -125,7 +125,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise  
 
     # Some scaled data for DSI Studio
@@ -145,7 +145,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
             print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
             raise 
 
         stroke_mask = outputRefStrokeMaskAff
@@ -162,11 +162,11 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
             print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
             raise 
 
         # Superposition of annotations and mask
-        dataAnno = nii.load(outputAnnoSplit_rsfMRI)
+        dataAnno = nii.load(outputAnnoSplit_par)
         dataStroke = nii.load(outputStrokeMask)
         imgAnno = dataAnno.get_fdata()
         imgStroke = dataStroke.get_fdata()
@@ -199,7 +199,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         shutil.copyfile(src_file, dst_file)
 
         # Superposition of rsfMRI annotations and mask
-        dataAnno = nii.load(outputAnnoSplit_rsfMRI)
+        dataAnno = nii.load(outputAnnoSplit_par)
         dataStroke = nii.load(outputStrokeMask)
         imgAnno = dataAnno.get_fdata()
         imgStroke = dataStroke.get_fdata()
@@ -211,12 +211,12 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_dwi_mask.nii.gz'))
+                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_parental_mask.nii.gz'))
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
 
         # Stroke Mask
         outputMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'dwi_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+                                        os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
         #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
@@ -228,7 +228,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
         src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
-        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'dwi_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         shutil.copyfile(src_file, dst_file)
 
@@ -250,8 +250,8 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     # Allen Brain
     outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    outputAnnorsfMRIScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
-        0] + 'Anno_rsfMRISplit_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+    outputAnnorparScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
+        0] + 'AnnoSplit_parental_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     outputAllenBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
@@ -259,41 +259,35 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     shutil.copyfile(src_file, dst_file)
 
     src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_dwiSplit_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
+    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'AnnoSplit_parental_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
     shutil.copyfile(src_file, dst_file)
 
 
     dataAnno = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz'))
-    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_dwi.nii.gz'))
+    dataAnnorspar = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz'))
     dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
 
     imgTempAnno = dataAnno.get_fdata()
-    imgTempAnnorsfMRI = dataAnnorsfMRI.get_fdata()
+    imgTempAnnorspar = dataAnnorspar.get_fdata()
     imgTempAllen = dataAllen.get_fdata()
 
     imgTempAllen = np.flip(imgTempAllen, 2)
     imgTempAnno = np.flip(imgTempAnno, 2)
-    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 2)
-    imgTempAllen = np.flip(imgTempAllen, 0)
-    imgTempAnno = np.flip(imgTempAnno, 0)
-    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 0)
-    imgTempAllen = np.flip(imgTempAllen, 1)
-    imgTempAnno = np.flip(imgTempAnno, 1)
-    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 1)
+    imgTempAnnorspar = np.flip(imgTempAnnorspar, 2)
     scale = np.eye(4) * 10
     scale[3][3] = 1
 
     unscaledNiiDataAnno = nii.Nifti1Image(imgTempAnno, dataAnno.affine * scale)
-    unscaledNiiDataAnnorsfMRI = nii.Nifti1Image(imgTempAnnorsfMRI, dataAnnorsfMRI.affine * scale)
+    unscaledNiiDataAnnorspar = nii.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine * scale)
     unscaledNiiDataAllen = nii.Nifti1Image(imgTempAllen, dataAllen.affine * scale)
     hdrOut = unscaledNiiDataAnno.header
     hdrOut.set_xyzt_units('mm')
-    hdrOut = unscaledNiiDataAnnorsfMRI.header
+    hdrOut = unscaledNiiDataAnnorspar.header
     hdrOut.set_xyzt_units('mm')
     hdrOut = unscaledNiiDataAllen.header
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiDataAnno, outputAnnoScaled)
-    nii.save(unscaledNiiDataAnnorsfMRI, outputAnnorsfMRIScaled)
+    nii.save(unscaledNiiDataAnnorspar, outputAnnorparScaled)
     nii.save(unscaledNiiDataAllen, outputAllenBScaled)
 
     if outputRefStrokeMaskAff is not None:
