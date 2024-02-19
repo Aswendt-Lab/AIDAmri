@@ -106,7 +106,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, sigmaBrain_template,si
     # resample parental split annotations
     outputAnnorsfMRI_split = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
 
-    command = f"reg_resample -ref {inputVolume} -flo {split_SigmaBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI_split}"
+    command = f"reg_resample -ref {inputVolume} -flo {split_sigmaBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI_split}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -259,7 +259,7 @@ if __name__ == "__main__":
     else:
         stroke_mask = stroke_mask[0]
 
-    transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,sigmaBrain_template,sigmaBrain_anno,split_anno,anno_rsfMRI,split_sigmaBrain_annorsfMRI,,outfile,deformationStrength)
+    transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,sigmaBrain_template,sigmaBrain_anno,split_anno,anno_rsfMRI,split_sigmaBrain_annorsfMRI,outfile,deformationStrength)
 
     current_dir = os.path.dirname(inputVolume)
     search_string = os.path.join(current_dir, "*T2w.nii.gz")
