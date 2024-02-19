@@ -12,7 +12,7 @@ from __future__ import print_function
 import argparse
 import os
 import glob
-import dsi_tools_20170214
+import dsi_tools
 import shutil
 
 if __name__ == '__main__':
@@ -32,13 +32,13 @@ if __name__ == '__main__':
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument('-i',
                                '--file_in',
-                               help = 'path to the raw NIfTI DTI file (ends with *1.nii.gz)',
+                               help = 'path to the raw NIfTI DTI file (ends with *dwi.nii.gz)',
                                required=True
                                )
     parser.add_argument('-b',
                         '--b_table',
-                        default = b_table,
-                        help='b-table in input directory: %s' % (b_table,)
+                        default='auto',  # Default to 'auto' for automatic selection
+                        help='Specify the b-table source: "auto" (will look for bvec and bval, create the btable. If val or vec can not be found, it uses the Jones30 file)'
                         )
     parser.add_argument('-o',
                         '--optional',
@@ -46,6 +46,15 @@ if __name__ == '__main__':
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
                         )    
     args = parser.parse_args()
+        
+     # Determine the btable source based on the -b option
+    if args.b_table.lower() == 'auto':
+        # Use the merge_bval_bvec_to_btable function with folder_path as file_in
+        b_table = dsi_tools.merge_bval_bvec_to_btable(os.path.dirname(args.file_in))
+        if b_table is False:
+        # Use the default "Jones30" btable
+            b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/DTI_Jones30.txt'
+
 
     # Preparing directories
     file_cur = os.path.dirname(args.file_in)
@@ -61,16 +70,16 @@ if __name__ == '__main__':
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
-    file_in = dsi_tools_20170214.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    dsi_tools_20170214.srcgen(dsi_studio, file_in, dir_mask, dir_out, args.b_table)
+    file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
+    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools_20170214.tracking(dsi_studio, file_in)
+    dsi_tools.tracking(dsi_studio, file_in)
 
     # Calculating connectivity
-    suffixes = ['*StrokeMask_scaled.nii', '*dwi_Mask_scaled.nii', '*Anno_scaled.nii', '*Anno_rsfMRISplit_scaled.nii']
+    suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
     for f in suffixes:
         dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
         if not dir_seeds:
@@ -78,7 +87,7 @@ if __name__ == '__main__':
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
-        dsi_tools_20170214.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
 
     # rename files to reduce path length
     confiles = os.path.join(file_cur,dir_con)
