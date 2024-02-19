@@ -1,249 +1,235 @@
-################################################
-# ITK-SnAP Label Description File
-# File format: 
-# IDX   -R-  -G-  -B-  -A--  VIS MSH  LABEL
-# Fields: 
-#    IDX:   Zero-based index 
-#    -R-:   Red color component (0..255)
-#    -G-:   Green color component (0..255)
-#    -B-:   Blue color component (0..255)
-#    -A-:   Label transparency (0.00 .. 1.00)
-#    VIS:   Label visibility (0 or 1)
-#    IDX:   Label mesh visibility (0 or 1)
-#  LABEL:   Label description 
-################################################
-0	0	0	0	0	0	0	"Clear Label"
-1171	255	255	255	1	1	1	"Ventricular System-L"
-171	255	0	0	1	1	1	"Globus Pallidus-L"
-731	255	13	0	1	1	1	"Striatum-L"
-221	255	66	0	1	1	1	"Granule Cell Level of the Cerebellum-L"
-341	255	79	0	1	1	1	"Molecular Layer of the Cerebellum-L"
-31	255	145	0	1	1	1	"Amygdalohyppocampic Area-L"
-41	255	158	0	1	1	1	"Amygdalopiriform Cortex-L"
-491	255	171	0	1	1	1	"Primary Auditory Cortex-L"
-681	255	185	0	1	1	1	"Secondary Auditory Cortex Dorsal Part-L"
-691	255	198	0	1	1	1	"Secondary Auditory Cortex Ventral Part-L"
-211	255	211	0	1	1	1	"Lateral Primary Auditory Cortex-L"
-501	255	224	0	1	1	1	"Primary Cingular Cortex-L"
-701	255	237	0	1	1	1	"Secondary Cingular Cortex-L"
-71	255	251	0	1	1	1	"Cornu Ammonis 1-L"
-81	246	255	0	1	1	1	"Cornu Ammonis 2-L"
-91	233	255	0	1	1	1	"Cornu Ammonis 3-L"
-101	220	255	0	1	1	1	"Dentate Gyrus-L"
-151	207	255	0	1	1	1	"Fasciola Cinereum-L"
-371	193	255	0	1	1	1	"Parasubiculum-L"
-471	180	255	0	1	1	1	"Presubiculum-L"
-741	167	255	0	1	1	1	"Subiculum-L"
-11	114	255	0	1	1	1	"Agranular Dysgranular Insular Cortex-L"
-21	101	255	0	1	1	1	"Agranular Insular Cortex-L"
-121	88	255	0	1	1	1	"Dysgranular Insular Cortex-L"
-451	75	255	0	1	1	1	"Posterior Agralunar Insular Cortex-L"
-111	62	255	0	1	1	1	"Dorso Lateral Orbital Cortex-L"
-161	48	255	0	1	1	1	"Frontal Association Cortex-L"
-361	35	255	0	1	1	1	"Orbitofrontal Region-L"
-461	22	255	0	1	1	1	"PreLimbic System-L"
-511	9	255	0	1	1	1	"Primary Motor Cortex-L"
-711	0	255	4	1	1	1	"Secondary Motor Cortex-L"
-141	0	255	18	1	1	1	"Entorhinal Cortex-L"
-251	0	255	31	1	1	1	"Lateral Entorhinal Cortex Internal part-L"
-261	0	255	44	1	1	1	"Lateral Entorhinal Cortex-L"
-271	0	255	57	1	1	1	"Lateral Entorhinal Cortex external part-L"
-301	0	255	70	1	1	1	"Medial Entorhinal Cortex-L"
-421	0	255	84	1	1	1	"Perirhinal Area 35-L"
-431	0	255	97	1	1	1	"Perirhinal Area 36-L"
-441	0	255	110	1	1	1	"Perirhinal Cortex-L"
-281	0	255	176	1	1	1	"Lateral Parietal Associative Cortex-L"
-311	0	255	189	1	1	1	"Medial Parietal Associative Cortex-L"
-381	0	255	202	1	1	1	"Parietal Cortex Postero Caudal Part-L"
-391	0	255	215	1	1	1	"Parietal Cortex Postero Dorsal Part-L"
-401	0	255	229	1	1	1	"Parietal Cortex Postero Rostral-L"
-651	0	255	242	1	1	1	"Retosplenial Dysgranular Cortex-L"
-661	0	255	255	1	1	1	"Retrosplenial Granular Cortex Part A-L"
-671	0	242	255	1	1	1	"Retrosplenial Granular Cortex Part B-L"
-521	0	229	255	1	1	1	"Primary Somatosensory Cortex Barrel field-L"
-531	0	215	255	1	1	1	"Primary Somatosensory Cortex Dysgranular-L"
-541	0	202	255	1	1	1	"Primary Somatosensory Cortex Dysgranular Zone 0-L"
-551	0	189	255	1	1	1	"Primary Somatosensory Cortex Forelimb-L"
-561	0	176	255	1	1	1	"Primary Somatosensory Cortex Hindlimb-L"
-571	0	163	255	1	1	1	"Primary Somatosensory Cortex Jaw-L"
-581	0	149	255	1	1	1	"Primary Somatosensory Cortex-L"
-591	0	136	255	1	1	1	"Primary Somatosensory Cortex Shoulder-L"
-601	0	123	255	1	1	1	"Primary Somatosensory Cortex Trunk-L"
-611	0	110	255	1	1	1	"Primary Somatosensory Cortex Upperlips-L"
-721	0	97	255	1	1	1	"Secondary Somatosensory Cortex-L"
-131	0	84	255	1	1	1	"Ectorhinal Cortex-L"
-201	0	70	255	1	1	1	"Lateral Temporal Associative Cortex-L"
-771	0	57	255	1	1	1	"Temporal Associative Cortex-L"
-291	0	44	255	1	1	1	"Lateral Secondary Visual Cortex-L"
-321	0	31	255	1	1	1	"Medio Lateral Secondary Visual Cortex-L"
-331	0	18	255	1	1	1	"Medio Medial Secondary Visual Cortex-L"
-621	0	4	255	1	1	1	"Primary Visual Cortex Binocular Area-L"
-631	9	0	255	1	1	1	"Primary Visual Cortex-L"
-641	22	0	255	1	1	1	"Primary Visual Cortex Monocular Area-L"
-61	35	0	255	1	1	1	"Bed Nucleus of the Stria Terminalis-L"
-231	48	0	255	1	1	1	"Hypothalamic Region-L"
-411	62	0	255	1	1	1	"Periaqueductal Gray-L"
-481	75	0	255	1	1	1	"Pretectal Region-L"
-971	88	0	255	1	1	1	"External Cortex of the Inferior Colliculus -L"
-1061	101	0	255	1	1	1	"Septal Region-L"
-51	233	0	255	1	1	1	"Basal Forebrain Region-L"
-241	246	0	255	1	1	1	"Interpeduncular Nucleus-L"
-751	255	0	251	1	1	1	"Substantia Nigra-L"
-761	255	0	237	1	1	1	"Superficial Gray Layer of the Superior Colliculus-L"
-181	0	255	123	1	1	1	"Glomerular Layer of the Accessory Olfactory Bulb-L"
-191	0	255	136	1	1	1	"Glomerular Layer of the Olfactory Bulb-L"
-351	0	255	149	1	1	1	"Olfactory Bulb-L"
-801	255	26	0	1	1	1	"Anterior Commissure anterior part-L"
-811	255	40	0	1	1	1	"Anterior Commissure posterior part-L"
-1091	255	53	0	1	1	1	"Dorsal Fornix-L"
-821	255	0	158	1	1	1	"Ascending Fibers of the Facial Nerve-L"
-841	255	0	145	1	1	1	"Brainstem-L"
-851	255	0	132	1	1	1	"Central Canal-L"
-921	255	0	119	1	1	1	"Genu of the Facial Nerve-L"
-1181	255	0	106	1	1	1	"Inferior Olive/PyramidalDecusation/SP5-L"
-1041	255	0	92	1	1	1	"Posterior Commissure-L"
-1101	255	0	79	1	1	1	"Fimbria of the Hippocampus-L"
-1161	255	0	66	1	1	1	"Periventricular Grey-L"
-991	255	92	0	1	1	1	"Medial Lemniscus Decussation-L"
-1001	255	106	0	1	1	1	"Medial Lemniscus-L"
-1011	255	119	0	1	1	1	"Middle Cerebellar Peduncle -L"
-1051	255	132	0	1	1	1	"Pyramidal tract-L"
-781	154	255	0	1	1	1	"Fimbria of the Hippocampus-L"
-941	141	255	0	1	1	1	"Fimbria of the Hippocampus-L"
-961	128	255	0	1	1	1	"Inferior Cerebellar Peduncle/Spinal Trigeminal Tract-L"
-951	128	0	255	1	1	1	"Fornix-L"
-981	141	0	255	1	1	1	"Mammillothalamic Tract-L"
-1021	154	0	255	1	1	1	"Optic Tract and Optic Chiasm-L"
-1071	167	0	255	1	1	1	"Spinal Cord-L"
-1111	180	0	255	1	1	1	"Subthalamic Nucleus-L"
-1131	193	0	255	1	1	1	"Thalamus -L"
-1141	207	0	255	1	1	1	"Brachium Pontis-L"
-1151	220	0	255	1	1	1	"Ventral Hippocampal Commissure-L"
-891	255	0	53	1	1	1	"Corpus Callosum and Associated Subcortical White Matter-L"
-911	255	0	40	1	1	1	"Descending Corticofugal Pathways and Globus Pallidum-L"
-931	255	0	26	1	1	1	"Fasciculus Retroflexus-L"
-831	255	0	224	1	1	1	"Brachium of the Superior Colliculus-L"
-871	255	0	211	1	1	1	"Commissure of the Inferior Colliculus-L"
-881	255	0	198	1	1	1	"Commissure of the Superior Colliculus-L"
-901	255	0	185	1	1	1	"Deeper Layers of the Superior Colliculus-L"
-1081	255	0	171	1	1	1	"SP5-L"
-791	0	255	163	1	1	1	"Anterior Commissure Intrabulbar part-L"
-1121	255	0	13	1	1	1	"Optic Pathways-L"
-1031	207	0	154	1	1	1	"Pons-R"
-1172	255	255	255	1	1	1	"Ventricular System-R"
-172	255	0	0	1	1	1	"Globus Pallidus-R"
-732	255	13	0	1	1	1	"Striatum-R"
-222	255	66	0	1	1	1	"Granule Cell Level of the Cerebellum-R"
-342	255	79	0	1	1	1	"Molecular Layer of the Cerebellum-R"
-32	255	145	0	1	1	1	"Amygdalohyppocampic Area-R"
-42	255	158	0	1	1	1	"Amygdalopiriform Cortex-R"
-492	255	171	0	1	1	1	"Primary Auditory Cortex-R"
-682	255	185	0	1	1	1	"Secondary Auditory Cortex Dorsal Part-R"
-692	255	198	0	1	1	1	"Secondary Auditory Cortex Ventral Part-R"
-212	255	211	0	1	1	1	"Lateral Primary Auditory Cortex-R"
-502	255	224	0	1	1	1	"Primary Cingular Cortex-R"
-702	255	237	0	1	1	1	"Secondary Cingular Cortex-R"
-72	255	251	0	1	1	1	"Cornu Ammonis 1-R"
-82	246	255	0	1	1	1	"Cornu Ammonis 2-R"
-92	233	255	0	1	1	1	"Cornu Ammonis 3-R"
-102	220	255	0	1	1	1	"Dentate Gyrus-R"
-152	207	255	0	1	1	1	"Fasciola Cinereum-R"
-372	193	255	0	1	1	1	"Parasubiculum-R"
-472	180	255	0	1	1	1	"Presubiculum-R"
-742	167	255	0	1	1	1	"Subiculum-R"
-12	114	255	0	1	1	1	"Agranular Dysgranular Insular Cortex-R"
-22	101	255	0	1	1	1	"Agranular Insular Cortex-R"
-122	88	255	0	1	1	1	"Dysgranular Insular Cortex-R"
-452	75	255	0	1	1	1	"Posterior Agralunar Insular Cortex-R"
-112	62	255	0	1	1	1	"Dorso Lateral Orbital Cortex-R"
-162	48	255	0	1	1	1	"Frontal Association Cortex-R"
-362	35	255	0	1	1	1	"Orbitofrontal Region-R"
-462	22	255	0	1	1	1	"PreLimbic System-R"
-512	9	255	0	1	1	1	"Primary Motor Cortex-R"
-712	0	255	4	1	1	1	"Secondary Motor Cortex-R"
-142	0	255	18	1	1	1	"Entorhinal Cortex-R"
-252	0	255	31	1	1	1	"Lateral Entorhinal Cortex Internal part-R"
-262	0	255	44	1	1	1	"Lateral Entorhinal Cortex-R"
-272	0	255	57	1	1	1	"Lateral Entorhinal Cortex external part-R"
-302	0	255	70	1	1	1	"Medial Entorhinal Cortex-R"
-422	0	255	84	1	1	1	"Perirhinal Area 35-R"
-432	0	255	97	1	1	1	"Perirhinal Area 36-R"
-442	0	255	110	1	1	1	"Perirhinal Cortex-R"
-282	0	255	176	1	1	1	"Lateral Parietal Associative Cortex-R"
-312	0	255	189	1	1	1	"Medial Parietal Associative Cortex-R"
-382	0	255	202	1	1	1	"Parietal Cortex Postero Caudal Part-R"
-392	0	255	215	1	1	1	"Parietal Cortex Postero Dorsal Part-R"
-402	0	255	229	1	1	1	"Parietal Cortex Postero Rostral-R"
-652	0	255	242	1	1	1	"Retosplenial Dysgranular Cortex-R"
-662	0	255	255	1	1	1	"Retrosplenial Granular Cortex Part A-R"
-672	0	242	255	1	1	1	"Retrosplenial Granular Cortex Part B-R"
-522	0	229	255	1	1	1	"Primary Somatosensory Cortex Barrel field-R"
-532	0	215	255	1	1	1	"Primary Somatosensory Cortex Dysgranular-R"
-542	0	202	255	1	1	1	"Primary Somatosensory Cortex Dysgranular Zone 0-R"
-552	0	189	255	1	1	1	"Primary Somatosensory Cortex Forelimb-R"
-562	0	176	255	1	1	1	"Primary Somatosensory Cortex Hindlimb-R"
-572	0	163	255	1	1	1	"Primary Somatosensory Cortex Jaw-R"
-582	0	149	255	1	1	1	"Primary Somatosensory Cortex-R"
-592	0	136	255	1	1	1	"Primary Somatosensory Cortex Shoulder-R"
-602	0	123	255	1	1	1	"Primary Somatosensory Cortex Trunk-R"
-612	0	110	255	1	1	1	"Primary Somatosensory Cortex Upperlips-R"
-722	0	97	255	1	1	1	"Secondary Somatosensory Cortex-R"
-132	0	84	255	1	1	1	"Ectorhinal Cortex-R"
-202	0	70	255	1	1	1	"Lateral Temporal Associative Cortex-R"
-772	0	57	255	1	1	1	"Temporal Associative Cortex-R"
-292	0	44	255	1	1	1	"Lateral Secondary Visual Cortex-R"
-322	0	31	255	1	1	1	"Medio Lateral Secondary Visual Cortex-R"
-332	0	18	255	1	1	1	"Medio Medial Secondary Visual Cortex-R"
-622	0	4	255	1	1	1	"Primary Visual Cortex Binocular Area-R"
-632	9	0	255	1	1	1	"Primary Visual Cortex-R"
-642	22	0	255	1	1	1	"Primary Visual Cortex Monocular Area-R"
-62	35	0	255	1	1	1	"Bed Nucleus of the Stria Terminalis-R"
-232	48	0	255	1	1	1	"Hypothalamic Region-R"
-412	62	0	255	1	1	1	"Periaqueductal Gray-R"
-482	75	0	255	1	1	1	"Pretectal Region-R"
-972	88	0	255	1	1	1	"External Cortex of the Inferior Colliculus-R"
-1062	101	0	255	1	1	1	"Septal Region-R"
-52	233	0	255	1	1	1	"Basal Forebrain Region-R"
-242	246	0	255	1	1	1	"Interpeduncular Nucleus-R"
-752	255	0	251	1	1	1	"Substantia Nigra-R"
-762	255	0	237	1	1	1	"Superficial Gray Layer of the Superior Colliculus-R"
-182	0	255	123	1	1	1	"Glomerular Layer of the Accessory Olfactory Bulb-R"
-192	0	255	136	1	1	1	"Glomerular Layer of the Olfactory Bulb-R"
-352	0	255	149	1	1	1	"Olfactory Bulb-R"
-802	255	26	0	1	1	1	"Anterior Commissure anterior part-R"
-812	255	40	0	1	1	1	"Anterior Commissure posterior part-R"
-1092	255	53	0	1	1	1	"Dorsal Fornix-R"
-822	255	0	158	1	1	1	"Ascending Fibers of the Facial Nerve-R"
-842	255	0	145	1	1	1	"Brainstem-R"
-852	255	0	132	1	1	1	"Central Canal-R"
-922	255	0	119	1	1	1	"Genu of the Facial Nerve-R"
-1182	255	0	106	1	1	1	"Inferior Olive/PyramidalDecusation/SP5-R"
-1042	255	0	92	1	1	1	"Posterior Commissure-R"
-1102	255	0	79	1	1	1	"Fimbria of the Hippocampus-R"
-1162	255	0	66	1	1	1	"Periventricular Grey-R"
-992	255	92	0	1	1	1	"Medial Lemniscus Decussation-R"
-1002	255	106	0	1	1	1	"Medial Lemniscus-R"
-1012	255	119	0	1	1	1	"Middle Cerebellar Peduncle-R"
-1052	255	132	0	1	1	1	"Pyramidal tract-R"
-782	154	255	0	1	1	1	"Fimbria of the Hippocampus-R"
-942	141	255	0	1	1	1	"Fimbria of the Hippocampus-R"
-962	128	255	0	1	1	1	"Inferior Cerebellar Peduncle/Spinal Trigeminal Tract-R"
-952	128	0	255	1	1	1	"Fornix-R"
-982	141	0	255	1	1	1	"Mammillothalamic Tract-R"
-1022	154	0	255	1	1	1	"Optic Tract and Optic Chiasm-R"
-1072	167	0	255	1	1	1	"Spinal Cord-R"
-1112	180	0	255	1	1	1	"Subthalamic Nucleus-R"
-1132	193	0	255	1	1	1	"Thalamus-R"
-1142	207	0	255	1	1	1	"Brachium Pontis-R"
-1152	220	0	255	1	1	1	"Ventral Hippocampal Commissure-R"
-892	255	0	53	1	1	1	"Corpus Callosum and Associated Subcortical White Matter-R"
-912	255	0	40	1	1	1	"Descending Corticofugal Pathways and Globus Pallidum-R"
-932	255	0	26	1	1	1	"Fasciculus Retroflexus-R"
-832	255	0	224	1	1	1	"Brachium of the Superior Colliculus-R"
-872	255	0	211	1	1	1	"Commissure of the Inferior Colliculus-R"
-882	255	0	198	1	1	1	"Commissure of the Superior Colliculus-R"
-902	255	0	185	1	1	1	"Deeper Layers of the Superior Colliculus-R"
-1082	255	0	171	1	1	1	"SP5-R"
-792	0	255	163	1	1	1	"Anterior Commissure Intrabulbar part-R"
-1122	255	0	13	1	1	1	"Optic Pathways-R"
-1032	207	0	154	1	1	1	"Pons-R"
+0	Clear_Label
+1171	L_Ventricular_System
+171	L_Globus_Pallidus
+731	L_Striatum
+221	L_Granule_Cell_Level_of_the_Cerebellum
+341	L_Molecular_Layer_of_the_Cerebellum
+31	L_Amygdalohyppocampic_Area
+41	L_Amygdalopiriform_Cortex
+491	L_Primary_Auditory_Cortex
+681	L_Secondary_Auditory_Cortex_Dorsal_Part
+691	L_Secondary_Auditory_Cortex_Ventral_Part
+211	L_Lateral_Primary_Auditory_Cortex
+501	L_Primary_Cingular_Cortex
+701	L_Secondary_Cingular_Cortex
+71	L_Cornu_Ammonis_1
+81	L_Cornu_Ammonis_2
+91	L_Cornu_Ammonis_3
+101	L_Dentate_Gyrus
+151	L_Fasciola_Cinereum
+371	L_Parasubiculum
+471	L_Presubiculum
+741	L_Subiculum
+11	L_Agranular_Dysgranular_Insular_Cortex
+21	L_Agranular_Insular_Cortex
+121	L_Dysgranular_Insular_Cortex
+451	L_Posterior_Agralunar_Insular_Cortex
+111	L_Dorso_Lateral_Orbital_Cortex
+161	L_Frontal_Association_Cortex
+361	L_Orbitofrontal_Region
+461	L_PreLimbic_System
+511	L_Primary_Motor_Cortex
+711	L_Secondary_Motor_Cortex
+141	L_Entorhinal_Cortex
+251	L_Lateral_Entorhinal_Cortex_Internal_part
+261	L_Lateral_Entorhinal_Cortex
+271	L_Lateral_Entorhinal_Cortex_external_part
+301	L_Medial_Entorhinal_Cortex
+421	L_Perirhinal_Area_35
+431	L_Perirhinal_Area_36
+441	L_Perirhinal_Cortex
+281	L_Lateral_Parietal_Associative_Cortex
+311	L_Medial_Parietal_Associative_Cortex
+381	L_Parietal_Cortex_Postero_Caudal_Part
+391	L_Parietal_Cortex_Postero_Dorsal_Part
+401	L_Parietal_Cortex_Postero_Rostral
+651	L_Retosplenial_Dysgranular_Cortex
+661	L_Retrosplenial_Granular_Cortex_Part_A
+671	L_Retrosplenial_Granular_Cortex_Part_B
+521	L_Primary_Somatosensory_Cortex Barrel field
+531	L_Primary_Somatosensory_Cortex_Dysgranular
+541	L_Primary_Somatosensory_Cortex_Dysgranular_Zone_0
+551	L_Primary_Somatosensory_Cortex_Forelimb
+561	L_Primary_Somatosensory_Cortex_Hindlimb
+571	L_Primary_Somatosensory_Cortex_Jaw
+581	L_Primary_Somatosensory_Cortex
+591	L_Primary_Somatosensory_Cortex_Shoulder
+601	L_Primary_Somatosensory_Cortex_Trunk
+611	L_Primary_Somatosensory_Cortex_Upperlips
+721	L_Secondary_Somatosensory_Cortex
+131	L_Ectorhinal_Cortex
+201	L_Lateral_Temporal_Associative_Cortex
+771	L_Temporal_Associative_Cortex
+291	L_Lateral_Secondary_Visual_Cortex
+321	L_Medio_Lateral_Secondary_Visual_Cortex
+331	L_Medio_Medial_Secondary_Visual_Cortex
+621	L_Primary_Visual_Cortex_Binocular_Area
+631	L_Primary_Visual_Cortex
+641	L_Primary_Visual_Cortex_Monocular_Area
+61	L_Bed_Nucleus_of_the_Stria_Terminalis
+231	L_Hypothalamic_Region
+411	L_Periaqueductal_Gray
+481	L_Pretectal_Region
+971	L_External_Cortex_of_the_Inferior_Colliculus
+1061	L_Septal_Region
+51	L_Basal_Forebrain_Region
+241	L_Interpeduncular_Nucleus
+751	L_Substantia_Nigra
+761	L_Superficial_Gray_Layer_of_the_Superior_Colliculus
+181	L_Glomerular_Layer_of_the_Accessory_Olfactory_Bulb
+191	L_Glomerular_Layer_of_the_Olfactory_Bulb
+351	L_Olfactory_Bulb
+801	L_Anterior_Commissure_anterior_part
+811	L_Anterior_Commissure_posterior_part
+1091	L_Dorsal_Fornix
+821	L_Ascending_Fibers_of_the_Facial_Nerve
+841	L_Brainstem
+851	L_Central_Canal
+921	L_Genu_of_the_Facial_Nerve
+1181	L_Inferior_Olive/PyramidalDecusation/SP5
+1041	L_Posterior_Commissure
+1101	L_Fimbria_of_the_Hippocampus
+1161	L_Periventricular_Grey
+991	L_Medial_Lemniscus_Decussation
+1001	L_Medial_Lemniscus
+1011	L_Middle_Cerebellar_Peduncle
+1051	L_Pyramidal_tract
+781	L_Fimbria_of_the_Hippocampus
+941	L_Fimbria_of_the_Hippocampus
+961	L_Inferior_Cerebellar_Peduncle/Spinal_Trigeminal_Tract
+951	L_Fornix
+981	L_Mammillothalamic_Tract
+1021	L_Optic_Tract_and_Optic_Chiasm
+1071	L_Spinal_Cord
+1111	L_Subthalamic_Nucleus
+1131	L_Thalamus
+1141	L_Brachium_Pontis
+1151	L_Ventral_Hippocampal_Commissure
+891	L_Corpus_Callosum_and_Associated_Subcortical_White_Matter
+911	L_Descending_Corticofugal_Pathways_and_Globus_Pallidum
+931	L_Fasciculus_Retroflexus
+831	L_Brachium_of_the_Superior_Colliculus
+871	L_Commissure_of_the_Inferior_Colliculus
+881	L_Commissure_of_the_Superior_Colliculus
+901	L_Deeper_Layers_of_the_Superior_Colliculus
+1081	L_SP5
+791	L_Anterior_Commissure_Intrabulbar_part
+1121	L_Optic_Pathways
+1031	R_Pons
+1172	R_Ventricular_System
+172	R_Globus_Pallidus
+732	R_Striatum
+222	R_Granule_Cell_Level_of_the_Cerebellum
+342	R_Molecular_Layer_of_the_Cerebellum
+32	R_Amygdalohyppocampic_Area
+42	R_Amygdalopiriform_Cortex
+492	R_Primary_Auditory_Cortex
+682	R_Secondary_Auditory_Cortex_Dorsal_Part
+692	R_Secondary_Auditory_Cortex_Ventral_Part
+212	R_Lateral_Primary_Auditory_Cortex
+502	R_Primary_Cingular_Cortex
+702	R_Secondary_Cingular_Cortex
+72	R_Cornu_Ammonis_1
+82	R_Cornu_Ammonis_2
+92	R_Cornu_Ammonis_3
+102	R_Dentate_Gyrus
+152	R_Fasciola_Cinereum
+372	R_Parasubiculum
+472	R_Presubiculum
+742	R_Subiculum
+12	R_Agranular_Dysgranular_Insular_Cortex
+22	R_Agranular_Insular_Cortex
+122	R_Dysgranular_Insular_Cortex
+452	R_Posterior_Agralunar_Insular_Cortex
+112	R_Dorso_Lateral_Orbital_Cortex
+162	R_Frontal_Association_Cortex
+362	R_Orbitofrontal_Region
+462	R_PreLimbic_System
+512	R_Primary_Motor_Cortex
+712	R_Secondary_Motor_Cortex
+142	R_Entorhinal_Cortex
+252	R_Lateral_Entorhinal_Cortex_Internal_part
+262	R_Lateral_Entorhinal_Cortex
+272	R_Lateral_Entorhinal_Cortex_external_part
+302	R_Medial_Entorhinal_Cortex
+422	R_Perirhinal_Area_35
+432	R_Perirhinal_Area_36
+442	R_Perirhinal_Cortex
+282	R_Lateral_Parietal_Associative_Cortex
+312	R_Medial_Parietal_Associative_Cortex
+382	R_Parietal_Cortex_Postero_Caudal_Part
+392	R_Parietal_Cortex_Postero_Dorsal_Part
+402	R_Parietal_Cortex_Postero_ostral
+652	R_Retosplenial_Dysgranular_Cortex
+662	R_Retrosplenial_Granular_Cortex_Part_A
+672	R_Retrosplenial_Granular_Cortex_Part_B
+522	R_Primary_Somatosensory_Cortex_Barrel_field
+532	R_Primary_Somatosensory_Cortex_Dysgranular
+542	R_Primary_Somatosensory_Cortex_Dysgranular_Zone_0
+552	R_Primary_Somatosensory_Cortex_Forelimb
+562	R_Primary_Somatosensory_Cortex_Hindlimb
+572	R_Primary_Somatosensory_Cortex_Jaw
+582	R_Primary_Somatosensory_Cortex
+592	R_Primary_Somatosensory_Cortex_Shoulder
+602	R_Primary_Somatosensory_Cortex_Trunk
+612	R_Primary_Somatosensory_Cortex_Upperlips
+722	R_Secondary_Somatosensory_Cortex
+132	R_Ectorhinal_Cortex
+202	R_Lateral_Temporal_Associative_Cortex
+772	R_Temporal_Associative_Cortex
+292	R_Lateral_Secondary_Visual_Cortex
+322	R_Medio_Lateral_Secondary_Visual_Cortex
+332	R_Medio_Medial_Secondary_Visual_Cortex
+622	R_Primary_Visual_Cortex_Binocular_Area
+632	R_Primary_Visual_Cortex
+642	R_Primary_Visual_Cortex_Monocular_Area
+62	R_Bed_Nucleus_of_the_Stria_Terminalis
+232	R_Hypothalamic_Region
+412	R_Periaqueductal_Gray
+482	R_Pretectal_Region
+972	R_External_Cortex_of_the_Inferior_Colliculus
+1062	R_Septal_Region
+52	R_Basal_Forebrain_Region
+242	R_Interpeduncular_Nucleus
+752	R_Substantia_Nigra
+762	R_Superficial_Gray_Layer_of_the_Superior_Colliculus
+182	R_Glomerular_Layer_of_the_Accessory_Olfactory_Bulb
+192	R_Glomerular_Layer_of_the_Olfactory_Bulb
+352	R_Olfactory_Bulb
+802	R_Anterior_Commissure_anterior_part
+812	R_Anterior_Commissure_posterior_part
+1092	R_Dorsal_Fornix
+822	R_Ascending_Fibers_of_the_Facial_Nerve
+842	R_Brainstem
+852	R_Central_Canal
+922	R_Genu_of_the_Facial_Nerve
+1182	R_Inferior_Olive/PyramidalDecusation/SP5
+1042	R_Posterior_Commissure
+1102	R_Fimbria_of_the_Hippocampus
+1162	R_Periventricular_Grey
+992	R_Medial_Lemniscus_Decussation
+1002	R_Medial_Lemniscus
+1012	R_Middle_Cerebellar_Peduncle
+1052	R_Pyramidal_tract
+782	R_Fimbria_of_the_Hippocampus
+942	R_Fimbria_of_the_Hippocampus
+962	R_Inferior_Cerebellar_Peduncle/Spinal_Trigeminal_Tract
+952	R_Fornix
+982	R_Mammillothalamic_Tract
+1022	R_Optic_Tract_and_Optic_Chiasm
+1072	R_Spinal_Cord
+1112	R_Subthalamic_Nucleus
+1132	R_Thalamus
+1142	R_Brachium_Pontis
+1152	R_Ventral_Hippocampal_Commissure
+892	R_Corpus_Callosum_and_Associated_Subcortical_White_Matter
+912	R_Descending_Corticofugal_Pathways_and_Globus_Pallidum
+932	R_Fasciculus_Retroflexus
+832	R_Brachium_of_the_Superior_Colliculus
+872	R_Commissure_of_the_Inferior_Colliculus
+882	R_Commissure_of_the_Superior_Colliculus
+902	R_Deeper_Layers_of_the_Superior_Colliculus
+1082	R_SP5
+792	R_Anterior_Commissure_Intrabulbar_part
+1122	R_Optic_Pathways
+1032	R_Pons

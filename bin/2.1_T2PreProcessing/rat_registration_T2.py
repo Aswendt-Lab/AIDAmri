@@ -16,7 +16,7 @@ import glob
 import subprocess
 import shlex
 
-def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, sigmaBrain_template,sigmaBrain_anno,sigmaBrain_annorsfMRI,outfile,opt):
+def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, sigmaBrain_template,sigmaBrain_anno,split_anno,anno_rsfMRI,split_sigmaBrain_annorsfMRI,outfile,opt):
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
     outputCPPAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixAff.txt')
 
@@ -91,10 +91,22 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, sigmaBrain_template,si
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
-    # resample parental annotations
-    outputAnnorsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnorsfMRI.nii.gz')
+         # resample parental annotations
+    outputAnnorsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
 
-    command = f"reg_resample -ref {inputVolume} -flo {sigmaBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {anno_rsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        print(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise    
+
+    # resample parental split annotations
+    outputAnnorsfMRI_split = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
+
+    command = f"reg_resample -ref {inputVolume} -flo {split_SigmaBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI_split}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -114,6 +126,18 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, sigmaBrain_template,si
     except Exception as e:
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
+
+    # resample parental split annotations
+    outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
+
+    command = f"reg_resample -ref {inputVolume} -flo {split_anno} -inter 0 -cpp {outputCPP} -res {outputAnnoSplit}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        print(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise    
 
     return outputAnno
 
@@ -167,7 +191,12 @@ if __name__ == "__main__":
     parser.add_argument('-a','--sigmaBrain_anno', help='File: Annotations of Sigma Brain', nargs='?', type=str,
                         default=os.path.abspath(
                             os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
-    parser.add_argument('-f', '--sigmaBrain_annorsfMRI', help='File: Annotations of Sigma Brain', nargs='?',
+    parser.add_argument('-sa', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+    parser.add_argument('-f', '--anno_rsfMRI', help='Parental Annotations atlas', nargs='?', type=str,
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+
+    parser.add_argument('-sf', '--split_annorsfMRI', help='File: Annotations of split Allen Brain', nargs='?',
                         type=str,
                         default=os.path.abspath(
                             os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
@@ -177,8 +206,10 @@ if __name__ == "__main__":
     inputVolume = None
     sigmaBrain_template = None
     sigmaBrain_anno = None
+    split_anno = None
     brain_template = None
-    sigmaBrain_annorsfMRI = None
+    split_sigmaBrain_annorsfMRI = None
+    anno_rsfMRI = None
     deformationStrength = args.deformationStrength
 
     if args.inputVolume is not None:
@@ -196,11 +227,21 @@ if __name__ == "__main__":
     if not os.path.exists(sigmaBrain_anno):
         sys.exit("Error: '%s' is not an existing directory." % (sigmaBrain_anno,))
 
-    if args.sigmaBrain_annorsfMRI is not None:
-        sigmaBrain_annorsfMRI = args.sigmaBrain_annorsfMRI
-    if not os.path.exists(sigmaBrain_annorsfMRI):
-        sys.exit("Error: '%s' is not an existing directory." % (sigmaBrain_annorsfMRI,))
+    if args.splitAnno is not None:
+        split_anno = args.splitAnno
+    if not os.path.exists(split_anno):
+        sys.exit("Error: '%s' is not an existing directory." % (split_anno,))
 
+    if args.split_annorsfMRI is not None:
+        split_sigmaBrain_annorsfMRI = args.split_annorsfMRI
+    if not os.path.exists(split_sigmaBrain_annorsfMRI):
+        sys.exit("Error: '%s' is not an existing directory." % (split_sigmaBrain_annorsfMRI,))
+
+    if args.anno_rsfMRI is not None:
+        anno_rsfMRI = args.anno_rsfMRI
+    if not os.path.exists(anno_rsfMRI):
+        sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
+    
     if args.template is not None:
         brain_template = args.template
     if not os.path.exists(brain_template):
@@ -218,7 +259,7 @@ if __name__ == "__main__":
     else:
         stroke_mask = stroke_mask[0]
 
-    transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,sigmaBrain_template,sigmaBrain_anno,sigmaBrain_annorsfMRI,outfile,deformationStrength)
+    transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,sigmaBrain_template,sigmaBrain_anno,split_anno,anno_rsfMRI,split_sigmaBrain_annorsfMRI,,outfile,deformationStrength)
 
     current_dir = os.path.dirname(inputVolume)
     search_string = os.path.join(current_dir, "*T2w.nii.gz")
