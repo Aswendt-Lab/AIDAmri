@@ -28,6 +28,31 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
     except Exception as e:
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
+
+    opt = 3
+    jac = 0.3
+    # minimum defomraiton field in mm
+    if opt == 1:
+        s = [1, 1, 2]
+    elif opt == 2:  s = [2,2,2]
+    elif opt == 3:  s = [3,3,3]
+    else:           s = [5,5,5]
+
+
+    bsplineMatrix = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixBspline.nii')
+
+    # resample in-house developed template with nonlinear trafo 
+    output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
+
+    command = f"reg_f3d -ref {inputVolume} -flo {restingStateTPL} -sx {s[0]} -sy {s[1]} -sz {s[2]} -jl {jac} -res {output} -cpp {bsplineMatrix}  -aff {outputAff}"
+    command_args = shlex.split(command)
+    try:
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        print(f"Output of {command}:\n{result.stdout}")
+    except Exception as e:
+        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        raise
+
     #  resample Annotation
     outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
 
@@ -44,7 +69,7 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
     outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
 
 
-    command = f"reg_resample -ref {brain_anno} -flo {splitAnno} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit}"
+    command = f"reg_resample -ref {inputVolume} -flo {splitAnno} -cpp {bsplineMatrix} -inter 0 -res {outputAnnoSplit}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -53,20 +78,13 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
   
-    command = f"reg_resample -ref {inputVolume} -flo {splitAnno} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-        raise
+    
 
     # resample split parental annotation
     outputAnnoSplit_rsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
 
 
-    command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {splitAnno_rsfMRI} -cpp {bsplineMatrix} -inter 0 -res {outputAnnoSplit_rsfMRI}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -75,20 +93,12 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
     
-    command = f"reg_resample -ref {inputVolume} -flo {splitAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-        raise
-
+   
     # resample parental annotation
     outputAnno_rsfMRI = os.path.join(outfile,
                                           os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
 
-    command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
+    command = f"reg_resample -ref {inputVolume} -flo {anno_rsfMRI} -cpp {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -97,19 +107,11 @@ def regABA2rsfMRI(inputVolume, restingStateTPL, brain_template, brain_anno, spli
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
     
-    command = f"reg_resample -ref {inputVolume} -flo {anno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-        raise
-    
+   
     # resample in-house developed tempalate
     outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
     
-    command = f"reg_resample -ref {inputVolume} -flo {brain_template} -trans {outputAff} -res {outputTemplate}"
+    command = f"reg_resample -ref {inputVolume} -flo {brain_template} -cpp {outputAff} -res {outputTemplate}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
