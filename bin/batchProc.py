@@ -87,6 +87,8 @@ def run_subprocess(command,datatype, step):
         log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
     try:
         logging.info(f"Running command: {command}.\nCheck {log_file} for further information.")
+        if os.path.exists(log_file):
+            os.remove(log_file)    
         with open(log_file, 'w') as outfile:
             time.sleep(2) # make sure logging file is created before starting the subprocess
             result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
