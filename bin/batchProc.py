@@ -394,9 +394,9 @@ if __name__ == "__main__":
             logging.error(f"Following errors were occuring {error_list_all}")   
             logging.info(f"{key} processing completed")
             if not error_list_all:
-                print(f"\n{key} {step}  \033[0;30;42m COMPLETED \33[0m")
+                print(f"\n{key} processing \033[0;30;42m COMPLETED \33[0m")
             else:
-                print(f"\n{key} {step}  \033[0;30;41m INCOMPLETE \33[0m")
+                print(f"\n{key} processing \033[0;30;41m INCOMPLETE \33[0m")
             if error_list_all:
                     print()
                     for error in error_list_all:
