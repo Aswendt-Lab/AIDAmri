@@ -99,14 +99,12 @@ def run_subprocess(command,datatype, step):
             time.sleep(2) # make sure logging file is created before starting the subprocess
             result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
             if result.returncode != 0:
-                print(f"\nError in sub: {sub} in datatype: {datatype} and step: {step}\nPlease check logging file for details.")
-                return sub,step
+                return sub,datatype,step
             else:
                 return 0
     except subprocess.TimeoutExpired:
         logging.error(f'Timeout expired for command: {command_args}')
-        print(f"\nError in sub: {sub} in datatype: {datatype} and step: {step}. Timeout of 1 hour exceeded\n")
-        return sub,step
+        return sub,datatype,step
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
@@ -133,13 +131,11 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
-                    preprocessing = True
                 else:
                     message = 'Could not find *T2w.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile)>0:
@@ -147,13 +143,11 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
-                    registration = True
                 else:
                     message = 'Could not find *BiasBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "process":
                 os.chdir(cwd + '/3.1_T2Processing')
                 command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
@@ -165,7 +159,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 if result != 0:
                     errorList.append(result)
                 os.chdir(cwd)
-                return
         elif dataFormat == 'func':
             os.chdir(cwd + '/2.3_fMRIPreProcessing')
             if step == "preprocess":
@@ -180,7 +173,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*SmoothBet.nii.gz"))
                 if len(currentFile)>0:
@@ -193,7 +185,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
@@ -203,7 +194,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                     os.chdir(cwd)
-                    return
         elif dataFormat == 't2map':
             os.chdir(cwd + '/4.1_T2mapPreProcessing')
             if step == "preprocess":
@@ -218,7 +208,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
@@ -231,7 +220,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     print(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*T2w_MAP.nii.gz"))
                 if len(currentFile)>0:
@@ -244,7 +232,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
         elif dataFormat == 'dwi':
             os.chdir(cwd + '/2.2_DTIPreProcessing')
             if step == "preprocess":
@@ -259,7 +246,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
@@ -272,7 +258,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
-                return
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
@@ -284,7 +269,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                     os.chdir(cwd)
-                    return
         else:
             message = 'The data folders'' names do not match anat, dwi, func or t2map';
             logging.error(message);
@@ -295,7 +279,9 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
         errorList.append(message)
     
     if errorList:
-        print(f"\n{errorList}\n")
+        return errorList
+    else:
+        return 0
     
  
 def find(pattern, path):
@@ -376,27 +362,47 @@ if __name__ == "__main__":
 
     for key, value in all_files.items():
         if value:
-            error_list = []
+            error_list_all = []
             print()
             print(f"Entered {key} data: \n{value}")
             print()
             print(f"\n{key} processing \33[5m...\33[0m (wait!)") 
             print()
             for step in steps: 
+                error_list_step = []
                 progress_bar = tqdm(total=len(value), desc=f"{step} {key} data")
                 with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
                     futures = [executor.submit(executeScripts, path, key, step, stc) for path in value]
 
                     for future in concurrent.futures.as_completed(futures):
                         progress_bar.update(1)
+                     
+                        errorList = future.result()
+                        if errorList != 0:
+                            error_list_step.append(errorList)
                         
                     concurrent.futures.wait(futures)
                 progress_bar.close()
-              
-                print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
+                error_list_all.extend(error_list_step)
+                if not error_list_step:
+                    print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
+                else:
+                    print(f"{key} {step}  \033[0;30;41m INCOMPLETE \33[0m")
                 logging.info(f"{key} {step} processing completed")
+                
+                
+            logging.error(f"Following errors were occuring {error_list_all}")   
             logging.info(f"{key} processing completed")
-            print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
+            if not error_list_all:
+                print(f"\n{key} {step}  \033[0;30;42m COMPLETED \33[0m")
+            else:
+                print(f"\n{key} {step}  \033[0;30;41m INCOMPLETE \33[0m")
+            if error_list_all:
+                    print()
+                    for error in error_list_all:
+                        error = error[0]
+                        print(f"Error in sub: {error[0]} in datatype: {error[1]} and step: {error[2]}. Check logging file for further information")
+            
                 
 
  
