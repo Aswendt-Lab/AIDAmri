@@ -106,7 +106,7 @@ if __name__ == '__main__':
             rois = roi_data.dataobj.get_unscaled()
 
             #outFileMean = getOutfile(atlas_type, image_file, acronmys, "Mean")
-            outFileMean = getOutfile(atlas_type, image_file, "Mean")
+            outFileMean = getOutfile(atlas_type, image_file, "PerImage")
             print(f"Outfile (Mean): {outFileMean}")
             extractT2MapdataMean(img, rois, outFileMean, acronmys)
 
