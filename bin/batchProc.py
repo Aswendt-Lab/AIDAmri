@@ -76,7 +76,7 @@ def findData(projectPath, sessions, dataTypes):
 
     return all_files
     
-def run_subprocess(command,datatype, step):
+def run_subprocess(command,datatype,step,anat_process=False):
     timeout = 3600 # set maximum time in seconds after which the subprocess will be terminated
     command_args = shlex.split(command)
     file = command_args[-1]
@@ -85,6 +85,8 @@ def run_subprocess(command,datatype, step):
     log_file = os.path.join(os.path.dirname(file), step + ".log")
     if datatype == "anat" and step == "process":
         log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
+        if anat_process == False:
+            log_file = os.path.join(os.path.dirname(file), datatype, step + "_par" + ".log")
 
     # find current sub name
     normalized_path = os.path.normpath(file)
@@ -105,7 +107,7 @@ def run_subprocess(command,datatype, step):
                 return 0
     except subprocess.TimeoutExpired:
         logging.error(f'Timeout expired for command: {command_args}')
-        return sub,datatype,step
+        return sub,ses,datatype,step
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
@@ -156,7 +158,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 if result != 0:
                     errorList.append(result)
                 command = f'python getIncidenceSize.py -i {currentPath_wData}'
-                result = run_subprocess(command,dataFormat,step)
+                result = run_subprocess(command,dataFormat,step,anat_process=True)
                 if result != 0:
                     errorList.append(result)
                 os.chdir(cwd)
