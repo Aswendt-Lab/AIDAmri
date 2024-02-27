@@ -30,7 +30,8 @@ import functools
 import subprocess
 import shlex
 import logging
-import shutil  # Import the shutil module for file operations
+import shutil
+import openpyxl
 
 
 def create_slice_timings(method_file, scanid, out_file):
@@ -349,6 +350,17 @@ if __name__ == "__main__":
 
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+
+    # Create a new workbook and select the active sheet
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+
+    # Enter data in Row 1
+    sheet['A1'] = "Subject"
+    sheet['B1'] = "Group"
+
+    # Save the workbook
+    workbook.save(os.path.join(output_dir,"GroupMapping.xlsx"))
      
     # Konfiguriere das Logging-Modul
     log_file_path = os.path.join(output_dir, "conv2nifti_log.txt") 
