@@ -89,7 +89,8 @@ def run_subprocess(command,datatype, step):
     # find current sub name
     normalized_path = os.path.normpath(file)
     directories = normalized_path.split(os.path.sep)
-    sub = directories[3]
+    sub = [directory for directory in directories if "sub-" in directory][0]
+    ses = [directory for directory in directories if "ses-" in directory][0]
     
     try:
         logging.info(f"Running command: {command}.\nCheck {log_file} for further information.")
@@ -99,7 +100,7 @@ def run_subprocess(command,datatype, step):
             time.sleep(2) # make sure logging file is created before starting the subprocess
             result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
             if result.returncode != 0:
-                return sub,datatype,step
+                return sub,ses,datatype,step
             else:
                 return 0
     except subprocess.TimeoutExpired:
@@ -401,7 +402,7 @@ if __name__ == "__main__":
                     print()
                     for error in error_list_all:
                         error = error[0]
-                        print(f"Error in sub: {error[0]} in datatype: {error[1]} and step: {error[2]}. Check logging file for further information")
+                        print(f"Error in sub: {error[0]} in session: {error[1]} in datatype: {error[2]} and step: {error[3]}. Check logging file for further information")
             
                 
 
