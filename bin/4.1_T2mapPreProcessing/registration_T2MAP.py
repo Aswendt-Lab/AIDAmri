@@ -40,14 +40,8 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
-
-    # resample Annotation
-    #outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
-    #os.system(
-    #    'reg_resample -ref ' + inputVolume + ' -flo ' + brain_anno +
-    #    ' -cpp ' + outputAff + ' -inter 0 -res ' + outputAnno)
 
     # resample split  Annotation
     outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
@@ -58,7 +52,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise
         
     command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
@@ -67,7 +61,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise    
         
 
@@ -80,7 +74,7 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise 
         
     command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnnoSplit_rsfMRI}"
@@ -89,216 +83,8 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise 
-
-
-    # resample rsfMRI Annotation
-    outputAnno_rsfMRI = os.path.join(outfile,
-                                          os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
-        
-    command = f"reg_resample -ref {brain_anno} -flo {anno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnno_rsfMRI}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-        raise     
-       
-    command = f"reg_resample -ref {inputVolume} -flo {outputAnno_rsfMRI} -trans {outputAff} -inter 0 -res {outputAnno_rsfMRI}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-        raise   
-
-
-
-    # resample Template
-    outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
-        
-    command = f"reg_resample -ref {inputVolume} -flo {brain_template} -cpp {outputAff} -res {outputTemplate}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-        raise  
-
-    # Some scaled data for DSI Studio
-    outfileDSI = os.path.join(os.path.dirname(inputVolume), 'DSI_studio')
-    if os.path.exists(outfileDSI):
-        shutil.rmtree(outfileDSI) #? script-based removal of directories not recommended. Maybe change? // VVF 23/10/05
-    os.makedirs(outfileDSI)
-    outputRefStrokeMaskAff = None
-    if refStroke_mask is not None and len(refStroke_mask) > 0 and os.path.exists(refStroke_mask):
-        refMatrix = find_RefAff(inputVolume)[0]
-        refMTemplate = find_RefTemplate(inputVolume)[0]
-        outputRefStrokeMaskAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_refStrokeMaskAff.nii.gz')
-            
-        command = f"reg_resample -ref {refMTemplate} -flo {refStroke_mask} -cpp {refMatrix} -res {outputRefStrokeMaskAff}"
-        command_args = shlex.split(command)
-        try:
-            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            print(f"Output of {command}:\n{result.stdout}")
-        except Exception as e:
-            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-            raise 
-
-        stroke_mask = outputRefStrokeMaskAff
-
-
-
-    if stroke_mask is not None and len(stroke_mask) > 0 and os.path.exists(stroke_mask):
-        outputStrokeMask = os.path.join(outfile,
-                                        os.path.basename(inputVolume).split('.')[0] + 'Stroke_mask.nii.gz')
-         
-        command = f"reg_resample -ref {inputVolume} -flo {stroke_mask} -inter 0 -cpp {outputAff} -res {outputStrokeMask}"
-        command_args = shlex.split(command)
-        try:
-            result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
-            print(f"Output of {command}:\n{result.stdout}")
-        except Exception as e:
-            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
-            raise 
-
-        # Superposition of annotations and mask
-        dataAnno = nii.load(outputAnnoSplit)
-        dataStroke = nii.load(outputStrokeMask)
-        imgAnno = dataAnno.get_fdata()
-        imgStroke = dataStroke.get_fdata()
-        imgStroke[imgStroke > 0] = 1
-        imgStroke[imgStroke == 0] = 0
-
-        superPosAnnoStroke = imgStroke * imgAnno
-        unscaledNiiData = nii.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_mask.nii.gz'))
-
-        # Stroke Mask
-        outputMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        # uperPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
-        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
-
-        hdrOut = unscaledNiiDataMask.header
-        hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiDataMask, outputMaskScaled)
-        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
-        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.txt')#> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        shutil.copyfile(src_file, dst_file)
-
-        # Superposition of rsfMRI annotations and mask
-        dataAnno = nii.load(outputAnnoSplit_rsfMRI)
-        dataStroke = nii.load(outputStrokeMask)
-        imgAnno = dataAnno.get_fdata()
-        imgStroke = dataStroke.get_fdata()
-        imgStroke[imgStroke > 0] = 1
-        imgStroke[imgStroke == 0] = 0
-
-        superPosAnnoStroke = imgStroke * imgAnno
-        unscaledNiiData = nii.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_parental_mask.nii.gz'))
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-
-        # Stroke Mask
-        outputMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
-        #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
-
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
-        hdrOut = unscaledNiiDataMask.header
-        hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiDataMask, outputMaskScaled)
-        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
-        dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        shutil.copyfile(src_file, dst_file)
-
-    # Mask
-    outputMaskScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    dataMask = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_mask.nii.gz'))
-    imgMask = dataMask.get_fdata()
-
-    imgMask = np.flip(imgMask, 2)
-    # imgMask = np.rot90(imgMask, 2)
-    # imgMask = np.flip(imgMask, 0)
-    scale = np.eye(4) * 10
-    scale[3][3] = 1
-
-    unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine * scale)
-    hdrOut = unscaledNiiDataMask.header
-    hdrOut.set_xyzt_units('mm')
-    nii.save(unscaledNiiDataMask, outputMaskScaled)
-
-    # Allen Brain
-    outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    outputAnnorsfMRIScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
-        0] + 'AnnoSplit_parental_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    outputAllenBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-
-    src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-    shutil.copyfile(src_file, dst_file)
-
-    src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
-    dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'AnnoSplit_parental_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-    shutil.copyfile(src_file, dst_file)
-
-
-    dataAnno = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz'))
-    dataAnnorsfMRI = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz'))
-    dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
-
-    imgTempAnno = dataAnno.get_fdata()
-    imgTempAnnorsfMRI = dataAnnorsfMRI.get_fdata()
-    imgTempAllen = dataAllen.get_fdata()
-
-    imgTempAllen = np.flip(imgTempAllen, 2)
-    imgTempAnno = np.flip(imgTempAnno, 2)
-    imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 2)
-    # imgTempAllen = np.rot90(imgTempAllen, 2)
-    # imgTempAnno = np.rot90(imgTempAnno, 2)
-    # imgTempAnnorsfMRI = np.rot90(imgTempAnnorsfMRI, 2)
-    # imgTempAllen = np.flip(imgTempAllen, 0)
-    # imgTempAnno = np.flip(imgTempAnno, 0)
-    #imgTempAnnorsfMRI = np.flip(imgTempAnnorsfMRI, 0)
-    scale = np.eye(4) * 10
-    scale[3][3] = 1
-
-    unscaledNiiDataAnno = nii.Nifti1Image(imgTempAnno, dataAnno.affine * scale)
-    unscaledNiiDataAnnorsfMRI = nii.Nifti1Image(imgTempAnnorsfMRI, dataAnnorsfMRI.affine * scale)
-    unscaledNiiDataAllen = nii.Nifti1Image(imgTempAllen, dataAllen.affine * scale)
-    hdrOut = unscaledNiiDataAnno.header
-    hdrOut.set_xyzt_units('mm')
-    hdrOut = unscaledNiiDataAnnorsfMRI.header
-    hdrOut.set_xyzt_units('mm')
-    hdrOut = unscaledNiiDataAllen.header
-    hdrOut.set_xyzt_units('mm')
-    nii.save(unscaledNiiDataAnno, outputAnnoScaled)
-    nii.save(unscaledNiiDataAnnorsfMRI, outputAnnorsfMRIScaled)
-    nii.save(unscaledNiiDataAllen, outputAllenBScaled)
-
-    if outputRefStrokeMaskAff is not None:
-        os.remove(outputRefStrokeMaskAff)
 
     return outputAnnoSplit
 
