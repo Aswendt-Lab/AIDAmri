@@ -1,4 +1,3 @@
-0	Clear_Label
 1171	L_Ventricular_System
 171	L_Globus_Pallidus
 731	L_Striatum
