@@ -30,10 +30,19 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     # output data
     sPathOut = os.path.abspath(os.path.join(sPathData, os.pardir, postTxt + os.path.basename(sPathData).split('_')[0]))
     sPathOut = sPathOut + '.txt'
-    PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
-    PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
-    PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+    
+    if os.path.basename(labelNames) == "annoVolume.nii.txt":
+        PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+        PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+        PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+    elif os.path.basename(labelNames) == "annoVolume+2000_rsfMRI.nii.txt" :
+        PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR_Split.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+        PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP_Split.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+        PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ_Split.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+    
+    
     pcorr_paths = [PcorrR_matrix_path, PcorrP_matrix_path, PcorrZ_matirx_path]
+
 
     if len(data_shape) != 4:
         sys.exit("Error: data %s has no 4D shape." % (str(data_shape),))
@@ -65,8 +74,8 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     matPathOut = os.path.join(os.path.dirname(sPathOut), os.path.basename(sPathOut) + '.mat')
     io.savemat(matPathOut, dict([('matrix', mT),('label',lines)]))
 
-    if postTxt == 'MasksTCsSplit.':
-        correlate_matrix.calculate_p_corr_matrix(mT, lines, pcorr_paths)
+
+    correlate_matrix.calculate_p_corr_matrix(mT, lines, pcorr_paths)
         
     return sPathOut
 
