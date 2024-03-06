@@ -29,27 +29,27 @@ def intersect_mtlb(a, b):
 
 
 def getRefLabels(prefix):
-    if "rsfMRISplit" in prefix:
+    if "Split_parental" in prefix:
         dataTemplate = np.loadtxt(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt',
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume+2000_rsfMRI.nii.txt',
             dtype=str)
         refLabels = dataTemplate[:, 1]
 
-    elif "rsfMRI" in prefix:
+    elif "parental" in prefix:
         dataTemplate = np.loadtxt(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume.nii.txt', dtype=str)
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume.nii.txt', dtype=str)
         refLabels = dataTemplate[:, 1]
 
     else:
         dataTemplate = np.loadtxt(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/ARA_changedAnnotatiosn2DTI.txt',
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/ARA_changedAnnotatiosn2DTI.txt',
             dtype=str)
         refLabels = dataTemplate[:, 1]
 
     return refLabels
 
 
-def matrixMaker(inputPath):
+def matrixMaker(inputPath, output_path):
     # Read pass and end
     if "pass" in inputPath:
         matData = sio.loadmat(inputPath)
@@ -101,7 +101,9 @@ def matrixMaker(inputPath):
              rotation_mode="anchor")
 
     ax.set_title("DTI conncectivity between ARA regions")
-    plt.show()
+    output_file = os.path.join(output_path, "CorrMatrixHM")
+    plt.savefig(output_file)
+    plt.close
 
     return connectivity
 
@@ -123,4 +125,4 @@ if __name__ == "__main__":
     inputPath = args.inputMat
 
     # generate Matrix
-    matrixMaker(inputPath)
+    matrixMaker(inputPath, os.path.dirname(inputPath))
