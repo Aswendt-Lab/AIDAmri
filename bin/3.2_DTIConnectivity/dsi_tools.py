@@ -342,10 +342,6 @@ def tracking(dsi_studio, dir_in):
     """
     Performs seed-based fiber-tracking.
     """
-
-    in_par = input("Mouse = 0 , Rat = 1 ")
-    
-
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
@@ -356,15 +352,7 @@ def tracking(dsi_studio, dir_in):
     cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
 
     filename = glob.glob(dir_in+'/*fib.gz')[0]
-
-    if in_par == "0":
-         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
-    elif in_par == "1":
-        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 2000000, 0, '.5', '45', 0, '.02', '.1', '.5', '250.0')
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        tracking(dsi_studio, dir_in)
-
+    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
     os.system(cmd_trk % parameters)
 
 def merge_bval_bvec_to_btable(folder_path):
