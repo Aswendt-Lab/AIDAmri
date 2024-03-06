@@ -274,7 +274,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '1.25', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
+    parameters = (dsi_studio, 'rec', file_src, file_msk, 4, '2.5', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
@@ -342,6 +342,9 @@ def tracking(dsi_studio, dir_in):
     """
     Performs seed-based fiber-tracking.
     """
+
+    in_par = input("Setting Parameters for Fibertracking: Mouse = 0 , Rat = 1 ")
+    
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
@@ -352,7 +355,15 @@ def tracking(dsi_studio, dir_in):
     cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
 
     filename = glob.glob(dir_in+'/*fib.gz')[0]
-    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
+
+    if in_par == "0":
+         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
+    elif in_par == "1":
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 2000000, 0, '.5', '45', 0, '.02', '.1', '.5', '250.0')
+    else:
+        print("Invalid option. Enter 0 for mouse or 1 for rat.")
+        tracking(dsi_studio, dir_in)
+
     os.system(cmd_trk % parameters)
 
 def merge_bval_bvec_to_btable(folder_path):
