@@ -170,8 +170,8 @@ def clearAnno(araAnno,realBrain_anno,outfile):
     return outfile
 
 def find_mask(inputVolume):
-    return glob.glob(os.path.dirname(inputVolume)+'/*Stroke_mask.nii.gz', recursive=False)
-
+    directory = os.path.dirname(inputVolume)
+    return glob.glob(os.path.join(directory, '*Stroke_mask.nii.gz'))
 
 
 if __name__ == "__main__":

@@ -296,15 +296,17 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     return outputAnnoSplit
 
 def find_RefStroke(refStrokePath,inputVolume):
-    path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/anat/*IncidenceData_mask.nii.gz', recursive=False)
+    path =  glob.glob(os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9],'*',"anat","*","IncidenceData_mask.nii.gz"), recursive=False)
     return path
 
 def find_RefAff(inputVolume):
-    path =  glob.glob(os.path.dirname(os.path.dirname(inputVolume))+'/anat/*MatrixAff.txt', recursive=False)
+    parent_dir = os.path.dirname(os.path.dirname(inputVolume))
+    path = glob.glob(os.path.join(parent_dir, 'anat', '*MatrixAff.txt'))
     return path
 
 def find_RefTemplate(inputVolume):
-    path =  glob.glob(os.path.dirname(os.path.dirname(inputVolume))+'/anat/*TemplateAff.nii.gz', recursive=False)
+    parent_dir = os.path.dirname(os.path.dirname(inputVolume))
+    path = glob.glob(os.path.join(parent_dir, 'anat', '*TemplateAff.nii.gz'))
     return path
 
 
@@ -349,12 +351,12 @@ if __name__ == "__main__":
     if not os.path.exists(inputVolume):
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
-    outfile = os.path.join(os.path.dirname(inputVolume))
+    outfile = os.path.join(os.path.dirname(inputVolume)) #this will be something like E:\CRC_data\proc_data\sub-GVsT3c3m2\ses-Baseline
     if not os.path.exists(outfile):
         os.makedirs(outfile)
 
     # find related  data
-    pathT2, pathStroke_mask, pathAnno, pathTemplate, bsplineMatrix = find_relatedData(os.path.dirname(outfile))
+    pathT2, pathStroke_mask, pathAnno, pathTemplate, bsplineMatrix = find_relatedData(os.path.dirname(outfile)) #this will be something like E:\CRC_data\proc_data\sub-GVsT3c3m2
     if len(pathT2) is 0:
         T2data = []
         sys.exit("Error: %s' has no reference T2 template." % (os.path.basename(inputVolume),))
