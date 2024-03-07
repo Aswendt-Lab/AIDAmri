@@ -348,11 +348,22 @@ def tracking(dsi_studio, dir_in):
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
 
-    # qa threshold for 60/65 = 0.05; for Alzheimer: 0.03
-    cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
-
+    # Use this tracking parameters if you want to specify each tracking parameter separately.
+    #cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
+    
+    # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
+    cmd_trk = r'%s --action=%s --source=%s --output=%s --parameter_id=%s'
+    
     filename = glob.glob(dir_in+'/*fib.gz')[0]
-    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0')
+    
+    
+    # Use this tracking parameters if you want to specify each tracking parameter separately.
+    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
+    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
+    
+    # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
+    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
+
     os.system(cmd_trk % parameters)
 
 def merge_bval_bvec_to_btable(folder_path):
