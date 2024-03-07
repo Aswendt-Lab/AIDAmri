@@ -28,6 +28,15 @@ import glob
 import subprocess
 import shlex
 
+def define_rodent_spezies():
+    global rodent
+    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
+    if rodent == 0 or rodent == 1:
+        return rodent
+    else:
+        print("Invalid option. Enter 0 for mouse or 1 for rat.")
+        return define_rodent_spezies()
+        
 def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
@@ -193,7 +202,10 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
-        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
+        if rodent == 0:
+            src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
+        elif rodent == 1:
+            src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt')
         dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.txt')#> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         shutil.copyfile(src_file, dst_file)
@@ -227,7 +239,10 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputMaskScaled)
-        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
+        if rodent == 0:
+            src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt') 
+        elif rodent == 1:
+            src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt')
         dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         shutil.copyfile(src_file, dst_file)
@@ -248,30 +263,36 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiDataMask, outputMaskScaled)
 
-    # Allen Brain
+    # Reference Brain
     outputAnnoScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
     outputAnnorparScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[
         0] + 'AnnoSplit_parental_scaled.nii')  #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    outputAllenBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Allen_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
+    outputReferenceBScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Reference_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
 
-    src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
+    if rodent == 0:
+        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
+    elif rodent == 1:
+        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt')
     dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Anno_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
     shutil.copyfile(src_file, dst_file)
 
-    src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
+    if rodent == 0:
+        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'annoVolume+2000_rsfMRI.nii.txt')
+    elif rodent == 1:
+        src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt')
     dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'AnnoSplit_parental_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
     shutil.copyfile(src_file, dst_file)
 
 
     dataAnno = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz'))
     dataAnnorspar = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz'))
-    dataAllen = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
+    dataReference = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz'))
 
     imgTempAnno = dataAnno.get_fdata()
     imgTempAnnorspar = dataAnnorspar.get_fdata()
-    imgTempAllen = dataAllen.get_fdata()
+    imgTempReference = dataReference.get_fdata()
 
-    imgTempAllen = np.flip(imgTempAllen, 2)
+    imgTempReference = np.flip(imgTempReference, 2)
     imgTempAnno = np.flip(imgTempAnno, 2)
     imgTempAnnorspar = np.flip(imgTempAnnorspar, 2)
     scale = np.eye(4) * 10
@@ -279,16 +300,16 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     unscaledNiiDataAnno = nii.Nifti1Image(imgTempAnno, dataAnno.affine * scale)
     unscaledNiiDataAnnorspar = nii.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine * scale)
-    unscaledNiiDataAllen = nii.Nifti1Image(imgTempAllen, dataAllen.affine * scale)
+    unscaledNiiDataReference = nii.Nifti1Image(imgTempReference, dataReference.affine * scale)
     hdrOut = unscaledNiiDataAnno.header
     hdrOut.set_xyzt_units('mm')
     hdrOut = unscaledNiiDataAnnorspar.header
     hdrOut.set_xyzt_units('mm')
-    hdrOut = unscaledNiiDataAllen.header
+    hdrOut = unscaledNiiDataReference.header
     hdrOut.set_xyzt_units('mm')
     nii.save(unscaledNiiDataAnno, outputAnnoScaled)
     nii.save(unscaledNiiDataAnnorspar, outputAnnorparScaled)
-    nii.save(unscaledNiiDataAllen, outputAllenBScaled)
+    nii.save(unscaledNiiDataReference, outputReferenceBScaled)
 
     if outputRefStrokeMaskAff is not None:
         os.remove(outputRefStrokeMaskAff)
@@ -312,16 +333,30 @@ def find_relatedData(pathBase):
     pathT2 =  glob.glob(pathBase+'*/anat/*Bet.nii.gz', recursive=False)
     pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
     pathAnno = glob.glob(pathBase + '*/anat/*Anno.nii.gz', recursive=False)
-    pathAllen = glob.glob(pathBase + '*/anat/*Allen.nii.gz', recursive=False)
+    pathReference = glob.glob(pathBase + '*/anat/*Reference.nii.gz', recursive=False)
     bsplineMatrix =  glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
-    return pathT2,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
+    return pathT2,pathStroke_mask,pathAnno,pathReference,bsplineMatrix
 
 
+#%% Program
 
+#specify default Arguments by defining rodent spezies
+define_rodent_spezies()
+
+if rodent == 0:
+    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
+    default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
+    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
+elif rodent == 1:
+    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+    default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+    
+                            
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Registration Allen Brain to DTI')
+    parser = argparse.ArgumentParser(description='Registration Reference Brain to DTI')
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--inputVolume', help='Path to the BET file of DTI data after preprocessing',
                                required=True)
@@ -329,11 +364,11 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask (for example: P5)', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
+                        default=default_splitAnno
     parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI/DTI', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
+                        default=default_splitAnno_rsfMRI
     parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/DTI', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
+                        default=default_anno_rsfMRI
 
     args = parser.parse_args()
 

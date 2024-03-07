@@ -20,6 +20,15 @@ import subprocess
 import shutil
 
 
+def define_rodent_spezies():
+    global rodent
+    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
+    if rodent == 0 or rodent == 1:
+        return rodent
+    else:
+        print("Invalid option. Enter 0 for mouse or 1 for rat.")
+        return define_rodent_spezies()
+        
 def reset_orientation(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
@@ -121,8 +130,22 @@ def cropToSmall(input_file,output_path):
     myCrop = fsl.ExtractROI(in_file=input_file,roi_file=output_file,x_min=40,x_size=130,y_min=50,y_size=110,z_min=0,z_size=12)
     myCrop.run()
     return  output_file
+    
+    
+#%% Program
 
+#specify default parameters by defining rodent spezies
+define_rodent_spezies()
 
+if rodent == 0:
+    default_frac = 0.3
+    default_rad  = 45
+    default_vert = 0.0
+elif rodent == 1:
+    default_frac = 0.26
+    default_rad  = 55
+    default_vert = 0.07
+    
 if __name__ == "__main__":
     import argparse
 
@@ -132,10 +155,39 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--input', help='Path to the raw NIfTI DTI file', required=True)
 
-    parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
-    parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
-    parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
-                        type=float,default=0.0)
+    parser.add_argument(
+        '-f',
+        '--frac',
+        help='Fractional intensity threshold - default: Mouse=0.3 , Rat=0.26  smaller values give larger brain outline estimates',
+        nargs='?',
+        type=float,
+        default=default_frac,
+        )
+    parser.add_argument(
+        '-r', 
+        '--radius',
+        help='Head radius (mm not voxels) - default: Mouse=45 , Rat=55',
+        nargs='?',
+        type=int,
+        default=default_rad,
+        )
+    parser.add_argument(
+        '-g',
+        '--vertical_gradient',
+        help='Vertical gradient in fractional intensity threshold - default: Mouse=0.0 , Rat=0.07   positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        nargs='?',
+        type=float,
+        default=default_vert,
+        )
+    parser.add_argument(
+        '-b',
+        '--bias_skip',
+        help='Set value to 1 to skip bias field correction',
+        nargs='?',
+        type=float, 
+        default=0.0,
+        )
+        
     args = parser.parse_args()
 
     # set parameters

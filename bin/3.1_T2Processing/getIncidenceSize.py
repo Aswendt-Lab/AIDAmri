@@ -17,6 +17,15 @@ import scipy.io as sc
 import scipy.ndimage as ndimage
 
 
+def define_rodent_spezies():
+    global rodent
+    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
+    if rodent == 0 or rodent == 1:
+        return rodent
+    else:
+        print("Invalid option. Enter 0 for mouse or 1 for rat.")
+        return define_rodent_spezies()
+        
 def thresholding(volumeMR,maskImg,thres,k):
     volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
     zvalues = volumeMR != 0
@@ -97,8 +106,11 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     betMaskImg[oneValues] = 1.0
     strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
     brainVolumeInCubicMM = np.sum(betMaskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
-
-    lines = open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/ARA_changedAnnotatiosn2DTI.txt').readlines()
+    
+    if rodent == 0:
+        lines = open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/ARA_changedAnnotatiosn2DTI.txt').readlines()
+    elif rodent == 1:
+        lines = open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt').readlines()
     o=open(os.path.join(outfile, 'affectedRegions.txt'), 'w')
     o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n" % (
     ((strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100), strokeVolumeInCubicMM,))
@@ -156,6 +168,18 @@ def findRegisteredAnno(path):
 
     return regANNO_list
 
+
+#%% Program
+
+#specify default Arguments by defining rodent spezies
+define_rodent_spezies()
+
+if rodent == 0:
+    default_ReferenceBrainTemplate = os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')    
+elif rodent == 1:
+    default_ReferenceBrainTemplate = os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz')
 if __name__ == "__main__":
     import argparse
 
@@ -165,13 +189,12 @@ if __name__ == "__main__":
 
     parser.add_argument('-t', '--threshold', help='Threshold for stroke values',  nargs='?', type=int,
                         default=0)
-    parser.add_argument('-a', '--allenBrain_anno', help='File: Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
+    parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
+                        default=default_ReferenceBrainTemplate
 
     inputFolder = None
-    allenBrain_template = None
-    allenBrain_anno = None
+    ReferenceBrain_template = None
+    ReferenceBrainTemplate = None
     outfile = None
 
     args = parser.parse_args()
@@ -185,16 +208,20 @@ if __name__ == "__main__":
 
 
 
-    if args.allenBrain_anno is not None:
-        allenBrain_anno = args.allenBrain_anno
-    if not os.path.exists(allenBrain_anno):
-        sys.exit("Error: '%s' is not an existing directory." % (allenBrain_anno,))
+    if args.ReferenceBrainTemplate is not None:
+        ReferenceBrainTemplate = args.ReferenceBrainTemplate
+    if not os.path.exists(ReferenceBrainTemplate):
+        sys.exit("Error: '%s' is not an existing directory." % (ReferenceBrainTemplate,))
 
     thres = args.threshold
-    labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/ABALabelsIDchanged.mat'
-    araDataTemplate = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz'
-
+    if rodent == 0:
+        labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/ABALabelsIDchanged.mat'
+        araDataTemplate = os.path.abspath(
+            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz'
+    elif rodent == 1:
+        labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rat_ABALabelIDs.mat'
+        araDataTemplate = os.path.abspath(
+            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
     if len(glob.glob(inputFolder+'/*Stroke_mask.nii.gz')) > 0:
         incidenceMask = glob.glob(inputFolder+'/*Stroke_mask.nii.gz')[0]
     else:

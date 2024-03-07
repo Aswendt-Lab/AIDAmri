@@ -18,6 +18,15 @@ import progressbar
 import matplotlib.pyplot as plt
 
 
+def define_rodent_spezies():
+    global rodent
+    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
+    if rodent == 0 or rodent == 1:
+        return rodent
+    else:
+        print("Invalid option. Enter 0 for mouse or 1 for rat.")
+        return define_rodent_spezies()
+        
 def heatMap(incidenceMap, araVol):
     maxV = int(np.max(incidenceMap))
     fig, axes = plt.subplots(nrows=3, ncols=4)
@@ -67,6 +76,18 @@ def findIncData(path):
     return regMR_list
 
 
+#%% Program
+
+#specify default Arguments by defining rodent spezies
+define_rodent_spezies()
+
+if rodent == 0:
+    default_ReferenceBrainTemplate = os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')    
+elif rodent == 1:
+    default_ReferenceBrainTemplate = os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz')
+                            
 if __name__ == "__main__":
     import argparse
 
@@ -75,24 +96,23 @@ if __name__ == "__main__":
     requiredNamed.add_argument('-i', '--inputFile', help='File: Brain extracted input data')
     requiredNamed.add_argument('-s', '--studyname', help='Prefix of the study in the input folder - for example "Mouse"*')
 
-    parser.add_argument('-a', '--allenBrainTemplate', help='File: Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) +
-                        '/lib/average_template_50.nii.gz')
+    parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
+                        default=default_ReferenceBrainTemplate
 
     args = parser.parse_args()
     inputFile = None
     studyname = None
-    allenBrainTemplate = None
+    ReferenceBrainTemplate = None
 
     if args.inputFile is not None:
         inputFile = args.inputFile
     if not os.path.exists(inputFile):
         sys.exit("Error: '%s' is not an existing directory." % (inputFile,))
 
-    if args.allenBrainTemplate is not None:
-        allenBrainTemplate = args.allenBrainTemplate
-    if not os.path.exists(allenBrainTemplate):
-        sys.exit("Error: '%s' is not an existing directory." % (allenBrainTemplate,))
+    if args.ReferenceBrainTemplate is not None:
+        ReferenceBrainTemplate = args.ReferenceBrainTemplate
+    if not os.path.exists(ReferenceBrainTemplate):
+        sys.exit("Error: '%s' is not an existing directory." % (ReferenceBrainTemplate,))
 
     studyname = args.studyname
     path = os.path.join(inputFile, studyname)
@@ -102,5 +122,5 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' has no masked strokes." % (studyname,))
 
     print("'%i' folders are part of the incidence map." % (len(regInc_list),))
-    incidenceMap2(regInc_list, allenBrainTemplate, inputFile)
+    incidenceMap2(regInc_list, ReferenceBrainTemplate, inputFile)
     sys.exit(0)

@@ -274,7 +274,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 4, '2.5', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
+    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '1.25', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
@@ -362,7 +362,7 @@ def tracking(dsi_studio, dir_in):
         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 2000000, 0, '.5', '45', 0, '.02', '.1', '.5', '250.0')
     else:
         print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        tracking(dsi_studio, dir_in)
+        return tracking(dsi_studio, dir_in)
 
     os.system(cmd_trk % parameters)
 
