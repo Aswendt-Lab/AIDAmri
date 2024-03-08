@@ -345,7 +345,7 @@ if __name__ == "__main__":
     splitAnno = None
     splitAnno_rsfMRI = None
     anno_rsfMRI = None
-
+        
     if args.inputVolume is not None:
         inputVolume = args.inputVolume
     if not os.path.exists(inputVolume):
