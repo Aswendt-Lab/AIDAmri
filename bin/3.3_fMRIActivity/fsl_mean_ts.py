@@ -39,6 +39,10 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
         PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR_Split.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
         PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP_Split.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
         PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ_Split.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+    elif os.path.basename(labelNames) == "SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt":
+        PcorrR_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrR.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+        PcorrP_matrix_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrP.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
+        PcorrZ_matirx_path = os.path.abspath(os.path.join(sPathData, os.pardir,  'Matrix_PcorrZ.' + os.path.basename(sPathData).split('_')[0])) + ".mat"
     
     
     pcorr_paths = [PcorrR_matrix_path, PcorrP_matrix_path, PcorrZ_matirx_path]

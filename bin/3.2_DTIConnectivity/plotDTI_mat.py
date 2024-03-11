@@ -114,7 +114,7 @@ def matrixMaker(inputPath, output_path):
 
     fig, ax = plt.subplots()
 
-    sns.heatmap(connectivityFilled)
+    sns.heatmap(connectivityFilled, vmin=0, vmax=1000)
     ax.axis('tight')
 
     # Set labels
@@ -124,8 +124,7 @@ def matrixMaker(inputPath, output_path):
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
              rotation_mode="anchor")
-
-    ax.set_title("DTI conncectivity between ARA regions")
+    ax.set_title("DTI connectivity between ARA regions")
     output_file = os.path.join(output_path, "CorrMatrixHM")
     plt.savefig(output_file)
     plt.close
