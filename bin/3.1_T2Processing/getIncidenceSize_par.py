@@ -87,23 +87,23 @@ def thresholding(volumeMR,maskImg,thres,k):
 def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incidenceMask ,thres, outfile,labels):
 
     araDataTemplate  = nii.load(araDataTemplate)
-    realAraImg = araDataTemplate.get_data()
+    realAraImg = araDataTemplate.get_fdata()
     coloredAraLabels = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
 
     matFile = sc.loadmat(labels)
     labMat = matFile['ABLAbelsIDsParental']
 
     maskData = nii.load(incidenceMask)
-    maskImg = maskData.get_data()
+    maskImg = maskData.get_fdata()
     oneValues = maskImg > 0.0
     maskImg[oneValues] = 1.0
     fileIndex = 0
 
     # get warped annos of the current mr
     dataAnno = nii.load(path_listAnno[fileIndex])
-    volumeAnno = np.round(dataAnno.get_data())
+    volumeAnno = np.round(dataAnno.get_fdata())
     dataMR = nii.load(path_listInc[fileIndex])
-    volumeMR = dataMR.get_data()
+    volumeMR = dataMR.get_fdata()
 
     strokeVolume = thresholding(volumeMR, maskImg, thres,1)
 
@@ -139,7 +139,7 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 
     # Stroke volume calculation
     betMask = nii.load(os.path.join(outfile,os.path.basename(path_listInc[fileIndex]).split('.')[0]+'_mask.nii.gz'))
-    betMaskImg = betMask.get_data()
+    betMaskImg = betMask.get_fdata()
     oneValues = betMaskImg > 0.0
     betMaskImg[oneValues] = 1.0
     strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
@@ -218,11 +218,9 @@ def findRegisteredAnno(path):
 define_rodent_spezies()
 
 if rodent == 0:
-    default_ReferenceBrainTemplate = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')    
+    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
 elif rodent == 1:
-    default_ReferenceBrainTemplate = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz') 
+    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
     
 if __name__ == "__main__":
     import argparse
@@ -234,7 +232,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--threshold', help='Threshold for stroke values ',  nargs='?', type=int,
                         default=0)
     parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
-                        default=default_ReferenceBrainTemplate
+                        default=default_ReferenceBrainTemplate)
 
     inputFolder = None
     ReferenceBrain_template = None

@@ -82,11 +82,9 @@ def findIncData(path):
 define_rodent_spezies()
 
 if rodent == 0:
-    default_ReferenceBrainTemplate = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')    
+    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
 elif rodent == 1:
-    default_ReferenceBrainTemplate = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz')
+    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
                             
 if __name__ == "__main__":
     import argparse
@@ -97,7 +95,7 @@ if __name__ == "__main__":
     requiredNamed.add_argument('-s', '--studyname', help='Prefix of the study in the input folder - for example "Mouse"*')
 
     parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
-                        default=default_ReferenceBrainTemplate
+                        default=default_ReferenceBrainTemplate)
 
     args = parser.parse_args()
     inputFile = None
