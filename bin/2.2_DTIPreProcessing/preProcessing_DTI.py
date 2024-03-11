@@ -63,7 +63,13 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     scale = np.eye(4)* 10
     scale[3][3] = 1
     imgTemp = np.flip(imgTemp, 2)
-
+    
+    # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
+    imgTemp = np.flip(imgTemp,2)
+    #imgTemp = np.flip(imgTemp,1)
+    #imgTemp = np.flip(imgTemp,0)
+    #imgTemp = np.rot90(imgTemp, 2)
+    
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')

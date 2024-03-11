@@ -169,13 +169,13 @@ def find_relatedData(pathBase):
 define_rodent_spezies()
 
 if rodent == 0:
-    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
-    default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
-    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
+    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz'
+    default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz'
+    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz'
 elif rodent == 1:
-    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
-    default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
-    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+    default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
     
 if __name__ == "__main__":
     import argparse
@@ -187,11 +187,11 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
-                        default=default_splitAnno
+                        default=default_splitAnno)
     parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI', nargs='?', type=str,
-                        default=default_splitAnno_rsfMRI
+                        default=default_splitAnno_rsfMRI)
     parser.add_argument('-a', '--anno_rsfMRI', help='Annotations atlas for rsfMRI', nargs='?', type=str,
-                        default=default_anno_rsfMRI
+                        default=default_anno_rsfMRI)
 
 
     args = parser.parse_args()

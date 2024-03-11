@@ -60,9 +60,12 @@ def applyBET(input_file,frac,radius,outputPath):
     imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
-    #imgTemp = np.rot90(imgTemp,2)
+    
     imgTemp = np.flip(imgTemp, 2)
-    #imgTemp = np.flip(imgTemp, 0)
+    imgTemp = np.flip(imgTemp, 1)
+    imgTemp = np.flip(imgTemp, 0)
+    #imgTemp = np.rot90(imgTemp,2)
+    
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
@@ -156,7 +159,11 @@ elif rodent == 1:
     
 if __name__ == "__main__":
     import argparse
+    
+    parser = argparse.ArgumentParser(description='Preprocessing of rsfMRI Data')
 
+    requiredNamed = parser.add_argument_group('required named arguments')
+    requiredNamed.add_argument('-i', '--input', help='Path to the RAW data of rsfMRI NIfTI file', required=True)
 
     parser.add_argument(
         '-f',
@@ -190,7 +197,8 @@ if __name__ == "__main__":
         type=float, 
         default=0.0,
         )
-
+    args = parser.parse_args()
+        
     # set parameters
     inputFile = None
     if args.input is not None and args.input is not None:
