@@ -1,0 +1,28 @@
+The KCL_cortical,subcortical,tissue are derived from the following studies. The labels were warpped to the UNC neonate space and re-categlorized into cortical, subcortical, and tissues.
+
+
+
+The structural atlas is defined in 3 granularities of structures:
+  -a tissue atlas with 7 labels (in folder atlas-7)
+  -a structural atlas with 50 labels (in folder atlas-50). The same structures were defined in the manually segmented data of Gousias et al. (2012) used for training of the segmentation algorithm.
+  -a structural atlas with 87 labels (in folder atlas-87). This version of the atlas provides further subdivision of the 50 labels (e.g. the white matter and cortical grey matter parts are delineated separately), as described in Makropoulos et al (2014).
+
+The atlas was constructed based on the automatic segmentation of 420 neonatal brain MR images (T2-weighted) across different ages at scan. The atlas construction is described in Makropoulos et al (2015). The algorithm used for the automatic segmentation is described in Makropoulos et al (2014). The spatio-temporal template of Serag et al. (2012) is used as the coordinate space of the atlas. As in Serag et al. (2012), the segmentations were averaged with non-parametric kernel regression according to the age at scan of the subjects.
+
+
+References
+
+Makropoulos, A., Aljabar, P., Wright, R., Huning, B., Merchant, N., Arichi, T., Tusor, N., Hajnal, J. V., Edwards, A. D., Counsell, S. J., Rueckert, D.
+Regional growth and atlasing of the developing human brain, NeuroImage
+
+Makropoulos, A., Gousias, I. S., Ledig, C., Aljabar, P., Serag, A., Hajnal, J., Edwards, A. D., Counsell, S., and Rueckert, D. (2014). 
+Automatic whole brain MRI segmentation of the developing neonatal brain. 
+IEEE Transactions on Medical Imaging.
+
+Serag, A., Aljabar, P., Ball, G., Counsell, S. J., Boardman, J. P., Rutherford, M. A., Edwards, A. D., Hajnal, J. V., and Rueckert, D. (2012). Construction of a consistent high-definition spatio-temporal atlas of the developing brain using adaptive kernel regression. 
+NeuroImage.
+
+Gousias, I. S., Edwards, A. D., Rutherford, M. A., Counsell, S. J., Hajnal, J. V., Rueckert, D., and Hammers, A. (2012). 
+Magnetic resonance imaging of the newborn brain: Manual segmentation of labelled atlases in term-born and preterm infants. 
+NeuroImage.
+
