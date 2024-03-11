@@ -16,16 +16,7 @@ import glob
 import subprocess
 import shlex
 
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
-        
-def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_template,ReferenceBrain_anno,split_anno,anno_rsfMRI,split_ReferenceBrain_annorsfMRI,outfile,opt):
+def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,allenBrain_anno,split_anno,anno_rsfMRI,split_allenBrain_annorsfMRI,outfile,opt):
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
     outputCPPAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixAff.txt')
 
@@ -42,7 +33,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_templat
     outputInc = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
     outputIncAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixInv.txt')
 
-    command = f"reg_aladin -ref {ReferenceBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
+    command = f"reg_aladin -ref {allenBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -55,7 +46,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_templat
     if len(stroke_mask) > 0:
         outputIncStrokeMask = os.path.join(outfile, os.path.basename(outputInc).split('.')[0] + '_mask.nii.gz')
 
-        command = f"reg_resample -ref {ReferenceBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
+        command = f"reg_resample -ref {allenBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -88,10 +79,10 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_templat
         print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
         raise
 
-    # resmaple Reference Brain Template
-    outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateReference.nii.gz')
+    # resmaple Allen Brain Reference Template
+    outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAllen.nii.gz')
 
-    command = f"reg_resample -ref {inputVolume} -flo {ReferenceBrain_template} -cpp {outputCPP} -res {outputAnno}"
+    command = f"reg_resample -ref {inputVolume} -flo {allenBrain_template} -cpp {outputCPP} -res {outputAnno}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -115,7 +106,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_templat
     # resample parental split annotations
     outputAnnorsfMRI_split = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
 
-    command = f"reg_resample -ref {inputVolume} -flo {split_ReferenceBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI_split}"
+    command = f"reg_resample -ref {inputVolume} -flo {split_allenBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI_split}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -127,7 +118,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_templat
     # resample annotations
     outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
 
-    command = f"reg_resample -ref {inputVolume} -flo {ReferenceBrain_anno} -inter 0 -cpp {outputCPP} -res {outputAnno}"
+    command = f"reg_resample -ref {inputVolume} -flo {allenBrain_anno} -inter 0 -cpp {outputCPP} -res {outputAnno}"
     command_args = shlex.split(command)
     try:
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -182,32 +173,7 @@ def find_mask(inputVolume):
     directory = os.path.dirname(inputVolume)
     return glob.glob(os.path.join(directory, '*Stroke_mask.nii.gz'))
 
-#%% Program
 
-#specify default Arguments by defining rodent spezies
-define_rodent_spezies()
-
-if rodent == 0:
-    default_template = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0.nii.gz'
-    default_ReferenceBrain_template  = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
-    default_ReferenceBrain_anno = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz'
-    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz'
-    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz'
-    default_split_annorsfMRI = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.gz'
-elif rodent == 1:
-    default_template = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
-    default_ReferenceBrain_template  = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
-    default_ReferenceBrain_anno = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    default_split_annorsfMRI = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    
 if __name__ == "__main__":
     import argparse
 
@@ -218,28 +184,32 @@ if __name__ == "__main__":
 
     parser.add_argument('-s', '--deformationStrength', help='integer: 1 - very strong deformation, 2 - strong deformation, 3 - medium deformation, 4 - weak deformation ', nargs='?', type=int,
                         default=3)
-    parser.add_argument('-g', '--template', help='File: Templates for Reference Brain', nargs='?', type=str,
-                        default=default_template)
-    parser.add_argument('-t','--ReferenceBrain_template', help='File: Templates of Reference Brain', nargs='?', type=str,
-                        default=default_ReferenceBrain_template)
-    parser.add_argument('-a','--ReferenceBrain_anno', help='File: Annotations of Reference Brain', nargs='?', type=str,
-                        default=default_ReferenceBrain_anno)
+    parser.add_argument('-g', '--template', help='File: Templates for Allen Brain', nargs='?', type=str,
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0.nii.gz')
+    parser.add_argument('-t','--allenBrain_template', help='File: Templates of Allen Brain', nargs='?', type=str,
+                        default=os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
+    parser.add_argument('-a','--allenBrain_anno', help='File: Annotations of Allen Brain', nargs='?', type=str,
+                        default=os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz')
     parser.add_argument('-sa', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
-                        default=default_splitAnno)
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
     parser.add_argument('-f', '--anno_rsfMRI', help='Parental Annotations atlas', nargs='?', type=str,
-                        default=default_anno_rsfMRI)
-    parser.add_argument('-sf', '--split_annorsfMRI', help='File: Annotations of split Reference Brain', nargs='?',
+                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
+
+    parser.add_argument('-sf', '--split_annorsfMRI', help='File: Annotations of split Allen Brain', nargs='?',
                         type=str,
-                        default=default_split_annorsfMRI)
+                        default=os.path.abspath(
+                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.gz')
 
     args = parser.parse_args()
 
     inputVolume = None
-    ReferenceBrain_template = None
-    ReferenceBrain_anno = None
+    allenBrain_template = None
+    allenBrain_anno = None
     split_anno = None
     brain_template = None
-    split_ReferenceBrain_annorsfMRI = None
+    split_allenBrain_annorsfMRI = None
     anno_rsfMRI = None
     deformationStrength = args.deformationStrength
 
@@ -248,15 +218,15 @@ if __name__ == "__main__":
     if not os.path.exists(inputVolume):
         sys.exit("Error: '%s' is not an existing directory." % (inputVolume,))
 
-    if args.ReferenceBrain_template is not None:
-        ReferenceBrain_template = args.ReferenceBrain_template
-    if not os.path.exists(ReferenceBrain_template):
-        sys.exit("Error: '%s' is not an existing directory." % (ReferenceBrain_template,))
+    if args.allenBrain_template is not None:
+        allenBrain_template = args.allenBrain_template
+    if not os.path.exists(allenBrain_template):
+        sys.exit("Error: '%s' is not an existing directory." % (allenBrain_template,))
         
-    if args.ReferenceBrain_anno is not None:
-        ReferenceBrain_anno = args.ReferenceBrain_anno
-    if not os.path.exists(ReferenceBrain_anno):
-        sys.exit("Error: '%s' is not an existing directory." % (ReferenceBrain_anno,))
+    if args.allenBrain_anno is not None:
+        allenBrain_anno = args.allenBrain_anno
+    if not os.path.exists(allenBrain_anno):
+        sys.exit("Error: '%s' is not an existing directory." % (allenBrain_anno,))
         
     if args.splitAnno is not None:
         split_anno = args.splitAnno
@@ -264,9 +234,9 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory." % (split_anno,))
 
     if args.split_annorsfMRI is not None:
-        split_ReferenceBrain_annorsfMRI = args.split_annorsfMRI
-    if not os.path.exists(split_ReferenceBrain_annorsfMRI):
-        sys.exit("Error: '%s' is not an existing directory." % (split_ReferenceBrain_annorsfMRI,))
+        split_allenBrain_annorsfMRI = args.split_annorsfMRI
+    if not os.path.exists(split_allenBrain_annorsfMRI):
+        sys.exit("Error: '%s' is not an existing directory." % (split_allenBrain_annorsfMRI,))
     
     if args.anno_rsfMRI is not None:
         anno_rsfMRI = args.anno_rsfMRI
@@ -290,7 +260,7 @@ if __name__ == "__main__":
     else:
         stroke_mask = stroke_mask[0]
 
-    transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,ReferenceBrain_template,ReferenceBrain_anno,split_anno,anno_rsfMRI,split_ReferenceBrain_annorsfMRI,outfile,deformationStrength)
+    transInput = BET_2_MPIreg(inputVolume, stroke_mask,brain_template,allenBrain_template,allenBrain_anno,split_anno,anno_rsfMRI,split_allenBrain_annorsfMRI,outfile,deformationStrength)
 
     current_dir = os.path.dirname(inputVolume)
     search_string = os.path.join(current_dir, "*T2w.nii.gz")
