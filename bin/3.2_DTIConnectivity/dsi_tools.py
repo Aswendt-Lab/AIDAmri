@@ -351,7 +351,8 @@ def tracking(dsi_studio, dir_in):
     """
     Performs seed-based fiber-tracking.
     """
-
+    define_rodent_spezies()
+    
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
