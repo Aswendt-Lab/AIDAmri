@@ -34,6 +34,15 @@ import shutil
 import subprocess
 import pandas as pd
 
+def define_rodent_spezies():
+    global rodent
+    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
+    if rodent == 0 or rodent == 1:
+        return rodent
+    else:
+        print("Invalid option. Enter 0 for mouse or 1 for rat.")
+        return define_rodent_spezies()
+        
 def scaleBy10(input_path, inv):
     data = nii.load(input_path)
     imgTemp = data.get_fdata()
@@ -359,11 +368,13 @@ def tracking(dsi_studio, dir_in):
 
     # Use this tracking parameters if you want to specify each tracking parameter separately.
     #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
-    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 2000000, 0, '.5', '45', 0, '.02', '.1', '.5', '250.0') #optimized rat parameters
-    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
+    if rodent == 1:
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 2000000, 0, '.5', '45', 0, '.02', '.1', '.5', '250.0') #optimized rat parameters
+    elif rodent == 0:
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
 
     # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
-    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
+    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
     os.system(cmd_trk % parameters)
 
 def merge_bval_bvec_to_btable(folder_path):
