@@ -1,18 +1,10 @@
-"""
-Created on 11/09/2023, Updated on 02/25/2024
-
-@author: Marc Schneider, Markus Aswendt
-Neuroimaging & Neuroengineering
-Department of Neurology
-University Hospital Cologne
-"""
-
 import nibabel as nii
 import numpy as np
 import argparse
 import os
 import glob
 import csv
+import sys  # Added import statement for sys module
 
 def getOutfile(atlas_type, img_file, suffix):
     imgName = os.path.basename(img_file)
@@ -20,7 +12,6 @@ def getOutfile(atlas_type, img_file, suffix):
     acronym_name = os.path.basename(atlas_type).split('.')[0]
     outFile = os.path.join(os.path.dirname(img_file), f"{t2map}_T2values_{acronym_name}_{suffix}.csv")
     return outFile
-
 
 def extractT2MapdataMean(img, rois, outfile, txt_file):
     slices = np.unique(np.where(rois > 0)[2])
@@ -42,9 +33,9 @@ def extractT2MapdataMean(img, rois, outfile, txt_file):
                     continue
                 mean_value = np.mean(img[region_voxels])
                 region_size = len(region_voxels[0])
-                acro = indices[r] if indices and r in indices else ""
+                acro = indices.get(r, "")  # Using dict.get() to avoid KeyError
                 csv_writer.writerow([s, r, acro, "%.2f" % mean_value, "%.2f" % region_size])
-                
+
 def extractT2MapdataPerRegion(img, rois, outfile, txt_file):
     regions = np.delete(np.unique(rois), 0)
     
@@ -63,7 +54,7 @@ def extractT2MapdataPerRegion(img, rois, outfile, txt_file):
                 continue
             mean_value = np.mean(img[region_voxels])
             region_size = len(region_voxels[0])
-            acro = indices[r] if indices and r in indices else ""
+            acro = indices.get(r, "")  # Using dict.get() to avoid KeyError
             csv_writer.writerow([r, acro, "%.2f" % mean_value, "%.2f" % region_size])
 
 if __name__ == '__main__':
@@ -76,26 +67,23 @@ if __name__ == '__main__':
     print(f"Extracting T2 values for: {args.input}")
     print(f"Acronym files: {acronyms_files}")
 
-    # Determine atlas type
-    if "parentARA_LR" in acronyms_files[0]:
-        atlas_type = "parental_ARA"
-    else:
-        atlas_type = "non-parental_ARA"
+    # Checking if input file is provided
+    if args.input is None:
+        sys.exit("Error: No input file provided.")
 
-    if args.input is not None:
-        image_file = args.input
-        if not os.path.exists(image_file):
-            sys.exit(f"Error: '{image_file}' is not an existing image nii-file.")
+    image_file = args.input
+    if not os.path.exists(image_file):
+        sys.exit(f"Error: '{image_file}' is not an existing image nii-file.")
 
     img_data = nii.load(image_file)
-    img = img_data.dataobj.get_unscaled()
-
+    img = img_data.get_fdata()  # Using get_fdata() for compatibility
+    
     parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit_parental.nii*"))[0]
     non_parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit.nii*"))[0]
 
-    for acronmys in acronyms_files:
+    for acronyms in acronyms_files:  # Corrected variable name to acronyms
         try:
-            if "parentARA_LR" in acronmys:
+            if "parentARA_LR" in acronyms:
                 atlas_type = "parental"
                 atlas = parental_atlas
             else:
@@ -103,19 +91,17 @@ if __name__ == '__main__':
                 atlas = non_parental_atlas
 
             roi_data = nii.load(atlas)
-            rois = roi_data.dataobj.get_unscaled()
+            rois = roi_data.get_fdata()  # Using get_fdata() for compatibility
 
-            #outFileMean = getOutfile(atlas_type, image_file, acronmys, "Mean")
-            outFileMean = getOutfile(atlas_type, image_file, "PerImage")
+            outFileMean = getOutfile(atlas_type, image_file, "Mean")  # Fixed suffix to "Mean"
             print(f"Outfile (Mean): {outFileMean}")
-            extractT2MapdataMean(img, rois, outFileMean, acronmys)
+            extractT2MapdataMean(img, rois, outFileMean, acronyms)
 
-            #outFilePerRegion = getOutfile(atlas_type, image_file, acronmys, "PerRegion")
-            outFilePerRegion = getOutfile(atlas_type, image_file, "PerRegion")
+            outFilePerRegion = getOutfile(atlas_type, image_file, "PerRegion")  # Fixed suffix to "PerRegion"
             print(f"Outfile (Per Region): {outFilePerRegion}")
-            extractT2MapdataPerRegion(img, rois, outFilePerRegion, acronmys)
+            extractT2MapdataPerRegion(img, rois, outFilePerRegion, acronyms)
         except Exception as e:
-            print(f'Error while processing the T2 values Errorcode: {str(e)}')
-            raise
+            print(f'Error while processing the T2 values: {str(e)}')  # Improved error message
+            raise  # Raising the exception to halt execution
 
     print("Finished T2 map processing")
