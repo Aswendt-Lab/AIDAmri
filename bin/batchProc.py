@@ -144,6 +144,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 if len(currentFile)>0:
                     command = f'python registration_T2.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
+                    command = f'python t2_value_extraction.py -i {currentFile[0]}'
+                    result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
                 else:

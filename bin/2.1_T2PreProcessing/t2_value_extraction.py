@@ -10,7 +10,7 @@ def getOutfile(atlas_type, img_file, suffix):
     imgName = os.path.basename(img_file)
     t2map = str.split(imgName, '.')[-3]
     acronym_name = os.path.basename(atlas_type).split('.')[0]
-    outFile = os.path.join(os.path.dirname(img_file), f"{t2map}_T2values_{acronym_name}_{suffix}.csv")
+    outFile = os.path.join(os.path.dirname(img_file),"t2_values_extraction",f"{t2map}_T2values_{acronym_name}_{suffix}.csv")
     return outFile
 
 def extractT2MapdataMean(img, rois, outfile, txt_file):
@@ -58,9 +58,9 @@ def extractT2MapdataPerRegion(img, rois, outfile, txt_file):
             csv_writer.writerow([r, acro, "%.2f" % mean_value, "%.2f" % region_size])
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extracts the T2 values from the T2 map for every atlas region')
+    parser = argparse.ArgumentParser(description='Extracts the T2w values for every atlas region')
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i', '--input', help='Input T2 map, should be a nifti file')
+    requiredNamed.add_argument('-i', '--input', help='Input T2w file, should be a nifti file')
     args = parser.parse_args()
 
     acronyms_files = glob.glob(os.path.join(os.getcwd(), "*.txt"))
@@ -80,6 +80,9 @@ if __name__ == '__main__':
     
     parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit_parental.nii*"))[0]
     non_parental_atlas = glob.glob(os.path.join(os.path.dirname(image_file), "*AnnoSplit.nii*"))[0]
+    
+    if not os.path.exists(os.path.join(os.path.dirname(image_file), "t2_values_extraction")):
+        os.mkdir(os.path.join(os.path.dirname(image_file), "t2_values_extraction"))
 
     for acronyms in acronyms_files:  # Corrected variable name to acronyms
         try:
