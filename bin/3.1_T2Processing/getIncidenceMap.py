@@ -1,14 +1,3 @@
-'''
-Created on 10/08/2017
-Updated on 18/12/2023
-
-@author: Niklas Pallast, Markus Aswendt
-Neuroimaging & Neuroengineering
-Department of Neurology
-University Hospital Cologne
-
-'''
-
 import os
 import sys
 import nibabel as nii
@@ -27,7 +16,7 @@ def define_rodent_spezies():
         print("Invalid option. Enter 0 for mouse or 1 for rat.")
         return define_rodent_spezies()
         
-def heatMap(incidenceMap, araVol):
+def heatMap(incidenceMap, araVol, outputLocation):
     maxV = int(np.max(incidenceMap))
     fig, axes = plt.subplots(nrows=3, ncols=4)
     t = 1
@@ -42,36 +31,37 @@ def heatMap(incidenceMap, araVol):
     bounds = np.linspace(0, maxV, maxV + 1)
     cbar = fig.colorbar(im, cax=cbar_ax, format='%1i', ticks=bounds)
     cbar.ax.tick_params(labelsize=14)
-    plt.show()
+    
+    # Save the heatmap instead of showing
+    output_file = os.path.join(outputLocation, 'heatMap.png')
+    plt.savefig(output_file)
+    plt.close()
 
 
-def incidenceMap2(path_listInc, araTemplate, inputFile):
+def incidenceMap2(path_listInc, araTemplate, inputFile, outputLocation):
     araDataTemplate = nii.load(araTemplate)
     realAraImg = np.asanyarray(araDataTemplate.dataobj)
-    overlazedInciedences = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
+    overlaidIncidences = np.zeros_like(realAraImg)
     bar = progressbar.ProgressBar()
     for fileIndex in bar(range(len(path_listInc))):
         dataMRI = nii.load(path_listInc[fileIndex])
         volumeMRI = np.asanyarray(dataMRI.dataobj)
 
-        bvalues = volumeMRI <= 0
-        volumeMRI[bvalues] = 0
+        # Adjusting the volumeMRI data
+        volumeMRI[volumeMRI <= 0] = 0
+        volumeMRI[volumeMRI > 0] = 1
 
-        fvalues = volumeMRI > 0
-        volumeMRI[fvalues] = 1
+        overlaidIncidences += volumeMRI
 
-        overlazedInciedences = overlazedInciedences + volumeMRI
-
-    overlayNII = nii.Nifti1Image(overlazedInciedences, araDataTemplate.affine)
-    output_file = os.path.join(inputFile, 'incMap.nii.gz')
+    overlayNII = nii.Nifti1Image(overlaidIncidences, araDataTemplate.affine)
+    output_file = os.path.join(outputLocation, 'incMap.nii.gz')
     nii.save(overlayNII, output_file)
-    heatMap(incidenceMap=overlazedInciedences, araVol=realAraImg)
+    heatMap(incidenceMap=overlaidIncidences, araVol=realAraImg, outputLocation=outputLocation)
 
 
 def findIncData(path):
     regMR_list = []
-
-    for filename in glob.iglob(path + '/T2w/*IncidenceData_mask.nii.gz', recursive=False):
+    for filename in glob.iglob(os.path.join(path,"*","*",'anat', '*IncidenceData_mask.nii.gz')):
         regMR_list.append(filename)
     return regMR_list
 
@@ -90,35 +80,31 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
-    requiredNamed = parser.add_argument_group('required arguments')
-    requiredNamed.add_argument('-i', '--inputFile', help='File: Brain extracted input data')
-    requiredNamed.add_argument('-s', '--studyname', help='Prefix of the study in the input folder - for example "Mouse"*')
-
+    parser.add_argument('-i', '--inputFile', help='Directory: Brain extracted input data, e.g proc_data folder', required=True)
+    parser.add_argument('-o', '--outputLocation', help='Directory: Output location for the heat map', required=True)
     parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
                         default=default_ReferenceBrainTemplate)
 
     args = parser.parse_args()
-    inputFile = None
-    studyname = None
-    ReferenceBrainTemplate = None
 
-    if args.inputFile is not None:
-        inputFile = args.inputFile
+    inputFile = args.inputFile
+    outputLocation = args.outputLocation
+    ReferenceBrainTemplate = args.ReferenceBrainTemplate
+
     if not os.path.exists(inputFile):
         sys.exit("Error: '%s' is not an existing directory." % (inputFile,))
 
-    if args.ReferenceBrainTemplate is not None:
-        ReferenceBrainTemplate = args.ReferenceBrainTemplate
-    if not os.path.exists(ReferenceBrainTemplate):
-        sys.exit("Error: '%s' is not an existing directory." % (ReferenceBrainTemplate,))
+    if not os.path.exists(outputLocation):
+        sys.exit("Error: '%s' is not an existing directory." % (outputLocation,))
 
-    studyname = args.studyname
-    path = os.path.join(inputFile, studyname)
-    regInc_list = findIncData(path)
+    if not os.path.exists(allenBrainTemplate):
+        sys.exit("Error: '%s' is not an existing file." % (allenBrainTemplate,))
+
+    regInc_list = findIncData(inputFile)
 
     if len(regInc_list) < 1:
-        sys.exit("Error: '%s' has no masked strokes." % (studyname,))
+        sys.exit("Error: No masked strokes found in the provided directory.")
 
     print("'%i' folders are part of the incidence map." % (len(regInc_list),))
-    incidenceMap2(regInc_list, ReferenceBrainTemplate, inputFile)
+    incidenceMap2(regInc_list, ReferenceBrainTemplate, inputFile, outputLocation)
     sys.exit(0)
