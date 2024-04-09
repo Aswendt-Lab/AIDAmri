@@ -67,15 +67,17 @@ ___
 and Interpretations. NeuroImage 52 (3), 1059–69.](https://www.sciencedirect.com/science/article/abs/pii/S105381190901074X)
 + Allen Mouse Brain Reference Atlas
     + [Wang et al. (2020). The Allen Mouse Brain Common Coordinate Framework: A 3D Reference Atlas. Cell 181 (4), 936-953.](https://pubmed.ncbi.nlm.nih.gov/32386544/)
++ Sigma Brain Reference Atlas
+	+ [D.A. Barrière, R. Magalhães, et al. (2019). The SIGMA rat brain templates and atlases for multimodal MRI data analysis and visualization. Nature Communication 10 (1), 5699.] (https://pubmed.ncbi.nlm.nih.gov/31836716/)
 + Niftyreg
-    + [Ourselin, et al. (2001). Reconstructing a 3D structure from serial
+    + [Ourselin et al. (2001). Reconstructing a 3D structure from serial
 histological sections. Image and Vision Computing, 19(1-2), 25–31.](https://www.sciencedirect.com/science/article/pii/S0262885600000524)
-    + [Modat, et al. (2014). Global image registration using a symmetric block-
+    + [Modat et al. (2014). Global image registration using a symmetric block-
 matching approach. Journal of Medical Imaging, 1(2), 024003–024003.](https://www.ncbi.nlm.nih.gov/pubmed/26158035)
-    + [Rueckert, et al.. (1999). Nonrigid registration using free-form
+    + [Rueckert et al. (1999). Nonrigid registration using free-form
 deformations: Application to breast MR images. IEEE Transactions on Medical
 Imaging, 18(8), 712–721.](https://ieeexplore.ieee.org/document/796284)
-    + [Modat, et al. (2010). Fast free-form deformation using graphics processing
+    + [Modat et al. (2010). Fast free-form deformation using graphics processing
 units. Computer Methods And Programs In Biomedicine,98(3), 278–284.](https://www.ncbi.nlm.nih.gov/pubmed/19818524)
 + FSL
     + [M.W. Woolrich, S. Jbabdi, B. Patenaude, M. Chappell, S. Makni, T. Behrens, C. Beckmann, M. Jenkinson, S.M. Smith. Bayesian analysis of neuroimaging data in FSL. NeuroImage, 45:S173-86, 2009](https://www.ncbi.nlm.nih.gov/pubmed/19059349)
