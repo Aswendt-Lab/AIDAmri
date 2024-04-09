@@ -68,7 +68,7 @@ and Interpretations. NeuroImage 52 (3), 1059–69.](https://www.sciencedirect.co
 + Allen Mouse Brain Reference Atlas
     + [Wang et al. (2020). The Allen Mouse Brain Common Coordinate Framework: A 3D Reference Atlas. Cell 181 (4), 936-953.](https://pubmed.ncbi.nlm.nih.gov/32386544/)
 + Sigma Brain Reference Atlas
-	+ [D.A. Barrière, R. Magalhães, et al. (2019). The SIGMA rat brain templates and atlases for multimodal MRI data analysis and visualization. Nature Communication 10 (1), 5699.] (https://pubmed.ncbi.nlm.nih.gov/31836716/)
+	+ [D.A. Barrière, R. Magalhães, et al. (2019). The SIGMA rat brain templates and atlases for multimodal MRI data analysis and visualization. Nature Communication 10 (1), 5699.](https://pubmed.ncbi.nlm.nih.gov/31836716/)
 + Niftyreg
     + [Ourselin et al. (2001). Reconstructing a 3D structure from serial
 histological sections. Image and Vision Computing, 19(1-2), 25–31.](https://www.sciencedirect.com/science/article/pii/S0262885600000524)
