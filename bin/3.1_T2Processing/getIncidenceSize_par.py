@@ -18,7 +18,7 @@ import numpy as np
 import scipy.io as sc
 import scipy.ndimage as ndimage
 
-
+        
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return array[idx]
@@ -78,23 +78,23 @@ def thresholding(volumeMR,maskImg,thres,k):
 def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incidenceMask ,thres, outfile,labels):
 
     araDataTemplate  = nii.load(araDataTemplate)
-    realAraImg = araDataTemplate.get_data()
+    realAraImg = araDataTemplate.get_fdata()
     coloredAraLabels = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
 
     matFile = sc.loadmat(labels)
     labMat = matFile['ABLAbelsIDsParental']
 
     maskData = nii.load(incidenceMask)
-    maskImg = maskData.get_data()
+    maskImg = maskData.get_fdata()
     oneValues = maskImg > 0.0
     maskImg[oneValues] = 1.0
     fileIndex = 0
 
     # get warped annos of the current mr
     dataAnno = nii.load(path_listAnno[fileIndex])
-    volumeAnno = np.round(dataAnno.get_data())
+    volumeAnno = np.round(dataAnno.get_fdata())
     dataMR = nii.load(path_listInc[fileIndex])
-    volumeMR = dataMR.get_data()
+    volumeMR = dataMR.get_fdata()
 
     strokeVolume = thresholding(volumeMR, maskImg, thres,1)
 
@@ -130,13 +130,15 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 
     # Stroke volume calculation
     betMask = nii.load(os.path.join(outfile,os.path.basename(path_listInc[fileIndex]).split('.')[0]+'_mask.nii.gz'))
-    betMaskImg = betMask.get_data()
+    betMaskImg = betMask.get_fdata()
     oneValues = betMaskImg > 0.0
     betMaskImg[oneValues] = 1.0
     strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
     brainVolumeInCubicMM = np.sum(betMaskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
 
-    lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.txt').readlines()
+    #mice
+    #lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.txt').readlines()
+    lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt').readlines()
     o=open(os.path.join(outfile, 'affectedRegions_Parental.txt'), 'w')
     o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n"  % (((strokeVolumeInCubicMM/brainVolumeInCubicMM)*100),strokeVolumeInCubicMM,))
     matIndex = 0
@@ -199,6 +201,14 @@ def findRegisteredAnno(path):
 
     return regANNO_list
 
+
+#%% Program
+
+
+#mice
+#default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
+default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
+    
 if __name__ == "__main__":
     import argparse
 
@@ -208,13 +218,12 @@ if __name__ == "__main__":
 
     parser.add_argument('-t', '--threshold', help='Threshold for stroke values ',  nargs='?', type=int,
                         default=0)
-    parser.add_argument('-a', '--allenBrain_anno', help='File: Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz')
+    parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
+                        default=default_ReferenceBrainTemplate)
 
     inputFolder = None
-    allenBrain_template = None
-    allenBrain_anno = None
+    ReferenceBrain_template = None
+    ReferenceBrainTemplate = None
     outfile = None
 
     args = parser.parse_args()
@@ -226,14 +235,18 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory." % (inputFolder,))
 
 
-    if args.allenBrain_anno is not None:
-        allenBrain_anno = args.allenBrain_anno
-    if not os.path.exists(allenBrain_anno):
-        sys.exit("Error: '%s' is not an existing directory." % (allenBrain_anno,))
+    if args.ReferenceBrainTemplate is not None:
+        ReferenceBrainTemplate = args.ReferenceBrainTemplate
+    if not os.path.exists(ReferenceBrainTemplate):
+        sys.exit("Error: '%s' is not an existing directory." % (ReferenceBrainTemplate,))
 
     thres = args.threshold
-    labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rsfMRILablelID.mat'
-    araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.gz'
+    
+    #mice
+    #labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rsfMRILablelID.mat'
+    #araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.gz'
+    labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rat_rsfMRILablelID.mat'
+    araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
 
     if len(glob.glob(inputFolder+'/*Stroke_mask.nii.gz')) > 0:
         incidenceMask = glob.glob(inputFolder+'/*Stroke_mask.nii.gz')[0]

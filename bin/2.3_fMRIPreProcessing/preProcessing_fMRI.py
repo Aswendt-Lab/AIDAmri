@@ -19,7 +19,7 @@ from pathlib import Path
 import subprocess
 import shutil
 
-
+        
 def reset_orientation(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
@@ -51,9 +51,12 @@ def applyBET(input_file,frac,radius,outputPath):
     imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
+    
+    #imgTemp = np.flip(imgTemp, 2)
+    #imgTemp = np.flip(imgTemp, 1)
+    imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp,2)
-    imgTemp = np.flip(imgTemp, 2)
-    #imgTemp = np.flip(imgTemp, 0)
+    
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
@@ -131,23 +134,60 @@ def cropToSmall(input_file,outputPath):
     return  output_file
 
 
+#%% Program
+
+
+#mice
+#default_frac = 0.15
+#default_rad  = 45
+#default_vert = 0.0
+
+default_frac = 0.2
+default_rad  = 60
+default_vert = 0.21
+    
 if __name__ == "__main__":
     import argparse
-
-
+    
     parser = argparse.ArgumentParser(description='Preprocessing of rsfMRI Data')
 
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--input', help='Path to the RAW data of rsfMRI NIfTI file', required=True)
 
-    parser.add_argument('-f', '--frac',
-                        help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates',
-                        nargs='?', type=float, default=0.15)
-    parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
-    parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
-                        type=float,default=0.0)
+    parser.add_argument(
+        '-f',
+        '--frac',
+        help='Fractional intensity threshold - default: Mouse=0.3 , Rat=0.26  smaller values give larger brain outline estimates',
+        nargs='?',
+        type=float,
+        default=default_frac,
+        )
+    parser.add_argument(
+        '-r', 
+        '--radius',
+        help='Head radius (mm not voxels) - default: Mouse=45 , Rat=55',
+        nargs='?',
+        type=int,
+        default=default_rad,
+        )
+    parser.add_argument(
+        '-g',
+        '--vertical_gradient',
+        help='Vertical gradient in fractional intensity threshold - default: Mouse=0.0 , Rat=0.07   positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        nargs='?',
+        type=float,
+        default=default_vert,
+        )
+    parser.add_argument(
+        '-b',
+        '--bias_skip',
+        help='Set value to 1 to skip bias field correction',
+        nargs='?',
+        type=float, 
+        default=0.0,
+        )
     args = parser.parse_args()
-
+        
     # set parameters
     inputFile = None
     if args.input is not None and args.input is not None:

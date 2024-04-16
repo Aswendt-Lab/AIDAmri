@@ -424,7 +424,7 @@ if __name__ == "__main__":
         subjid = str(data["SubjID"])
         
         # determine method file path
-        fmri_scan_method_file = os.path.join(pathToRawData, sub, scanid, "method")
+        fmri_scan_method_file = os.path.join(pathToRawData, scanid, "method")
         
         # determine output json file path
         out_file = os.path.join(output_dir, "sub-" + subjid, "ses-" + sessid, "func", "sub-" + subjid + "_ses-" + sessid + "_EPI.json")

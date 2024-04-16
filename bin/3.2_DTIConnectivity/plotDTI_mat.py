@@ -18,7 +18,7 @@ import scipy.io as sio
 np.seterr(divide='ignore', invalid='ignore')
 import seaborn as sns
 
-
+        
 def intersect_mtlb(a, b):
     a1, ia = np.unique(a, return_index=True)
     b1, ib = np.unique(b, return_index=True)
@@ -29,27 +29,40 @@ def intersect_mtlb(a, b):
 
 
 def getRefLabels(prefix):
-    if "rsfMRISplit" in prefix:
+    if "Split_parental" in prefix:
+        #mice
+        #dataTemplate = np.loadtxt(
+        #    os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume+2000_rsfMRI.nii.txt',
+        #    dtype=str)
         dataTemplate = np.loadtxt(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt',
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
+            dtype=str)    
+        refLabels = dataTemplate[:, 1]
+
+    elif "parental" in prefix:
+        #mice
+        #dataTemplate = np.loadtxt(
+        #    os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume.nii.txt',
+        #    dtype=str)
+        dataTemplate = np.loadtxt(
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
             dtype=str)
         refLabels = dataTemplate[:, 1]
 
-    elif "rsfMRI" in prefix:
-        dataTemplate = np.loadtxt(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume.nii.txt', dtype=str)
-        refLabels = dataTemplate[:, 1]
-
     else:
+        #mice
+        #dataTemplate = np.loadtxt(
+        #    os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/ARA_changedAnnotatiosn2DTI.txt',
+        #    dtype=str)
         dataTemplate = np.loadtxt(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/ARA_changedAnnotatiosn2DTI.txt',
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
             dtype=str)
         refLabels = dataTemplate[:, 1]
 
     return refLabels
 
 
-def matrixMaker(inputPath):
+def matrixMaker(inputPath, output_path):
     # Read pass and end
     if "pass" in inputPath:
         matData = sio.loadmat(inputPath)
@@ -89,7 +102,7 @@ def matrixMaker(inputPath):
 
     fig, ax = plt.subplots()
 
-    sns.heatmap(connectivityFilled)
+    sns.heatmap(connectivityFilled, vmin=0, vmax=1000)
     ax.axis('tight')
 
     # Set labels
@@ -99,11 +112,15 @@ def matrixMaker(inputPath):
     # Rotate the tick labels and set their alignment.
     plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
              rotation_mode="anchor")
-
-    ax.set_title("DTI conncectivity between ARA regions")
-    plt.show()
+    ax.set_title("DTI connectivity between ARA regions")
+    output_file = os.path.join(output_path, "CorrMatrixHM")
+    plt.savefig(output_file)
+    plt.close
 
     return connectivity
+
+
+#%% Program
 
 
 if __name__ == "__main__":
@@ -123,4 +140,4 @@ if __name__ == "__main__":
     inputPath = args.inputMat
 
     # generate Matrix
-    matrixMaker(inputPath)
+    matrixMaker(inputPath, os.path.dirname(inputPath))

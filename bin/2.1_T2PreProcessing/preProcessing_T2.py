@@ -17,6 +17,7 @@ import applyMICO
 import subprocess
 import shutil
 
+        
 def reset_orientation(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
@@ -53,8 +54,9 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
     # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
     imgTemp = np.flip(imgTemp,2)
-    #imgTemp = np.flip(imgTemp, 0)
-    #imgTemp = np.rot90(imgTemp, 2)
+    #imgTemp = np.flip(imgTemp,1)
+    #imgTemp = np.flip(imgTemp,0)
+    #imgTemp = np.rot90(imgTemp,2)
 
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
@@ -86,10 +88,20 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
 #%% Program
 
+
+#mice
+#default_frac = 0.15
+#default_rad  = 45
+#default_vert = 0.0
+
+default_frac = 0.2
+default_rad  = 60
+default_vert = 0.21
+
 if __name__ == "__main__":
     import argparse
-
-
+    
+    
     parser = argparse.ArgumentParser(description='Preprocessing of T2 Data')
 
     requiredNamed = parser.add_argument_group('Required named arguments')
@@ -98,26 +110,26 @@ if __name__ == "__main__":
     parser.add_argument(
         '-f',
         '--frac',
-        help='Fractional intensity threshold - default=0.15  smaller values give larger brain outline estimates',
+        help='Fractional intensity threshold - default: Mouse=0.15 , Rat=0.26  smaller values give larger brain outline estimates',
         nargs='?',
         type=float,
-        default=0.15,
+        default=default_frac,
         )
     parser.add_argument(
         '-r', 
         '--radius',
-        help='Head radius (mm not voxels) - default=45',
+        help='Head radius (mm not voxels) - default: Mouse=45 , Rat=55',
         nargs='?',
         type=int,
-        default=45,
+        default=default_rad,
         )
     parser.add_argument(
         '-g',
         '--vertical_gradient',
-        help='Vertical gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        help='Vertical gradient in fractional intensity threshold - default: Mouse=0.0 , Rat=0.07   positive values give larger brain outlines at bottom and smaller brain outlines at top',
         nargs='?',
         type=float,
-        default=0.0,
+        default=default_vert,
         )
     parser.add_argument(
         '-b',

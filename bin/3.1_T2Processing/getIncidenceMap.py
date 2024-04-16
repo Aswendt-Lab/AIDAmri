@@ -6,7 +6,7 @@ import numpy as np
 import progressbar
 import matplotlib.pyplot as plt
 
-
+        
 def heatMap(incidenceMap, araVol, outputLocation):
     maxV = int(np.max(incidenceMap))
     fig, axes = plt.subplots(nrows=3, ncols=4)
@@ -57,20 +57,28 @@ def findIncData(path):
     return regMR_list
 
 
+#%% Program
+
+
+#mice
+#default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
+
+default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
+                            
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
     parser.add_argument('-i', '--inputFile', help='Directory: Brain extracted input data, e.g proc_data folder', required=True)
     parser.add_argument('-o', '--outputLocation', help='Directory: Output location for the heat map', required=True)
-    parser.add_argument('-a', '--allenBrainTemplate', help='File: Annotations of Allen Brain', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, 'lib', 'average_template_50.nii.gz')))
+    parser.add_argument('-a', '--ReferenceBrainTemplate', help='File: Template of Reference Brain', nargs='?', type=str,
+                        default=default_ReferenceBrainTemplate)
 
     args = parser.parse_args()
 
     inputFile = args.inputFile
     outputLocation = args.outputLocation
-    allenBrainTemplate = args.allenBrainTemplate
+    ReferenceBrainTemplate = args.ReferenceBrainTemplate
 
     if not os.path.exists(inputFile):
         sys.exit("Error: '%s' is not an existing directory." % (inputFile,))
@@ -87,5 +95,5 @@ if __name__ == "__main__":
         sys.exit("Error: No masked strokes found in the provided directory.")
 
     print("'%i' folders are part of the incidence map." % (len(regInc_list),))
-    incidenceMap2(regInc_list, allenBrainTemplate, inputFile, outputLocation)
+    incidenceMap2(regInc_list, ReferenceBrainTemplate, inputFile, outputLocation)
     sys.exit(0)

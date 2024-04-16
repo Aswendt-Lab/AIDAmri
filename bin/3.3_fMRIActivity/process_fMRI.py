@@ -23,6 +23,7 @@ import fsl_mean_ts
 from pathlib import Path 
 import json
 
+        
 def copyAtlasOfData(path,post,labels):
     fileALL = glob.glob(path + '/*' + post + '.nii.gz')
     if fileALL.__len__()>1:
@@ -255,8 +256,11 @@ def startProcess(Rawfile_name):
     file_nameEPI = getEPIMean(file_name,proc_Path)
 
     # apply BET on EPImean
-    file_nameEPI_BET,mask_file = applyBET(file_nameEPI,frac=0.35,radius=45,vertical_gradient=0.1)
-
+    
+    #mice
+    #file_nameEPI_BET,mask_file = applyBET(file_nameEPI,frac=0.35,radius=45,vertical_gradient=0.1)
+    file_nameEPI_BET,mask_file = applyBET(file_nameEPI,frac=0.26,radius=55,vertical_gradient=0.07)
+    
     #apply Mask on original dataset
     maskedFile_data = applyMask(file_name,mask_file)
 
@@ -276,6 +280,10 @@ def startProcess(Rawfile_name):
         print("Error: Processing not possible, because either there is no folder called Physio or the related physio data for the scan is missing there.")
 
     return mcfFile_name
+
+
+#%% Program
+
 
 if __name__ == "__main__":
 
@@ -299,14 +307,21 @@ if __name__ == "__main__":
         stc = True
     else:
         stc = False
-
+    #mice
+    #labels = os.path.abspath(
+    #    os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs.txt'
+    #labelNames = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume.nii.txt'
+    #labels2000 = os.path.abspath(
+    #    os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs+2000.txt'
+    #labelNames2000 = os.path.abspath(
+    #    os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt'
     labels = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs.txt'
-    labelNames = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume.nii.txt'
+        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels_fMRI.txt'
+    labelNames = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt'
     labels2000 = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs+2000.txt'
+        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels_fMRI.txt'
     labelNames2000 = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt'
+        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt'    
     input_file = None
     if args.input is not None and args.input is not None:
         input_file = args.input

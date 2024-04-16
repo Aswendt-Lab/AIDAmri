@@ -14,7 +14,7 @@ import shutil as sh
 import subprocess
 import shlex
 
-
+        
 def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, splitAnno_rsfMRI, anno_rsfMRI,
                   bsplineMatrix, dref, outfile):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
@@ -149,27 +149,38 @@ def find_relatedData(pathBase):
     pathT2 =  glob.glob(pathBase+'*/anat/*Bet.nii.gz', recursive=False)
     pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
     pathAnno = glob.glob(pathBase + '*/anat/*Anno.nii.gz', recursive=False)
-    pathAllen = glob.glob(pathBase + '*/anat/*Allen.nii.gz', recursive=False)
+    pathReference = glob.glob(pathBase + '*/anat/*Reference.nii.gz', recursive=False)
     bsplineMatrix =  glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
-    return pathT2,pathStroke_mask,pathAnno,pathAllen,bsplineMatrix
+    return pathT2,pathStroke_mask,pathAnno,pathReference,bsplineMatrix
 
 
+#%% Program
+
+
+#mice
+#default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz'
+#default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz'
+#default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz'
+
+default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+default_splitAnno_rsfMRI  = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+    
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Registration of Allen Brain Atlas to rsfMRI')
+    parser = argparse.ArgumentParser(description='Registration of Reference Brain Atlas to rsfMRI')
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--inputVolume', help='Path to rsfMRI data after preprocessing', required=True)
     parser.add_argument('-d', '--dtiasRef', action='store_true', help='use DTI as reference if data quality is low')
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz')
+                        default=default_splitAnno)
     parser.add_argument('-f', '--splitAnno_rsfMRI', help='Split annotations atlas for rsfMRI', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.gz')
+                        default=default_splitAnno_rsfMRI)
     parser.add_argument('-a', '--anno_rsfMRI', help='Annotations atlas for rsfMRI', nargs='?', type=str,
-                        default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz')
-
+                        default=default_anno_rsfMRI)
 
 
     args = parser.parse_args()
