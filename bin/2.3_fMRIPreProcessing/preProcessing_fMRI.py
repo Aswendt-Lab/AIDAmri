@@ -19,15 +19,6 @@ from pathlib import Path
 import subprocess
 import shutil
 
-
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
         
 def reset_orientation(input_file):
 
@@ -61,8 +52,8 @@ def applyBET(input_file,frac,radius,outputPath):
     scale = np.eye(4)* 10
     scale[3][3] = 1
     
-    imgTemp = np.flip(imgTemp, 2)
-    imgTemp = np.flip(imgTemp, 1)
+    #imgTemp = np.flip(imgTemp, 2)
+    #imgTemp = np.flip(imgTemp, 1)
     imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp,2)
     
@@ -145,17 +136,15 @@ def cropToSmall(input_file,outputPath):
 
 #%% Program
 
-#specify default parameters by defining rodent spezies
-define_rodent_spezies()
 
-if rodent == 0:
-    default_frac = 0.15
-    default_rad  = 45
-    default_vert = 0.0
-elif rodent == 1:
-    default_frac = 0.26
-    default_rad  = 55
-    default_vert = 0.07
+#mice
+#default_frac = 0.15
+#default_rad  = 45
+#default_vert = 0.0
+
+default_frac = 0.2
+default_rad  = 60
+default_vert = 0.21
     
 if __name__ == "__main__":
     import argparse

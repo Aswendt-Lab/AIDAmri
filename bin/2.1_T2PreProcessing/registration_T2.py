@@ -16,14 +16,6 @@ import glob
 import subprocess
 import shlex
 
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
         
 def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, ReferenceBrain_template,ReferenceBrain_anno,split_anno,anno_rsfMRI,split_ReferenceBrain_annorsfMRI,outfile,opt):
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
@@ -184,29 +176,27 @@ def find_mask(inputVolume):
 
 #%% Program
 
-#specify default Arguments by defining rodent spezies
-define_rodent_spezies()
 
-if rodent == 0:
-    default_template = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0.nii.gz'
-    default_ReferenceBrain_template  = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
-    default_ReferenceBrain_anno = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz'
-    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz'
-    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz'
-    default_split_annorsfMRI = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.gz'
-elif rodent == 1:
-    default_template = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
-    default_ReferenceBrain_template  = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
-    default_ReferenceBrain_anno = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
-    default_split_annorsfMRI = os.path.abspath(
-                            os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+#mice
+#default_template = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/NP_template_sc0.nii.gz'
+#default_ReferenceBrain_template  = os.path.abspath(
+#                        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
+#default_ReferenceBrain_anno = os.path.abspath(
+#                        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno.nii.gz'
+#default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/ARA_annotationR+2000.nii.gz'
+#default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/annoVolume.nii.gz'
+#default_split_annorsfMRI = os.path.abspath(
+#                        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.gz'
+
+default_template = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
+default_ReferenceBrain_template  = os.path.abspath(
+                        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
+default_ReferenceBrain_anno = os.path.abspath(
+                        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+default_splitAnno = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+default_anno_rsfMRI = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+default_split_annorsfMRI = os.path.abspath(
+                        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
     
 if __name__ == "__main__":
     import argparse

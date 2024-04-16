@@ -18,15 +18,6 @@ import numpy as np
 import scipy.io as sc
 import scipy.ndimage as ndimage
 
-
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
         
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
@@ -145,10 +136,9 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
     brainVolumeInCubicMM = np.sum(betMaskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
 
-    if rodent == 0:
-        lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.txt').readlines()
-    elif rodent == 1:    
-        lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt').readlines()
+    #mice
+    #lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.txt').readlines()
+    lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt').readlines()
     o=open(os.path.join(outfile, 'affectedRegions_Parental.txt'), 'w')
     o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n"  % (((strokeVolumeInCubicMM/brainVolumeInCubicMM)*100),strokeVolumeInCubicMM,))
     matIndex = 0
@@ -214,13 +204,10 @@ def findRegisteredAnno(path):
 
 #%% Program
 
-#specify default Arguments by defining rodent spezies
-define_rodent_spezies()
 
-if rodent == 0:
-    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
-elif rodent == 1:
-    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
+#mice
+#default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
+default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
     
 if __name__ == "__main__":
     import argparse
@@ -255,12 +242,11 @@ if __name__ == "__main__":
 
     thres = args.threshold
     
-    if rodent == 0:
-        labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rsfMRILablelID.mat'
-        araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.gz'
-    elif rodent == 1:
-        labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rat_rsfMRILablelID.mat'
-        araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
+    #mice
+    #labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rsfMRILablelID.mat'
+    #araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.gz'
+    labels = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/rat_rsfMRILablelID.mat'
+    araDataTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz'
 
     if len(glob.glob(inputFolder+'/*Stroke_mask.nii.gz')) > 0:
         incidenceMask = glob.glob(inputFolder+'/*Stroke_mask.nii.gz')[0]

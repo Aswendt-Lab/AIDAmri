@@ -17,15 +17,6 @@ import applyMICO
 import subprocess
 import shutil
 
-
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
         
 def reset_orientation(input_file):
 
@@ -63,9 +54,9 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
     # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
     imgTemp = np.flip(imgTemp,2)
-    imgTemp = np.flip(imgTemp,1)
-    imgTemp = np.flip(imgTemp,0)
-    #imgTemp = np.rot90(imgTemp, 2)
+    #imgTemp = np.flip(imgTemp,1)
+    #imgTemp = np.flip(imgTemp,0)
+    #imgTemp = np.rot90(imgTemp,2)
 
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
     hdrIn = scaledNiiData.header
@@ -97,17 +88,15 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 
 #%% Program
 
-#specify default parameters by defining rodent spezies
-define_rodent_spezies()
 
-if rodent == 0:
-    default_frac = 0.15
-    default_rad  = 45
-    default_vert = 0.0
-elif rodent == 1:
-    default_frac = 0.26
-    default_rad  = 55
-    default_vert = 0.07
+#mice
+#default_frac = 0.15
+#default_rad  = 45
+#default_vert = 0.0
+
+default_frac = 0.2
+default_rad  = 60
+default_vert = 0.21
 
 if __name__ == "__main__":
     import argparse

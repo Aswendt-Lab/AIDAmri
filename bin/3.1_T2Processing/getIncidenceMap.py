@@ -6,15 +6,6 @@ import numpy as np
 import progressbar
 import matplotlib.pyplot as plt
 
-
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
         
 def heatMap(incidenceMap, araVol, outputLocation):
     maxV = int(np.max(incidenceMap))
@@ -68,13 +59,11 @@ def findIncData(path):
 
 #%% Program
 
-#specify default Arguments by defining rodent spezies
-define_rodent_spezies()
 
-if rodent == 0:
-    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
-elif rodent == 1:
-    default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
+#mice
+#default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/average_template_50.nii.gz'
+
+default_ReferenceBrainTemplate = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/SIGMA_InVivo_Brain_Template_Masked.nii.gz'
                             
 if __name__ == "__main__":
     import argparse

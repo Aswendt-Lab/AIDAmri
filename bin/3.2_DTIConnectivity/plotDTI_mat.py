@@ -18,15 +18,6 @@ import scipy.io as sio
 np.seterr(divide='ignore', invalid='ignore')
 import seaborn as sns
 
-
-def define_rodent_spezies():
-    global rodent
-    rodent = int(input("Select rodent: Mouse = 0 , Rat = 1 "))
-    if rodent == 0 or rodent == 1:
-        return rodent
-    else:
-        print("Invalid option. Enter 0 for mouse or 1 for rat.")
-        return define_rodent_spezies()
         
 def intersect_mtlb(a, b):
     a1, ia = np.unique(a, return_index=True)
@@ -39,36 +30,33 @@ def intersect_mtlb(a, b):
 
 def getRefLabels(prefix):
     if "Split_parental" in prefix:
-        if rodent == 0:
-            dataTemplate = np.loadtxt(
-                os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume+2000_rsfMRI.nii.txt',
-                dtype=str)
-        elif rodent == 1:
-            dataTemplate = np.loadtxt(
-                os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
-                dtype=str)    
+        #mice
+        #dataTemplate = np.loadtxt(
+        #    os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume+2000_rsfMRI.nii.txt',
+        #    dtype=str)
+        dataTemplate = np.loadtxt(
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
+            dtype=str)    
         refLabels = dataTemplate[:, 1]
 
     elif "parental" in prefix:
-        if rodent == 0:
-            dataTemplate = np.loadtxt(
-                os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume.nii.txt',
-                dtype=str)
-        elif rodent == 1:
-            dataTemplate = np.loadtxt(
-                os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
-                dtype=str)
+        #mice
+        #dataTemplate = np.loadtxt(
+        #    os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/annoVolume.nii.txt',
+        #    dtype=str)
+        dataTemplate = np.loadtxt(
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
+            dtype=str)
         refLabels = dataTemplate[:, 1]
 
     else:
-        if rodent == 0:
-            dataTemplate = np.loadtxt(
-                os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/ARA_changedAnnotatiosn2DTI.txt',
-                dtype=str)
-        elif rodent == 1:
-            dataTemplate = np.loadtxt(
-                os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
-                dtype=str)
+        #mice
+        #dataTemplate = np.loadtxt(
+        #    os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir)) + 'aida/lib/ARA_changedAnnotatiosn2DTI.txt',
+        #    dtype=str)
+        dataTemplate = np.loadtxt(
+            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, os.pardir, os.pardir)) + 'aida/lib/SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt',
+            dtype=str)
         refLabels = dataTemplate[:, 1]
 
     return refLabels
@@ -134,8 +122,6 @@ def matrixMaker(inputPath, output_path):
 
 #%% Program
 
-#specify default Arguments by defining rodent spezies
-define_rodent_spezies()
 
 if __name__ == "__main__":
     import argparse
