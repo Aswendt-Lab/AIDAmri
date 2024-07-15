@@ -24,7 +24,7 @@ def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, sp
         pathT2 = glob.glob(os.path.dirname(outfile) + '*/dwi/*T2w.nii.gz', recursive=False)
         sh.copy(pathT2[0], outputT2w)
     else:
-        command = f"reg_aladin -ref {inputVolume} -flo {T2data} -res {outputT2w} -aff {outputAff}"
+        command = f"reg_aladin -ref {inputVolume} -flo {T2data} -res {outputT2w} -rigOnly -aff {outputAff}"
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
