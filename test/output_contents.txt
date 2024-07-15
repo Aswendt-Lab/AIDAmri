@@ -1,2 +1,0 @@
-PROCESS BIN TESTDATA INPUT OUTPUT[...]
-preProcessing_T2 /aida/bin/2.1_T2PreProcessing /testData/T2w testData.5.1.nii.gz Stroke_mask.nii.gz testDataBias.nii.gz testDataBiasBet.nii.gz testDataBiasBet_mask.nii.gz
