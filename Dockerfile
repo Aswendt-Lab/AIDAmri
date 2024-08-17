@@ -83,7 +83,6 @@ RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
 ENV PATH=/aida/bin/3.2_DTIConnectivity:$PATH
 RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
 COPY lib/ lib/
-COPY test/ test/
 RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
-COPY test/ test/
+
 
