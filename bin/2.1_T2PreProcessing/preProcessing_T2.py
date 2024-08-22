@@ -53,7 +53,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     scale[3][3] = 1
 
     # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
-    imgTemp = np.flip(imgTemp,2)
+    #imgTemp = np.flip(imgTemp,2)
     #imgTemp = np.flip(imgTemp,1)
     #imgTemp = np.flip(imgTemp,0)
     #imgTemp = np.rot90(imgTemp,2)
@@ -94,9 +94,9 @@ def applyBET(input_file,frac,radius,vertical_gradient):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.2
+default_frac = 0.1
 default_rad  = 60
-default_vert = 0.21
+default_vert = 0.13
 
 if __name__ == "__main__":
     import argparse

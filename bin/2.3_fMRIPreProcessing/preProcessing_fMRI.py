@@ -54,7 +54,7 @@ def applyBET(input_file,frac,radius,outputPath):
     
     #imgTemp = np.flip(imgTemp, 2)
     #imgTemp = np.flip(imgTemp, 1)
-    imgTemp = np.flip(imgTemp, 0)
+    #imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp,2)
     
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
@@ -142,9 +142,9 @@ def cropToSmall(input_file,outputPath):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.2
+default_frac = 0.1
 default_rad  = 60
-default_vert = 0.21
+default_vert = 0.13
     
 if __name__ == "__main__":
     import argparse

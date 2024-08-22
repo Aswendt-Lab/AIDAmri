@@ -430,8 +430,11 @@ if __name__ == "__main__":
         out_file = os.path.join(output_dir, "sub-" + subjid, "ses-" + sessid, "func", "sub-" + subjid + "_ses-" + sessid + "_EPI.json")
         
         # calculate slice timings
-        create_slice_timings(fmri_scan_method_file, scanid, out_file)
-    
+        try:
+            create_slice_timings(fmri_scan_method_file, scanid, out_file)
+        except FileNotFoundError:
+            continue
+        
     ## use parallel computing for a faster generation of t2maps
     mese_scan_sessions = []
     for id in mese_scan_ids:
