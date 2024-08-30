@@ -36,7 +36,7 @@ def matrixMaker(matData, output_path):
 
     fig, ax = plt.subplots()
 
-    sns.heatmap(corrMatrix, vmin = 0, vmax = 1)
+    sns.heatmap(corrMatrix, vmin = 0, vmax = 0.75)
     ax.axis('tight')
 
     # Set labels
@@ -48,9 +48,9 @@ def matrixMaker(matData, output_path):
              rotation_mode="anchor")
 
     ax.set_title("rsfMRI Correlation between ARA regions")
-    output_file = os.path.join(output_path, "CorrMatrixHM")
+    output_file = os.path.join(output_path, "CorrMatrixHM.png")
     plt.savefig(output_file)
-    plt.close
+    plt.close()
     return corrMatrix
 
 
