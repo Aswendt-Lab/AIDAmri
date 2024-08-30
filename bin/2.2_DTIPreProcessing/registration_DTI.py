@@ -128,30 +128,6 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise  
 
-
-    # resample subject to template
-    # Step 1: Invert the affine matrix
-    inverted_aff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_invertedAffine.txt')
-    command = f"reg_transform -invAff {outputAff} {inverted_aff}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
-        raise
-
-    # Step 2: Resample subject to template using the inverted affine matrix
-    outputTemplate = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_SubjectOnTemplate.nii.gz')
-    command = f"reg_resample -ref {brain_template} -flo {inputVolume} -trans {inverted_aff} -res {outputTemplate}"
-    command_args = shlex.split(command)
-    try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        print(f"Output of {command}:\n{result.stdout}")
-    except Exception as e:
-        print(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
-        raise
-
     # Some scaled data for DSI Studio
     outfileDSI = os.path.join(os.path.dirname(inputVolume), 'DSI_studio')
     if os.path.exists(outfileDSI):
