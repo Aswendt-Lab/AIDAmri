@@ -1,0 +1,143 @@
+{
+    "@context": "https://w3id.org/codemeta/3.0",
+    "type": "SoftwareSourceCode",
+    "applicationCategory": "Neuroscience",
+    "codeRepository": "https://github.com/Aswendt-Lab/AIDAmri",
+    "contributor": [
+        {
+            "id": "_:contributor_1",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Department of Neurology, Faculty of Medicine and University Hospital Cologne, University of Cologne, Cologne, Germany"
+            },
+            "email": "niklaspallast@yahoo.de",
+            "familyName": "Pallast",
+            "givenName": "Niklas"
+        },
+        {
+            "type": "Role",
+            "contributor": "_:contributor_1",
+            "endDate": "2020-03-12",
+            "roleName": "Developer",
+            "startDate": "2017-08-10"
+        },
+        {
+            "id": "_:contributor_2",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Department of Neurology, Faculty of Medicine and University Hospital Cologne, University of Cologne, Cologne, Germany"
+            },
+            "email": "leon.scharwaechter@gmail.com",
+            "familyName": "Scharwächter",
+            "givenName": "Leon"
+        },
+        {
+            "type": "Role",
+            "contributor": "_:contributor_2",
+            "endDate": "2021-08-31",
+            "roleName": "Developer",
+            "startDate": "2020-04-01"
+        },
+        {
+            "id": "_:contributor_3",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Department of Neurology, Faculty of Medicine and University Hospital Cologne, University of Cologne, Cologne, Germany"
+            },
+            "email": "victor.vera@gmx.de",
+            "familyName": "Vera Frazao",
+            "givenName": "Victor"
+        },
+        {
+            "type": "Role",
+            "contributor": "_:contributor_3",
+            "endDate": "2024-06-25",
+            "roleName": "Developer",
+            "startDate": "2021-09-07"
+        },
+        {
+            "id": "_:contributor_4",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Department of Neurology, Faculty of Medicine and University Hospital Cologne, University of Cologne, Cologne, Germany"
+            },
+            "email": "marc@schneider-lein.de",
+            "familyName": "Schneider",
+            "givenName": "Marc"
+        },
+        {
+            "type": "Role",
+            "contributor": "_:contributor_4",
+            "endDate": "2024-03-27",
+            "roleName": "Developer",
+            "startDate": "2023-10-19"
+        },
+        {
+            "id": "_:contributor_5",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Department of Neurology, Faculty of Medicine and University Hospital Cologne, University of Cologne, Cologne, Germany"
+            },
+            "email": "arefks@gmail.com",
+            "familyName": "Kalantari",
+            "givenName": "Aref"
+        },
+        {
+            "type": "Role",
+            "contributor": "_:contributor_5",
+            "endDate": "2024-08-27",
+            "roleName": "Developer",
+            "startDate": "2023-11-07"
+        },
+        {
+            "id": "_:contributor_6",
+            "type": "Person",
+            "affiliation": {
+                "type": "Organization",
+                "name": "Department of Neurology, Faculty of Medicine and University Hospital Cologne, University of Cologne, Cologne, Germany"
+            },
+            "email": "markus.aswendt@uk-koeln.de",
+            "familyName": "Aswendt",
+            "givenName": "Markus"
+        },
+        {
+            "type": "Role",
+            "contributor": "_:contributor_6",
+            "endDate": "2024-08-27",
+            "roleName": "Developer",
+            "startDate": "2018-11-29"
+        }
+    ],
+    "dateCreated": "2017-08-10",
+    "dateModified": "2024-01-22",
+    "datePublished": "2018-10-19",
+    "description": "Dockerized Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain. Accepts Bruker raw data, BIDS and Nifty files as input. Performs a range of data conversion and pre-processing steps including the multi-step registration with the Allen Mouse Brain Atlas. ",
+    "downloadUrl": "https://github.com/Aswendt-Lab/AIDAmri/releases/tag/v2.0",
+    "funder": {
+        "type": "Organization",
+        "name": "Friebe Foundation"
+    },
+    "keywords": [
+        "MRI",
+        "mouse brain",
+        "atlas registration",
+        "rs-fMRI",
+        "DTI",
+        "connectivity"
+    ],
+    "license": "https://spdx.org/licenses/GPL-3.0",
+    "name": "AIDAmri",
+    "operatingSystem": "OS-independent Docker",
+    "programmingLanguage": "Python 3.7",
+    "releaseNotes": "Introducing the Brain Imaging Data Structure (BIDS) to improve and standardize data organisation\nImproved batch processing, including independent T2 mapping\nParallel computing for faster processing\nCleaner processing output stream and verbose logging",
+    "softwareRequirements": "Docker",
+    "version": "2.0",
+    "developmentStatus": "active",
+    "funding": "T0498/28960/16",
+    "referencePublication": "ttps://doi.org/10.3389/fninf.2019.00042"
+}
