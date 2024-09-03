@@ -24,7 +24,6 @@ def flip_file_in_z_dimension(input_file, header_from_smooth_bet):
     # Check if the data is 4D
     if len(data.shape) == 4:
         # Data is 4D; adjust the header to reflect the fourth dimension
-        header = header_from_smooth_bet.copy()
         header.set_data_shape(data_flipped.shape)
     else:
         # Data is 3D; use the original header
@@ -40,6 +39,40 @@ def flip_file_in_z_dimension(input_file, header_from_smooth_bet):
     nib.save(flipped_img, flipped_file)
     
     return flipped_file
+
+def reorient_and_save(input_file):
+    """
+    Reorient the image and save it with '_originated.nii' suffix.
+    """
+    # Load the image
+    img = nib.load(input_file)
+    data = img.get_fdata()
+    
+    # Check if the data is 4D or 3D
+    if len(data.shape) == 4:
+        # Data is 4D; permute and flip along the third axis for each 3D volume
+        data_reoriented = np.transpose(data, (0, 2, 1, 3))  # permute axes for 4D
+        data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
+    else:
+        # Data is 3D; permute and flip the 3D volume
+        data_reoriented = np.transpose(data, (0, 2, 1))      # permute axes for 3D
+        data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
+    
+    # Update header
+    header = img.header.copy()
+    header.set_data_shape(data_reoriented.shape)
+    header.set_zooms(img.header.get_zooms()[:len(data_reoriented.shape)])
+    
+    # Create a new NIfTI image with the reoriented data
+    reoriented_img = nib.Nifti1Image(data_reoriented, img.affine, header)
+    
+    # Define output file path
+    reoriented_file = input_file.replace('.nii.gz', '_originated.nii')
+    
+    # Save the reoriented image
+    nib.save(reoriented_img, reoriented_file)
+    
+    return reoriented_file
 
 def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_template_address):
     transformed_files = []
@@ -78,7 +111,9 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
         command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template}"
         subprocess.run(shlex.split(command), check=True)
 
-        transformed_files.append(file_st_f_on_template)
+        # Reorient the transformed file
+        reoriented_file = reorient_and_save(file_st_f_on_template)
+        transformed_files.append(reoriented_file)
     
     return transformed_files
 
@@ -97,7 +132,6 @@ def main(input_folder):
     temporal_mean_epi_single_frame_original_contrast_list_files = glob.glob(temporal_mean_epi_single_frame_original_contrast, recursive=True)
     bet_file_list = glob.glob(bet_file_address, recursive=True)
 
-     
     # Apply affine transformations to temporal mean EPI files
     for temporal_file in temporal_mean_epi_single_frame_original_contrast_list_files:
         func_folder = os.path.dirname(os.path.dirname(temporal_file))
@@ -118,6 +152,3 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--input_folder', required=True, help="Path to the input folder.")
     args = parser.parse_args()
     main(args.input_folder)
-
-
-nib.save(nib.Nifti1Image(sigma_changed_temp, sigma_changed.affine, header=sigma_changed_header), output_file_path)
