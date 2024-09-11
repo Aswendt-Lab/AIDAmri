@@ -271,8 +271,8 @@ def startProcess(Rawfile_name):
     meanMcfFile_name = getEPIMean(mcfFile_name, proc_Path)
 
     # copy physio data to rawMonData-Folder
-    relatedPhysioFolder = copyRawPhysioData(Rawfile_name,i32_Path)
-
+    #relatedPhysioFolder = copyRawPhysioData(Rawfile_name,i32_Path)
+    relatedPhysioFolder = []
     # get Regression Values
     if len(relatedPhysioFolder) is not 0:
         getSingleRegTable.getRegrTable(os.path.dirname(Rawfile_name),relatedPhysioFolder,par_Path)
@@ -346,21 +346,22 @@ if __name__ == "__main__":
         else:
             TR = 1
             print("Warining: no RepititionTime found in JSON. Default of TR=1000 ms is taken")
-        
+
         if "costum_timings" in meta_data:
             costum_timings = meta_data["costum_timings"]
         else: 
             costum_timings = meta_data["SliceTiming"]
-        
+
         if "ObjOrderList" in meta_data:
             slice_order = meta_data["ObjOrderList"]
         else: 
             slice_order = list(range(1, len(costum_timings) + 1))
-        
+
         if "n_slices" in meta_data:
             n_slices = meta_data["n_slices"]
         else:
             n_slices = len(costum_timings)
+
         # create costum timings txt file
         costum_timings_path = os.path.join(Path(meta_data_file).parent, "tcostum.txt")
         create_txt_file(costum_timings_path, costum_timings)
