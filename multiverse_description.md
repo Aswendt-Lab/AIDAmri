@@ -29,7 +29,7 @@ As the data was provided in BIDS format, no conversion to NIfTI was necessary. H
 3.5. **Functional Connectivity Analysis**:
    - Correlation of BOLD signals between brain regions is calculated, providing insights into the functional connectivity across the brain. This analysis helps identify networks of interacting regions based on their synchronized activity patterns.
 
-### Graphical Summary
+### 4. Graphical Summary
 ``` mermaid
 flowchart TD
     A1["Anatomical T2(x)"] --> B1["Pre-processing"]
@@ -51,7 +51,17 @@ flowchart TD
 
 ```
 
-### Multiverse-specific output
+### 5. Multiverse-specific output
+5.1. **Fully preprocessed EPI in SIGMA space ready for seed-based analysis**
+5.2 **The motion parameters**
+5.3 **A single frame or temporal mean EPI in SIGMA space with original contrast**
+5.4 **Shell script used or a detailed description of each preprocessing step. Including the version for each tool that you used.
+
+5.5 **A list of people to add to the author list (as many as you want), with affiliation, orcid, email, and conflict of interests.**
+No conflict of interest. 
+Aref Kalantari, Daniel Mertens, and Markus Aswendt. University of Cologne, Faculty of Medicine and University Hospital Cologne, Department of Neurology, Cologne, Germany
+
+
 
 ### Tools used by AIDAmri
 
