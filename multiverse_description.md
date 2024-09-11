@@ -29,6 +29,28 @@ As the data was provided in BIDS format, no conversion to NIfTI was necessary. H
 3.5. **Functional Connectivity Analysis**:
    - Correlation of BOLD signals between brain regions is calculated, providing insights into the functional connectivity across the brain. This analysis helps identify networks of interacting regions based on their synchronized activity patterns.
 
+### Graphical Summary
+``` mermaid
+flowchart TD
+    A1["Anatomical T2(x)"] --> B1["Pre-processing"]
+    B1 --> D1["Registration"]
+  
+    A3["Functional fMRI(x)"] --> B3["Pre-processing"]
+    B3 --> C3["Regression"]
+    C3 --> D3["Registration"]
+    D3 --> E3["SIGMA region extraction"]
+    
+    E3 --> F8["Functional timeseries data"]
+
+    MRI["Multiverse dataset"] --> A1
+    MRI --> A3
+
+    D1 -.-> D3
+
+
+
+```
+
 ### Multiverse-specific output
 
 ### Tools used by AIDAmri
