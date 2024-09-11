@@ -9,30 +9,28 @@
 
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
-<br/>
+## Key Features of AIDA<em>mri</em>
+
+1. **Automated Preprocessing**  
+   It performs tasks like image re-orientation, bias-field correction, and brain extraction with minimal user input required.
+
+2. **Atlas-Based Registration**  
+   AIDA<em>mri</em> uses the **Allen Mouse Brain Reference Atlas** for accurate region-based analysis of MRI data, allowing researchers to compare results across different studies efficiently. A modified atlas version with larger labels to better match MRI resolution is provided. Users can define specific **regions of interest (ROIs)** for analysis, such as stroke lesions.
+
+3. **Modular Design**  
+   The pipeline is developed in Python, making it cross-platform and open-source, allowing for easy integration and modification.
+
+4. **Validation**  
+   The pipeline was validated with different MRI datasets, including those involving stroke models, demonstrating its robustness even in the presence of significant brain deformations.
+
+5. **Functional and Structural Connectivity Analysis**  
+   The output of the pipeline includes connectivity matrices that can be used for further analysis of brain network changes in health and disease.
+
+## Version history
 
 [Information latest Version 2.0](https://github.com/maswendt/AIDAmri/releases/tag/v2.0)
 
-<h3><b>Manual v2.0</h3></b>
-
-[**Link**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
-
-<h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
-
-We fully moved to the containerized version of AIDAmri via [Docker](https://docs.docker.com/get-docker/). All information can be found in the manual above. Please report issues and bugs directly in the issue section of this repository or at gitter (Link below in the contact section).
-
-<h3><b>EXAMPLE FILES</h3></b>
-
-Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
-Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
-T2-weighted (anatomical scan),
-DTI (structural connectivity scan),
-rs-fMRI (functional connectivity scan).
-
-[<h3><b>ARA CREATOR</h3></b>](https://github.com/maswendt/AIDAmri/ARA)
-Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
-
-<h3><b>VERSION HISTORY</h3></b>
+[**Manual**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
 
 [Information about Version 1.2 (Docker stable release)](https://github.com/maswendt/AIDAmri/releases/tag/v1.2)
 <br/>
@@ -41,6 +39,21 @@ Matlab script to generate a custom version of the Allen Mouse Brain Atlas.
 [Information about Version 1.1 (Stable)](https://github.com/maswendt/AIDAmri/releases/tag/v1.1)
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
+
+<h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
+
+We fully moved to the containerized version of AIDAmri via [Docker](https://docs.docker.com/get-docker/). All information can be found in the manual above. Please report issues and bugs directly in the issue section of this repository or at gitter (Link below in the contact section).
+
+## EXAMPLE FILES
+
+Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
+Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
+T2-weighted (anatomical scan),
+DTI (structural connectivity scan),
+rs-fMRI (functional connectivity scan).
+
+## ARA CREATOR
+[Matlab script](https://github.com/maswendt/AIDAmri/ARA) to generate a custom version of the Allen Mouse Brain Atlas.
 
 [<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
 If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
