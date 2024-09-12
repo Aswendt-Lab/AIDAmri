@@ -26,6 +26,14 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 5. **Functional and Structural Connectivity Analysis**  
    The output of the pipeline includes connectivity matrices that can be used for further analysis of brain network changes in health and disease.
 
+<p align="center">
+  <img src="https://github.com/maswendt/AIDAmri/blob/master/AIDAmri_drawing.png" style="max-width: 100%; height: auto;">
+</p>
+
+Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042)
+
+
+
 ## Version history
 
 [Information latest Version 2.0](https://github.com/maswendt/AIDAmri/releases/tag/v2.0)
