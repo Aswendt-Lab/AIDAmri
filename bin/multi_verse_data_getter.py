@@ -5,7 +5,14 @@ import shlex
 import argparse
 import nibabel as nib
 import numpy as np
-
+import os
+import glob
+import shutil
+import subprocess
+import shlex
+import argparse
+import nibabel as nib
+import numpy as np
 def flip_file_in_z_dimension(input_file, header_from_smooth_bet):
     """
     Flip the input file in the Z dimension and save it with '_flippedinZ' suffix.
@@ -74,6 +81,7 @@ def reorient_and_save(input_file):
     
     return reoriented_file
 
+
 def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_template_address):
     transformed_files = []
     
@@ -117,35 +125,66 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
     
     return transformed_files
 
+def copy_files_to_results_folder(input_folder, new_epi_files,motion_parameters_list_of_folders ,new_temporal_files):
+    outputfolder = os.path.join(os.path.dirname(input_folder), "Multiverse_Results")
+    os.makedirs(outputfolder, exist_ok=True)
+
+    # Create task folders
+    task_folders = ['task1', 'task2', 'task3']
+    for task_folder in task_folders:
+        task_path = os.path.join(outputfolder, task_folder)
+        os.makedirs(task_path, exist_ok=True)
+        
+        if task_folder == "task1":
+            # Copy files to each task folder
+            for epi_file in new_epi_files:
+                shutil.copy(epi_file, task_path)
+        if task_folder == "task3":        
+            for temporal_mean_epi in new_temporal_files:
+                shutil.copy(temporal_mean_epi, task_path)
+        if task_folder == "task2": 
+            for motion_folder in motion_parameters_list_of_folders:
+                # Copy the folder itself to task_path, keeping the folder name
+                destination = os.path.join(task_path, os.path.basename(motion_folder))
+                shutil.copytree(motion_folder, destination)
+                
+    # Print results
+    print("EPI Files:", new_epi_files)
+    print("Temporal Mean EPI Files:", new_temporal_files)
+
 def main(input_folder):
     parent_dir = os.path.dirname(os.path.abspath(__file__))
 
     sigma_template_address = os.path.join(parent_dir, "..", "lib", "SIGMA_InVivo_Brain_Template_Masked.nii.gz")
-    epi_processed_address = os.path.join(input_folder, "**", "rs-fMRI_niiData", "*_EPI_mcf_st_f.nii.gz")
-    motion_parameters_address = os.path.join(input_folder, "**", "rs-fMRI_mcf")
-    temporal_mean_epi_single_frame_original_contrast = os.path.join(input_folder, "**", "rs-fMRI_niiData", "*EPImean.nii.gz")
-    bet_file_address = os.path.join(input_folder, "**", "*SmoothBet.nii.gz")
+    epi_processed_address = os.path.join(input_folder, "**", "rs-fMRI_niiData", "*_bold_mcf_st_f.nii.gz")
+    motion_parameters_address = os.path.join(input_folder, "**", "rs-fMRI_mcf","*mcf.mat")
+    temporal_mean_epi_single_frame_original_contrast = os.path.join(input_folder, "**", "rs-fMRI_niiData", "*boldmean.nii.gz")
 
     # Find files
     epi_files_list = glob.glob(epi_processed_address, recursive=True)
     motion_parameters_list_of_folders = glob.glob(motion_parameters_address, recursive=True)
     temporal_mean_epi_single_frame_original_contrast_list_files = glob.glob(temporal_mean_epi_single_frame_original_contrast, recursive=True)
-    bet_file_list = glob.glob(bet_file_address, recursive=True)
 
     # Apply affine transformations to temporal mean EPI files
+    new_temporal_files = []
     for temporal_file in temporal_mean_epi_single_frame_original_contrast_list_files:
         func_folder = os.path.dirname(os.path.dirname(temporal_file))
         anat_folder = os.path.join(os.path.dirname(func_folder), "anat")
         transformed_files = apply_affine_transformations([temporal_file], func_folder, anat_folder, sigma_template_address)
+        new_temporal_files.extend(transformed_files)
         print(f"Transformed Temporal Mean EPI file: {transformed_files[0]}")
 
     # Apply affine transformations to EPI files
+    new_epi_files = []
     for epi_file in epi_files_list:
         func_folder = os.path.dirname(os.path.dirname(epi_file))
         anat_folder = os.path.join(os.path.dirname(func_folder), "anat")
         transformed_files = apply_affine_transformations([epi_file], func_folder, anat_folder, sigma_template_address)
+        new_epi_files.extend(transformed_files)
         print(f"Transformed EPI file: {transformed_files[0]}")
-  
+
+    # Copy the newly created files to the results folder
+    copy_files_to_results_folder(input_folder, new_epi_files, motion_parameters_list_of_folders ,new_temporal_files)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Apply affine transformations to imaging data.")
