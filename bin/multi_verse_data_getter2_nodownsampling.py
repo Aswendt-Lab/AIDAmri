@@ -127,7 +127,7 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
         subprocess.run(shlex.split(command), check=True)
 
         # Step 4: Resample the flipped file to the template
-        command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template} -inter 0"
+        command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template} -inter 3"
         subprocess.run(shlex.split(command), check=True)
 
         # Reorient the transformed file
