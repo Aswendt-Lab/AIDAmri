@@ -34,8 +34,12 @@ def mark_as_processed(folder_path):
     Mark a folder as processed by appending its path to the processed log file.
     """
     ensure_processed_log_exists()
-    with open(PROCESSED_LOG, "a") as log_file:
-        log_file.write(folder_path + "\n")
+    try:
+        with open(PROCESSED_LOG, "a") as log_file:
+            log_file.write(folder_path + "\\n")
+        print(f"Marked folder as processed: {folder_path}")
+    except Exception as e:
+        print(f"Error marking folder as processed: {e}")
 
 def execute_task(folder_path, script_path):
     """Execute the specified tasks on the given folder."""
