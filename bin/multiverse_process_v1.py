@@ -42,10 +42,17 @@ def mark_as_processed(folder_path):
     ensure_processed_log_exists()
     try:
         with open(PROCESSED_LOG, "a") as log_file:
-            log_file.write(folder_path + "\\n")
+            log_file.write(folder_path + "\n")
         print(f"Marked folder as processed: {folder_path}")
     except Exception as e:
         print(f"Error marking folder as processed: {e}")
+
+def task_results_exist(folder_path, task_folder):
+    """
+    Check if the results for a specific task already exist in the results folder.
+    """
+    outputfolder = os.path.join(os.path.dirname(folder_path), "Multiverse_Results", task_folder)
+    return os.path.exists(outputfolder) and len(os.listdir(outputfolder)) > 0
 
 def execute_task(folder_path, script_path):
     """Execute the specified tasks on the given folder."""
@@ -54,6 +61,25 @@ def execute_task(folder_path, script_path):
         if is_already_processed(folder_path):
             print(f"Skipping already processed folder: {folder_path}")
             return
+
+        # Check if specific tasks are already completed
+        if task_results_exist(folder_path, "task1"):
+            print(f"Task 1 already completed for {folder_path}, skipping.")
+        else:
+            print(f"Executing Task 1 for {folder_path}")
+            # Add logic to process Task 1 here
+
+        if task_results_exist(folder_path, "task2"):
+            print(f"Task 2 already completed for {folder_path}, skipping.")
+        else:
+            print(f"Executing Task 2 for {folder_path}")
+            # Add logic to process Task 2 here
+
+        if task_results_exist(folder_path, "task3"):
+            print(f"Task 3 already completed for {folder_path}, skipping.")
+        else:
+            print(f"Executing Task 3 for {folder_path}")
+            # Add logic to process Task 3 here
 
         # Switch to the datalad dataset path
         os.chdir(DATASET_PATH)
