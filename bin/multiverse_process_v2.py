@@ -25,7 +25,6 @@ def ensure_processed_log_exists():
     except Exception as e:
         print(f"Error creating processed log file: {e}")
 
-
 def is_already_processed(folder_path):
     """
     Check if a folder has already been processed by looking at the processed log file.
@@ -33,13 +32,11 @@ def is_already_processed(folder_path):
     ensure_processed_log_exists()
     try:
         with open(PROCESSED_LOG, "r") as log_file:
-            processed_folders = [os.path.abspath(line.strip()) for line in log_file.readlines()]
-        print(f"Checking if folder is processed: {os.path.abspath(folder_path)}")
-        return os.path.abspath(folder_path) in processed_folders
+            processed_folders = log_file.read().splitlines()
+        return folder_path in processed_folders
     except Exception as e:
         print(f"Error reading processed log file: {e}")
         return False
-
 
 def mark_as_processed(folder_path):
     """
@@ -48,11 +45,10 @@ def mark_as_processed(folder_path):
     ensure_processed_log_exists()
     try:
         with open(PROCESSED_LOG, "a") as log_file:
-            log_file.write(os.path.abspath(folder_path) + "\n")
+            log_file.write(folder_path + "\n")
         print(f"Marked folder as processed: {folder_path}")
     except Exception as e:
         print(f"Error marking folder as processed: {e}")
-
 
 def execute_task(folder_path, script_path):
     """Execute the specified tasks on the given folder."""
@@ -72,15 +68,13 @@ def execute_task(folder_path, script_path):
     except Exception as e:
         print(f"Error during execution of task for {folder_path}: {e}")
 
-
 def get_subfolders(input_path):
     """Generate a list of all folders starting with 'sub-' in the given input path."""
     return sorted([
-        os.path.abspath(os.path.join(input_path, f))
+        os.path.join(input_path, f)
         for f in os.listdir(input_path)
         if os.path.isdir(os.path.join(input_path, f)) and f.startswith("sub-")
     ])
-
 
 def main(input_path, script_path):
     subfolders = get_subfolders(input_path)
@@ -92,7 +86,6 @@ def main(input_path, script_path):
     for folder in subfolders:
         print(f"Processing folder: {folder}")
         execute_task(folder, script_path)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process folders starting with 'sub-'.")
