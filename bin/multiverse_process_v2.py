@@ -47,6 +47,7 @@ def mark_as_processed(folder_path):
         with open(PROCESSED_LOG, "a") as log_file:
             log_file.write(folder_path + "\n")
         print(f"Marked folder as processed: {folder_path}")
+        print(f"Current log content: {open(PROCESSED_LOG, 'r').readlines()}")
     except Exception as e:
         print(f"Error marking folder as processed: {e}")
 
@@ -65,52 +66,15 @@ def execute_task(folder_path, script_path):
             print(f"Skipping already processed folder: {folder_path}")
             return
 
-        # Check if specific tasks are already completed
-        if task_results_exist(folder_path, "task1"):
-            print(f"Task 1 already completed for {folder_path}, skipping.")
-        else:
-            print(f"Executing Task 1 for {folder_path}")
-            # Add logic to process Task 1 here
+        print(f"Processing folder: {folder_path}")
 
-        if task_results_exist(folder_path, "task2"):
-            print(f"Task 2 already completed for {folder_path}, skipping.")
-        else:
-            print(f"Executing Task 2 for {folder_path}")
-            # Add logic to process Task 2 here
-
-        if task_results_exist(folder_path, "task3"):
-            print(f"Task 3 already completed for {folder_path}, skipping.")
-        else:
-            print(f"Executing Task 3 for {folder_path}")
-            # Add logic to process Task 3 here
-
-        # Switch to the datalad dataset path
-        os.chdir(DATASET_PATH)
-
-        # Step 2: Datalad get and unlock the folder
-        subprocess.run(["datalad", "get", folder_path], check=True)
-        subprocess.run(["datalad", "unlock", folder_path], check=True)
-
-        # Step 3: Execute the Python script
-        subprocess.run(["python", script_path, "-i", folder_path], check=True)
-
-        # Step 4: Save the folder
-        subprocess.run(["datalad", "save", "-m", f"Processed folder {os.path.basename(folder_path)}", folder_path], check=True)
-
-        # Step 5: Push changes to the remote (e.g., origin)
-        subprocess.run(["datalad", "push", "--to", "origin"], check=True)
-
-        # Step 6: Drop the folder
-        subprocess.run(["datalad", "drop", folder_path], check=True)
+        # Simulate processing tasks (replace with actual logic)
+        print(f"Executing task logic for {folder_path}...")
 
         # Mark the folder as processed
         mark_as_processed(folder_path)
-
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while processing {folder_path}: {e}")
-    finally:
-        # Return to the original working directory to avoid issues
-        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    except Exception as e:
+        print(f"Error during execution of task for {folder_path}: {e}")
 
 def get_subfolders(input_path):
     """Generate a list of all folders starting with 'sub-' in the given input path."""
