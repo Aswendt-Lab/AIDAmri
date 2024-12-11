@@ -164,6 +164,11 @@ def copy_files_to_results_folder(input_folder, new_epi_files, motion_parameters_
 
 def main(input_path, script_path):
     subfolders = get_subfolders(input_path)
+
+    # Debugging output to confirm parsing of subfolders
+    print(f"Subfolders to process: {subfolders}")
+
+    # Process each folder exactly once
     for folder in subfolders:
         print(f"Processing folder: {folder}")
         execute_task(folder, script_path)
