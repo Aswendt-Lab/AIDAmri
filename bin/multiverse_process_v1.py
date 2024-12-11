@@ -2,6 +2,9 @@ import os
 import subprocess
 import argparse
 
+
+DATASET_PATH = "/mnt/data2/2024_Grandjean_Multiverse"  # Hardcoded dataset path
+
 def get_subfolders(input_path):
     """Generate a list of all folders starting with 'sub-' in the given input path."""
     return sorted([
@@ -10,9 +13,13 @@ def get_subfolders(input_path):
         if os.path.isdir(os.path.join(input_path, f)) and f.startswith("sub-")
     ])
 
+
 def execute_task(folder_path, script_path):
     """Execute the specified tasks on the given folder."""
     try:
+        # Switch to the datalad dataset path
+        os.chdir(DATASET_PATH)
+
         # Step 2: Datalad get and unlock the folder
         subprocess.run(["datalad", "get", folder_path], check=True)
         subprocess.run(["datalad", "unlock", folder_path], check=True)
@@ -20,18 +27,20 @@ def execute_task(folder_path, script_path):
         # Step 3: Execute the Python script
         subprocess.run(["python", script_path, "-i", folder_path], check=True)
 
-        # Step 4: No additional wait is necessary, as the above command blocks until completion.
-
-        # Step 5: Save the folder
+        # Step 4: Save the folder
         subprocess.run(["datalad", "save", "-m", f"add the sub-folder {os.path.basename(folder_path)}", folder_path], check=True)
 
-        # Step 6: Push changes to the remote (e.g., gin)
+        # Step 5: Push changes to the remote (e.g., gin)
         subprocess.run(["datalad", "push", "--to", "gin"], check=True)
 
-        # Step 7: Drop the folder
+        # Step 6: Drop the folder
         subprocess.run(["datalad", "drop", folder_path], check=True)
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while processing {folder_path}: {e}")
+    finally:
+        # Return to the original working directory to avoid issues
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 
 def main(input_path, script_path):
     while True:
@@ -41,9 +50,14 @@ def main(input_path, script_path):
             break
 
         # Process the first folder
-        first_folder = subfolders[0]
+        first_folder = subfolders.pop(0)
         print(f"Processing folder: {first_folder}")
         execute_task(first_folder, script_path)
+
+        if not subfolders:
+            print("All folders have been processed.")
+            break
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process folders starting with 'sub-'.")
