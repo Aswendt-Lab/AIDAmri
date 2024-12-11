@@ -53,6 +53,9 @@ def mark_as_processed(folder_path):
 def execute_task(folder_path, script_path):
     """Execute the specified tasks on the given folder."""
     try:
+        # Normalize folder path for consistent comparisons
+        folder_path = os.path.abspath(folder_path)
+
         # Skip if the folder has already been processed
         if is_already_processed(folder_path):
             print(f"Skipping already processed folder: {folder_path}")
@@ -60,8 +63,16 @@ def execute_task(folder_path, script_path):
 
         print(f"Processing folder: {folder_path}")
 
-        # Simulate processing tasks (replace with actual logic)
-        print(f"Executing task logic for {folder_path}...")
+        # Simulate processing tasks (replace this with actual logic)
+        print(f"Executing script: {script_path} for folder: {folder_path}")
+        result = subprocess.run(["python", script_path, "-i", folder_path], capture_output=True, text=True)
+
+        # Check result and handle errors
+        if result.returncode != 0:
+            print(f"Error processing {folder_path}: {result.stderr}")
+            return
+
+        print(f"Task completed successfully for {folder_path}")
 
         # Mark the folder as processed
         mark_as_processed(folder_path)
@@ -71,7 +82,7 @@ def execute_task(folder_path, script_path):
 def get_subfolders(input_path):
     """Generate a list of all folders starting with 'sub-' in the given input path."""
     return sorted([
-        os.path.join(input_path, f)
+        os.path.abspath(os.path.join(input_path, f))
         for f in os.listdir(input_path)
         if os.path.isdir(os.path.join(input_path, f)) and f.startswith("sub-")
     ])
