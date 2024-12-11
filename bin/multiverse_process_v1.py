@@ -12,20 +12,28 @@ from tqdm import tqdm
 DATASET_PATH = "/mnt/data2/2024_Grandjean_Multiverse"  # Hardcoded dataset path
 PROCESSED_LOG = os.path.join(DATASET_PATH, "processed_folders.log")
 
+def ensure_processed_log_exists():
+    """
+    Ensure that the processed log file exists to prevent issues.
+    """
+    if not os.path.exists(PROCESSED_LOG):
+        with open(PROCESSED_LOG, "w") as log_file:
+            pass  # Create an empty log file
+
 def is_already_processed(folder_path):
     """
     Check if a folder has already been processed by looking at the processed log file.
     """
-    if os.path.exists(PROCESSED_LOG):
-        with open(PROCESSED_LOG, "r") as log_file:
-            processed_folders = log_file.read().splitlines()
-        return folder_path in processed_folders
-    return False
+    ensure_processed_log_exists()
+    with open(PROCESSED_LOG, "r") as log_file:
+        processed_folders = log_file.read().splitlines()
+    return folder_path in processed_folders
 
 def mark_as_processed(folder_path):
     """
     Mark a folder as processed by appending its path to the processed log file.
     """
+    ensure_processed_log_exists()
     with open(PROCESSED_LOG, "a") as log_file:
         log_file.write(folder_path + "\n")
 
