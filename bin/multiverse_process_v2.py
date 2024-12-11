@@ -63,19 +63,34 @@ def execute_task(folder_path, script_path):
 
         print(f"Processing folder: {folder_path}")
 
-        # Simulate processing tasks (replace this with actual logic)
+        # Step 1: Datalad get
+        print(f"Running 'datalad get' for {folder_path}")
+        result = subprocess.run(["datalad", "get", folder_path], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad get' for {folder_path}: {result.stderr}")
+            return
+        print(result.stdout)
+
+        # Step 2: Datalad unlock
+        print(f"Running 'datalad unlock' for {folder_path}")
+        result = subprocess.run(["datalad", "unlock", folder_path], capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad unlock' for {folder_path}: {result.stderr}")
+            return
+        print(result.stdout)
+
+        # Step 3: Execute the Python script
         print(f"Executing script: {script_path} for folder: {folder_path}")
         result = subprocess.run(["python", script_path, "-i", folder_path], capture_output=True, text=True)
-
-        # Check result and handle errors
         if result.returncode != 0:
             print(f"Error processing {folder_path}: {result.stderr}")
             return
+        print(result.stdout)
 
+        # Step 4: Mark the folder as processed
         print(f"Task completed successfully for {folder_path}")
-
-        # Mark the folder as processed
         mark_as_processed(folder_path)
+
     except Exception as e:
         print(f"Error during execution of task for {folder_path}: {e}")
 
