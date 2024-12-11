@@ -119,20 +119,10 @@ def copy_files_to_results_folder(input_folder, new_epi_files, motion_parameters_
                 shutil.copytree(motion_folder, destination)
 
 def main(input_path, script_path):
-    while True:
-        subfolders = get_subfolders(input_path)
-        if not subfolders:
-            print("No more folders to process.")
-            break
-
-        # Process the first folder
-        first_folder = subfolders.pop(0)
-        print(f"Processing folder: {first_folder}")
-        execute_task(first_folder, script_path)
-
-        if not subfolders:
-            print("All folders have been processed.")
-            break
+    subfolders = get_subfolders(input_path)
+    for folder in subfolders:
+        print(f"Processing folder: {folder}")
+        execute_task(folder, script_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process folders starting with 'sub-'.")
