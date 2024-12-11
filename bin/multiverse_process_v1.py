@@ -16,9 +16,15 @@ def ensure_processed_log_exists():
     """
     Ensure that the processed log file exists to prevent issues.
     """
-    if not os.path.exists(PROCESSED_LOG):
-        with open(PROCESSED_LOG, "w") as log_file:
-            pass  # Create an empty log file
+    try:
+        if not os.path.exists(PROCESSED_LOG):
+            print(f"Creating processed log file at: {PROCESSED_LOG}")
+            with open(PROCESSED_LOG, "w") as log_file:
+                pass  # Create an empty log file
+        else:
+            print(f"Processed log file already exists at: {PROCESSED_LOG}")
+    except Exception as e:
+        print(f"Error creating processed log file: {e}")
 
 def is_already_processed(folder_path):
     """
