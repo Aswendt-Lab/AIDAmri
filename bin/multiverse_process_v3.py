@@ -86,6 +86,41 @@ def execute_task(folder_path, script_path):
 
         print(f"Task completed successfully for {folder_path}")
 
+        # Step 4: Datalad save, push, and drop for the folder
+        print(f"Saving and pushing changes for folder: {folder_path}")
+        result = subprocess.run(["datalad", "save", "-m", f"add {os.path.basename(folder_path)} proc", folder_path], text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad save' for {folder_path}: {result.stderr}")
+            return
+
+        result = subprocess.run(["datalad", "push", "--to", "origin"], text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad push' for {folder_path}: {result.stderr}")
+            return
+
+        result = subprocess.run(["datalad", "drop", folder_path], text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad drop' for {folder_path}: {result.stderr}")
+            return
+
+        # Step 5: Datalad save, push, and drop for results
+        results_file = f"Multiverse_Results/task1/{os.path.basename(folder_path)}_task-rest_bold_mcf_st_f_registered_on_SIGMA_template_originated.nii"
+        print(f"Saving and pushing changes for results file: {results_file}")
+        result = subprocess.run(["datalad", "save", "-m", "update results", results_file], text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad save' for results file {results_file}: {result.stderr}")
+            return
+
+        result = subprocess.run(["datalad", "push", "--to", "origin"], text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad push' for results file {results_file}: {result.stderr}")
+            return
+
+        result = subprocess.run(["datalad", "drop", results_file], text=True)
+        if result.returncode != 0:
+            print(f"Error during 'datalad drop' for results file {results_file}: {result.stderr}")
+            return
+
         # Mark the folder as processed
         mark_as_processed(folder_path)
     except Exception as e:
