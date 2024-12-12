@@ -19,7 +19,7 @@ def flip_file_in_z_dimension(input_file, header_from_smooth_bet):
     data = img.get_fdata()
     
     # Flip the data in the Z dimension (axis=2)
-    data_flipped = np.flip(data, axis=(1,2))
+    data_flipped = np.flip(data, axis=2)
     
     # Use the header from the SmoothBet file if provided
     affine = header_from_smooth_bet.get_best_affine()
@@ -65,7 +65,7 @@ def reorient_and_save(input_file):
         data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
     
     # Downsample the reoriented data by a factor of 2
-    downsampling_factor = 1
+    downsampling_factor = 0.5
     data_downsampled = zoom(data_reoriented, zoom=[downsampling_factor] * len(data_reoriented.shape), order=3)
 
     # Update the affine matrix to account for the new voxel sizes (adjust by a factor of 2)
@@ -137,18 +137,6 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
     return transformed_files
 
 def copy_files_to_results_folder(input_folder, new_epi_files, motion_parameters_list_of_folders, new_temporal_files):
-    def move_with_unique_name(src, dst):
-        """
-        Move a file to a destination path. If a file with the same name already exists,
-        append a unique counter to the filename to avoid overwriting.
-        """
-        base, ext = os.path.splitext(os.path.basename(src))
-        counter = 1
-        while os.path.exists(dst):
-            dst = os.path.join(os.path.dirname(dst), f"{base}_{counter}{ext}")
-            counter += 1
-        shutil.move(src, dst)
-    
     outputfolder = os.path.join(os.path.dirname(input_folder), "Multiverse_Results")
     os.makedirs(outputfolder, exist_ok=True)
 
@@ -159,27 +147,21 @@ def copy_files_to_results_folder(input_folder, new_epi_files, motion_parameters_
         os.makedirs(task_path, exist_ok=True)
         
         if task_folder == "task1":
-            # Move files to task1
+            # Copy files to each task folder
             for epi_file in new_epi_files:
-                destination = os.path.join(task_path, os.path.basename(epi_file))
-                print(f"Moving {epi_file} to {destination}")
-                move_with_unique_name(epi_file, destination)
-        
-        if task_folder == "task3":
-            # Move temporal mean EPI files to task3
+                shutil.move(epi_file, task_path)
+        if task_folder == "task3":        
             for temporal_mean_epi in new_temporal_files:
-                destination = os.path.join(task_path, os.path.basename(temporal_mean_epi))
-                print(f"Moving {temporal_mean_epi} to {destination}")
-                move_with_unique_name(temporal_mean_epi, destination)
-        
-        if task_folder == "task2":
-            # Copy motion folders to task2
+                shutil.move(temporal_mean_epi, task_path)
+        if task_folder == "task2": 
             for motion_folder in motion_parameters_list_of_folders:
+                # Copy the folder itself to task_path, keeping the folder name
                 destination = os.path.join(task_path, os.path.basename(motion_folder))
-                print(f"Copying motion folder {motion_folder} to {destination}")
-                if os.path.exists(destination):
-                    shutil.rmtree(destination)  # Clear any existing folder with the same name
                 shutil.copytree(motion_folder, destination)
+                
+    # Print results
+    print("EPI Files:", new_epi_files)
+    print("Temporal Mean EPI Files:", new_temporal_files)
 
 def main(input_folder):
     parent_dir = os.path.dirname(os.path.abspath(__file__))
