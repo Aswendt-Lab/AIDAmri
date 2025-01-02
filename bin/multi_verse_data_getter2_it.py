@@ -65,7 +65,7 @@ def reorient_and_save(input_file):
         data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
     
     # Downsample the reoriented data by a factor of 2
-    downsampling_factor = 0.5
+    downsampling_factor = 1
     data_downsampled = zoom(data_reoriented, zoom=[downsampling_factor] * len(data_reoriented.shape), order=3)
 
     # Update the affine matrix to account for the new voxel sizes (adjust by a factor of 2)

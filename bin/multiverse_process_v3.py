@@ -9,8 +9,8 @@ import shutil
 from scipy.ndimage import zoom
 from tqdm import tqdm
 
-DATASET_PATH = "/mnt/data2/2024_Grandjean_Multiverse"  # Hardcoded dataset path
-PROCESSED_LOG = os.path.join(DATASET_PATH, "processed_folders.log")
+DATASET_PATH = "/mnt/data3/2024_Grandjean_Multiverse"  # Hardcoded dataset path
+PROCESSED_LOG = os.path.join(DATASET_PATH, "processed_folders_orient2.log")
 
 def ensure_processed_log_exists():
     """
