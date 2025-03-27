@@ -352,10 +352,10 @@ def tracking(dsi_studio, dir_in):
     os.chdir(os.path.dirname(dir_in))
 
     # Use this tracking parameters if you want to specify each tracking parameter separately.
-    #cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
+    cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
 
     # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
-    cmd_trk = r'%s --action=%s --source=%s --output=%s --parameter_id=%s'
+    #cmd_trk = r'%s --action=%s --source=%s --output=%s --parameter_id=%s'
 
     filename = glob.glob(dir_in+'/*fib.gz')[0]
 

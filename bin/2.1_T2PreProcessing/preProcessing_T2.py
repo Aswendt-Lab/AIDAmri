@@ -55,7 +55,7 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
     #imgTemp = np.flip(imgTemp,2)
     #imgTemp = np.flip(imgTemp,1)
-    #imgTemp = np.flip(imgTemp,0)
+    imgTemp = np.flip(imgTemp,0)
     #imgTemp = np.rot90(imgTemp,2)
 
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
@@ -67,7 +67,10 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     nii.save(scaledNiiData, fslPath)
 
     # extract brain
-    output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+    if bias_skip == 0:
+        output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+    else:
+        output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'BiasBet.nii.gz')
 
     myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
                     vertical_gradient=vertical_gradient,robust=True, mask = True)
