@@ -64,6 +64,9 @@ def updateB(Img, q, C, M, Bas,GGT,ImgG):
             A[ii, jj] = np.sum(B) # inner product
             A[jj, ii] = A[ii, jj]
 
+    
+    epsilon = 1e-8
+    A += np.eye(A.shape[0]) * epsilon
     w = np.dot(np.linalg.inv(A) , V)
     b = np.zeros(Img.shape)
     for kk in range (N_bas):
