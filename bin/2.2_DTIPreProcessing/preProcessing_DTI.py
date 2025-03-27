@@ -55,8 +55,8 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     scale[3][3] = 1
     
     # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
-    imgTemp = np.flip(imgTemp,2)
-    imgTemp = np.flip(imgTemp,1)
+    #imgTemp = np.flip(imgTemp,2)
+    #imgTemp = np.flip(imgTemp,1)
     imgTemp = np.flip(imgTemp,0)
     #imgTemp = np.rot90(imgTemp, 2)
     
@@ -69,7 +69,10 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     nii.save(scaledNiiData, fsl_path)
 
     # extract brain
-    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+    if bias_skip == 0:
+        output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+    else:
+        output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'DNSmoothMicoBet.nii.gz')
     myBet = fsl.BET(in_file=fsl_path, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
     myBet.run()
     os.remove(fsl_path)
@@ -195,6 +198,7 @@ if __name__ == "__main__":
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
+    bias_skip = args.bias_skip
     output_path = os.path.dirname(input_file)
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
