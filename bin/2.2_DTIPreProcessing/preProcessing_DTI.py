@@ -210,13 +210,17 @@ if __name__ == "__main__":
         raise
 
     # intensity correction using non parametric bias field correction algorithm
-    try:
-        output_mico = applyMICO.run_MICO(output_smooth,output_path)
-        print("Biasfieldcorrecttion was successful")
-    except Exception as e:
-        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
-        raise
-
+    if bias_skip == 0:
+        try:
+            output_mico = applyMICO.run_MICO(output_smooth,output_path)
+            print("Biasfieldcorrecttion was successful")
+        except Exception as e:
+            print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+            raise
+    else:
+        print(input_file)
+        output_mico = input_file
+        
     # get rid of your skull         
     outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
     print("Brainextraction was successful")
