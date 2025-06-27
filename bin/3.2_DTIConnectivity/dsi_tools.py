@@ -338,32 +338,50 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     rd_file_flipped = nii.Nifti1Image(rd_data_flipped, rd_file.affine)
     nii.save(rd_file_flipped,os.path.join(dir_qa,"rd_flipped.nii.gz"))
     
-def tracking(dsi_studio, dir_in):
+def tracking(dsi_studio, dir_in, track_param='default'):
     """
-    Performs seed-based fiber-tracking.
+    Performs seed-based fiber-tracking. 
+    Default parameters are used unless a custom parameter is specified.
     """
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
+    # Define parameter sets
+    param_sets = {
+        'default':        ['0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec'],
+        'aida_optimized': [1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0'],
+        'rat':            [1000000, 0, '.01', '60', 0, '.02', '.1', '.3', '20.0'],
+        'mouse':          [1000000, 0, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
+    }
+
+    if isinstance(track_param, str):
+        params = param_sets.get(track_param.lower())
+        if params is None:
+            sys.exit(f'Unknown track_param set: {track_param}')
+    elif isinstance(track_param, list):
+        params = track_param
+    else:
+        sys.exit('track_param must be "default", "rat", "mouse", or a list of parameter values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length.')
+
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
 
-    # Use this tracking parameters if you want to specify each tracking parameter separately.
-    #cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
-    
-    # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
-    cmd_trk = r'%s --action=%s --source=%s --output=%s --parameter_id=%s'
+    # Set tracking based on track_param:
+    if track_param == 'default':
+        print('Using DSI Studio default tracking parameters')
+        # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
+        cmd_trk = r'%s --action=%s --source=%s --output=%s --parameter_id=%s'
+        # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
+    else:
+        # Use this tracking parameters if you want to specify each tracking parameter separately.
+        cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
+        #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
+        #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), params)
     
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     
-    
-    # Use this tracking parameters if you want to specify each tracking parameter separately.
-    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
-    #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
-    
-    # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
-    parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
-
     os.system(cmd_trk % parameters)
 
 def merge_bval_bvec_to_btable(folder_path):
