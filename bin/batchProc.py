@@ -290,8 +290,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]}'
-                    os.chdir(os.path.join(cwd, '3.2_DTIConnectivity'))
+                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param}'
+                    os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
@@ -339,6 +339,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
     optionalNamed.add_argument('-cpu', '--cpu_cores', required=False, default = "Half", help='Define how many parallel processes should be use to process your data. CAUTION: Too many processes will slow down your computer noticeably. Select between: ["Min", "Half", "Max"]')
     optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
+    optionalNamed.add_argument('--track_param', '--track_params', required=False, help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
     
 
     args = parser.parse_args()
@@ -381,6 +382,9 @@ if __name__ == "__main__":
 
     if args.expert_cpu:
         num_processes = int(args.expert_cpu)
+
+    if args.track_params:
+        track_param = args.track_params
     
     print(f"Running with {num_processes} parallel processes!")
 
@@ -429,14 +433,11 @@ if __name__ == "__main__":
             else:
                 print(f"\n{key} processing \033[0;30;41m INCOMPLETE \33[0m")
             if error_list_all:
-                print()
-                for error in error_list_all:
-                    if isinstance(error, tuple) and len(error) == 4:
-                        sub, ses, datatype, step = error
-                        print(
-                            f"Error in sub: {sub} in session: {ses} in datatype: {datatype} and step: {step}. Check logging file for further information")
-                    else:
-                        print(f"Unrecognized error format: {error}")
+                    print()
+                    for error in error_list_all:
+                        error = error[0]
+                        print(f"Error in sub: {error[0]} in session: {error[1]} in datatype: {error[2]} and step: {error[3]}. Check logging file for further information")
+            
                 
 
  
