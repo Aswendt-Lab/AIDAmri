@@ -44,7 +44,13 @@ if __name__ == '__main__':
                         '--optional',
                         nargs = '*',
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
-                        )    
+                        )
+    parser.add_argument('-t',
+                        '--track_params',
+                        default='default',
+                        help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
+                        required=False
+                       )
     args = parser.parse_args()
         
      # Determine the btable source based on the -b option
@@ -74,9 +80,11 @@ if __name__ == '__main__':
     dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table)
     file_in = os.path.join(file_cur,'fib_map')
 
+    track_param = args.track_params
+
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools.tracking(dsi_studio, file_in)
+    dsi_tools.tracking(dsi_studio, file_in, track_param)
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
