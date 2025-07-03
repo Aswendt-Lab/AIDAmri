@@ -52,6 +52,9 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 
 We fully moved to the containerized version of AIDAmri via [Docker](https://docs.docker.com/get-docker/). All information can be found in the manual above. Please report issues and bugs directly in the issue section of this repository or at gitter (Link below in the contact section).
 
+## Note for Linux Users
+You might run across an Error while building the aidamri image. This is due to 
+
 ## EXAMPLE FILES
 
 Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
