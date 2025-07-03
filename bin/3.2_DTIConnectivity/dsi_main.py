@@ -40,17 +40,35 @@ if __name__ == '__main__':
                         default='auto',  # Default to 'auto' for automatic selection
                         help='Specify the b-table source: "auto" (will look for bvec and bval, create the btable. If val or vec can not be found, it uses the Jones30 file)'
                         )
-    parser.add_argument('-o',
-                        '--optional',
-                        nargs = '*',
-                        help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
-                        )
+    parser.add_argument('-r',
+                        '--recon_method',
+                        default='dti',
+                        help='Specify diffusion reconstruction method ("gqi" or default "dti").',
+                        required=False
+                       )
+    parser.add_argument('-v',
+                        '--vivo',
+                        default='in_vivo',
+                        help='Specify in vivo or ex vivo data to adjust sampling length ratio (param0). "in_vivo" param0=1.25 (default), "ex_vivo" param0=0.60'.,
+                        required=False
+                       )
+    parser.add_argument('-m',
+                        '--make_isotropic',
+                        default=0,
+                        help='Specify an isotropic voxel size in mm for resampling. Default 0 = no resampling',
+                        required=False
+                       )
     parser.add_argument('-t',
                         '--track_params',
                         default='default',
                         help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
                         required=False
                        )
+    parser.add_argument('-o',
+                        '--optional',
+                        nargs = '*',
+                        help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
+                        )
     args = parser.parse_args()
         
      # Determine the btable source based on the -b option
@@ -73,11 +91,15 @@ if __name__ == '__main__':
 
     dir_out = args.file_in
 
+    make_isotropic=0
+    if args.make_isotropic != 0:
+        make_isotropic=args.make_isotropic
+
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
     file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table)
+    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic)
     file_in = os.path.join(file_cur,'fib_map')
 
     track_param = args.track_params
