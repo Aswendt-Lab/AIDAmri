@@ -290,7 +290,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param}'
+                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic}'
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
@@ -339,6 +339,9 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
     optionalNamed.add_argument('-cpu', '--cpu_cores', required=False, default = "Half", help='Define how many parallel processes should be use to process your data. CAUTION: Too many processes will slow down your computer noticeably. Select between: ["Min", "Half", "Max"]')
     optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
+    optionalNamed.add_argument('-r', '--recon_method', required=False, help='Specify diffusion reconstruction for DSI Studio (Default="dti", "gqi").')
+    optionalNamed.add_argument('-v', '--vivo', required=False, help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
+    optionalNamed.add_argument('-m', '--make_isotropic', required=False, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling).')
     optionalNamed.add_argument('--track_param', '--track_params', required=False, help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
     
 
@@ -380,6 +383,16 @@ if __name__ == "__main__":
     elif args.cpu_cores.upper() == "MAX":
         num_processes = multiprocessing.cpu_count()
 
+    if args.recon_method:
+        recon_method = args.recon_method
+
+    if args.vivo:
+        vivo = args.vivo
+
+    if args.make_isotropic != 0:
+        make_isotropic = args.make_isotropic
+        logging.info(f"Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}")
+    
     if args.expert_cpu:
         num_processes = int(args.expert_cpu)
 
@@ -389,6 +402,7 @@ if __name__ == "__main__":
     print(f"Running with {num_processes} parallel processes!")
 
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
+    logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
     logging.info(f"Using {num_processes} CPUs for the parallelization")
     logging.info(f"Processing following datasets:\n{all_files}")
 
