@@ -228,7 +228,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0):
     """
     Sources and creates fib files. Diffusivity and aniosotropy metrics are exported from data.
     """
@@ -263,7 +263,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
     # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
     # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
     # flip image orientation in x, y or z direction !! needs to be adjusted according to your data, check fiber tracking result to be anatomically meaningful
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --check_btable=%d --half_sphere=%d --cmd=%s'
+    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --other_output=all --check_btable=%d --half_sphere=%d --cmd=%s'
 
     # create source files
     filename = os.path.basename(dir_in)
@@ -274,7 +274,26 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table):
 
     # create fib files
     file_msk = dir_msk
-    parameters = (dsi_studio, 'rec', file_src, file_msk, 1, '1.25', 0, 1,'"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"')
+
+    param_zero='1.25'
+    # Select reconstruction parameters
+    if vivo == "ex_vivo":
+        param_zero='0.60'
+        print(f'Using param0 value {param_zero} recommended for ex vivo data')
+    elif vivo == "in_vivo":
+        print(f'Using param0 value {param_zero} recommended for in vivo data')
+
+    additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+    if make_isotropic != 0:
+        additional_cmd=f'"[Step T2][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+        print(f'Resampling to {make_isotropic} mm isotropic voxel size')
+
+    # default method value for DTI 
+    method_rec=1
+    if recon_method == "gqi":
+        method_rec=4
+
+    parameters = (dsi_studio, 'rec', file_src, file_msk, method_rec, param_zero, 0, 1, additional_cmd)
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
@@ -361,7 +380,7 @@ def tracking(dsi_studio, dir_in, track_param='default'):
     elif isinstance(track_param, list):
         params = track_param
     else:
-        sys.exit('track_param must be "default", "rat", "mouse", or a list of parameter values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length.')
+        sys.exit('track_param must be "default", "aida_optimized", "rat", "mouse", or a list of parameter values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length.')
 
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
