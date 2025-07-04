@@ -52,8 +52,90 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 
 We fully moved to the containerized version of AIDAmri via [Docker](https://docs.docker.com/get-docker/). All information can be found in the manual above. Please report issues and bugs directly in the issue section of this repository or at gitter (Link below in the contact section).
 
-## Note for Linux Users
-You might run across an Error while building the aidamri image. This is due to 
+<details>
+<summary>Note for Linux Users</summary></b>
+When building the AIDAmri Docker image on a Linux system, you may encounter warning messages related to undefined environment variables. Specifically, the following warnings may appear:
+
+```
+3 warnings found (use docker --debug to expand):
+ - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
+ - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
+ - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
+```
+
+These warnings indicate that certain environment variables referenced in the Dockerfile are either not defined or not properly initialized during the build process.
+
+### Recommended Solution:
+To ensure compatibility and suppress these warnings, edit the `Dockerfile` in the AIDAmri directory. Replace lines **30–93** with the corrected version below, ensuring that all relevant environment variables are explicitly declared and exported: 
+
+```
+# NiftyReg preparation and installation
+RUN apt update && apt install -y gcc-7 g++-7
+
+RUN mkdir -p /aida/NiftyReg/niftyreg_source /aida/NiftyReg/niftyreg_build /aida/NiftyReg/niftyreg_install
+
+WORKDIR /aida/NiftyReg
+
+RUN git clone git://git.code.sf.net/p/niftyreg/git niftyreg_source && \
+    cd niftyreg_source && \
+    git reset --hard 83d8d1182ed4c227ce4764f1fdab3b1797eecd8d
+
+WORKDIR /aida/NiftyReg/niftyreg_build
+
+RUN cmake -D CMAKE_BUILD_TYPE=Release \
+          -D CMAKE_INSTALL_PREFIX=/aida/NiftyReg/niftyreg_install \
+          -D CMAKE_C_COMPILER=/usr/bin/gcc-7 \
+          ../niftyreg_source && \
+    make -j$(nproc) && \
+    make install
+
+ENV NIFTYREG_INSTALL=/aida/NiftyReg/niftyreg_install
+ENV PATH="${PATH}:${NIFTYREG_INSTALL}/bin"
+ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/lib:/lib:${NIFTYREG_INSTALL}/lib"
+
+WORKDIR /aida
+# download DSI studio
+RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2023.07.08/dsi_studio_ubuntu1804.zip &&\
+	unzip dsi_studio_ubuntu1804.zip -d dsi_studio_ubuntu1804 &&\
+	rm dsi_studio_ubuntu1804.zip
+
+# Python setup
+RUN apt install -y python3.7 python3-pip &&\
+	python3 -m pip install --user --upgrade pip &&\
+	apt-get install -y python3.7-venv &&\
+	apt clean &&\
+	rm -rf /var/lib/apt/lists/*
+ENV VIRTUAL_ENV=/opt/env
+RUN python3.7 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN	python3 -m pip install --upgrade setuptools
+COPY requirements.txt requirements.txt
+RUN pip install --upgrade pip &&\
+	pip install -r requirements.txt
+
+# installation of FSL 5.0.11 with modified installer 
+# (disabling interactive allocation query)
+COPY fslinstaller_mod.py ./
+RUN python3 fslinstaller_mod.py -V 5.0.11
+
+# Configure environment
+ENV FSLDIR=/usr/local/fsl
+RUN . ${FSLDIR}/etc/fslconf/fsl.sh
+ENV FSLOUTPUTTYPE=NIFTI_GZ
+ENV PATH=${FSLDIR}/bin:${PATH}
+RUN export FSLDIR PATHs
+
+
+# copy bin/ and lib/ from AIDAmri into image
+COPY bin/ bin/
+RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
+ENV PATH=/aida/bin/3.2_DTIConnectivity:$PATH
+RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
+COPY lib/ lib/
+RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
+```
+
+</details>
 
 ## EXAMPLE FILES
 
