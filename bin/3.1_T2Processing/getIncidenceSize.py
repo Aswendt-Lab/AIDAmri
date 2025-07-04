@@ -198,7 +198,7 @@ if __name__ == "__main__":
     if len(glob.glob(inputFolder+'/*Stroke_mask.nii.gz')) > 0:
         incidenceMask = glob.glob(inputFolder+'/*Stroke_mask.nii.gz')[0]
     else:
-        sys.exit("Error: '%s' has no affected or masked regions." % (inputFolder,))
+        sys.exit("Notice: '%s' has no affected or masked regions." % (inputFolder,))
 
     path = os.path.join(inputFolder)
     regMR_list = findBETData(path)

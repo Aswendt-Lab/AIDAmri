@@ -157,11 +157,11 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(cwd + '/3.1_T2Processing')
                 command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
                 result = run_subprocess(command,dataFormat,step)
-                if result != 0:
+                if isinstance(result, tuple) and len(result) == 4:
                     errorList.append(result)
                 command = f'python getIncidenceSize.py -i {currentPath_wData}'
                 result = run_subprocess(command,dataFormat,step,anat_process=True)
-                if result != 0:
+                if isinstance(result, tuple) and len(result) == 4:
                     errorList.append(result)
                 os.chdir(cwd)
         elif dataFormat == 'func':
@@ -381,10 +381,13 @@ if __name__ == "__main__":
 
                     for future in concurrent.futures.as_completed(futures):
                         progress_bar.update(1)
-                     
+
                         errorList = future.result()
                         if errorList != 0:
-                            error_list_step.append(errorList)
+                            if isinstance(errorList, list):
+                                error_list_step.extend(errorList)
+                            else:
+                                error_list_step.append(errorList)
                         
                     concurrent.futures.wait(futures)
                 progress_bar.close()
@@ -396,18 +399,21 @@ if __name__ == "__main__":
                 logging.info(f"{key} {step} processing completed")
                 
                 
-            logging.error(f"Following errors were occuring {error_list_all}")   
+            logging.error(f"Following errors were occuring {error_list_all}")
             logging.info(f"{key} processing completed")
             if not error_list_all:
                 print(f"\n{key} processing \033[0;30;42m COMPLETED \33[0m")
             else:
                 print(f"\n{key} processing \033[0;30;41m INCOMPLETE \33[0m")
             if error_list_all:
-                    print()
-                    for error in error_list_all:
-                        error = error[0]
-                        print(f"Error in sub: {error[0]} in session: {error[1]} in datatype: {error[2]} and step: {error[3]}. Check logging file for further information")
-            
+                print()
+                for error in error_list_all:
+                    if isinstance(error, tuple) and len(error) == 4:
+                        sub, ses, datatype, step = error
+                        print(
+                            f"Error in sub: {sub} in session: {ses} in datatype: {datatype} and step: {step}. Check logging file for further information")
+                    else:
+                        print(f"Unrecognized error format: {error}")
                 
 
  
