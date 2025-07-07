@@ -283,6 +283,14 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     elif vivo == "in_vivo":
         print(f'Using param0 value {param_zero} recommended for in vivo data')
 
+    # get voxel size from nifti header to resample if make_isotropic == 'auto'
+    if make_isotropic == "auto":
+        img = nii.load(filename)
+        header = img.header
+        mm_voxel_size_arr = header.get_zooms()
+        spatial_dims = mm_voxel_size_arr[:3]
+        make_isotropic = str(min(spatial_dims))
+    
     additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
     if make_isotropic != 0:
         additional_cmd=f'"[Step T2][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
