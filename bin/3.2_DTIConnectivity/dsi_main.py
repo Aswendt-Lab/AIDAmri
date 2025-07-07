@@ -55,7 +55,7 @@ if __name__ == '__main__':
     parser.add_argument('-m',
                         '--make_isotropic',
                         default=0,
-                        help='Specify an isotropic voxel size in mm for resampling. Default 0 = no resampling',
+                        help='Specify an isotropic voxel size in mm for resampling. Default 0 = no resampling. "auto" uses nibabel to read the NIFTI header for the minimum voxel size',
                         required=False
                        )
     parser.add_argument('-t',
