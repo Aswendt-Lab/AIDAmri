@@ -341,7 +341,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
     optionalNamed.add_argument('-r', '--recon_method', required=False, help='Specify diffusion reconstruction for DSI Studio (Default="dti", "gqi").')
     optionalNamed.add_argument('-v', '--vivo', required=False, help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
-    optionalNamed.add_argument('-m', '--make_isotropic', required=False, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling).')
+    optionalNamed.add_argument('-m', '--make_isotropic', required=False, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
     optionalNamed.add_argument('--track_param', '--track_params', required=False, help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
     
 
