@@ -284,12 +284,13 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         print(f'Using param0 value {param_zero} recommended for in vivo data')
 
     # get voxel size from nifti header to resample if make_isotropic == 'auto'
+    img = nii.load(filename)
+    header = img.header
+    mm_voxel_size_arr = header.get_zooms()
+    spatial_dims = mm_voxel_size_arr[:3]
+    min_vox_size_mm = str(min(spatial_dims))
     if make_isotropic == "auto":
-        img = nii.load(filename)
-        header = img.header
-        mm_voxel_size_arr = header.get_zooms()
-        spatial_dims = mm_voxel_size_arr[:3]
-        make_isotropic = str(min(spatial_dims))
+        make_isotropic = min_vox_size_mm
     
     additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
     if make_isotropic != 0:
@@ -364,8 +365,10 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     rd_data_flipped = np.flip(rd_data_flipped,1)
     rd_file_flipped = nii.Nifti1Image(rd_data_flipped, rd_file.affine)
     nii.save(rd_file_flipped,os.path.join(dir_qa,"rd_flipped.nii.gz"))
+
+    return min_vox_size_mm
     
-def tracking(dsi_studio, dir_in, track_param='default'):
+def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
     """
     Performs seed-based fiber-tracking. 
     Default parameters are used unless a custom parameter is specified.
@@ -405,6 +408,11 @@ def tracking(dsi_studio, dir_in, track_param='default'):
         cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
         #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
         #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
+        if track_param != 'aida_optimized':
+            # step size = 1/2 (voxel size)
+            params[2] = min_voxel_size_mm / 2
+            # min streamline length = 2 * (voxel_size)
+            params[7] = min_voxel_size_mm * 2
         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), params)
     
     filename = glob.glob(dir_in+'/*fib.gz')[0]
