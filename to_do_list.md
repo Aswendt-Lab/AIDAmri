@@ -22,4 +22,5 @@
    ```
    Why is the auto-check not preferred? Datasets may vary in which axes to flip in the B-table.
  - [ ] Auto populate tracking parameters "min length" to twice the voxel size and "step size" to half voxel size
+ - [X] Auto populate `make_isotropic` in `srcgen` for DTI processing
  - [ ] Confirm that tracking options CLI and workflow works as intended
