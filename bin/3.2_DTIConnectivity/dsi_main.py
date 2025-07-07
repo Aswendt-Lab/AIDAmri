@@ -99,14 +99,14 @@ if __name__ == '__main__':
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
     file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic)
+    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic)
     file_in = os.path.join(file_cur,'fib_map')
 
     track_param = args.track_params
 
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools.tracking(dsi_studio, file_in, track_param)
+    dsi_tools.tracking(dsi_studio, file_in, track_param, voxel_size)
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
