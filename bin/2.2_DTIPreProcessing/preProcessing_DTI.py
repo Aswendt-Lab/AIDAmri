@@ -132,7 +132,7 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--input', help='Path to the raw NIfTI DTI file', required=True)
 
-    parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
+    parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.4, smaller values give larger brain outline estimates', nargs='?', type=float,default=0.4)
     parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
     parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
                         type=float,default=0.0)
