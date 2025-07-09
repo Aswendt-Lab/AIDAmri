@@ -385,9 +385,13 @@ if __name__ == "__main__":
 
     if args.recon_method:
         recon_method = args.recon_method
+    else:
+        recon_method = 'dti'
 
     if args.vivo:
         vivo = args.vivo
+    else:
+        vivo = 'in_vivo'
 
     if args.make_isotropic != 0:
         make_isotropic = args.make_isotropic
@@ -398,6 +402,8 @@ if __name__ == "__main__":
 
     if args.track_param:
         track_param = args.track_param
+    else:
+        track_param = 'default'
     
     print(f"Running with {num_processes} parallel processes!")
 
