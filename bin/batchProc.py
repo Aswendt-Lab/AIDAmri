@@ -124,6 +124,16 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
     cwd = str(os.getcwd())
     currentPath_wData = Path(currentPath_wData)
     # currentPath_wData = projectfolder/sub/ses/dataFormat (e.g. anat, func, dwi)
+    #Find logging file
+    root_path = Path(currentPath_wData).parents[2]
+    log_file_path = os.path.join(root_path, "batchproc_log.txt")
+    #Initialize logging only if no handler is active
+    if not logging.getLogger().hasHandlers():
+        logging.basicConfig(
+            filename=log_file_path,
+            level=logging.INFO,
+            format='%(asctime)s - %(levelname)s - %(message)s'
+        )
     if os.path.isdir(currentPath_wData):
         if dataFormat == 'anat':
             os.chdir(cwd + '/2.1_T2PreProcessing')
@@ -154,6 +164,12 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "process":
+                has_stroke_mask = any(currentPath_wData.glob("**/*Stroke_mask.nii.gz")) #search for stroke mask
+                if not has_stroke_mask:
+                    message = f"No stroke mask found for {currentPath_wData}, proceeding without mask."
+                    logging.info(message)  #write in log-file
+                    #print(message, flush=True)
+                    return 0
                 os.chdir(cwd + '/3.1_T2Processing')
                 command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
                 result = run_subprocess(command,dataFormat,step)
