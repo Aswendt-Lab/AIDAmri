@@ -311,7 +311,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib+'/*fib.gz')[0]
-    parameters = (dsi_studio, 'exp', file_fib, 'fa')
+    parameters = (dsi_studio, 'exp', file_fib, 'dti_fa')
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
@@ -395,7 +395,9 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
 
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
-
+    
+    filename = glob.glob(dir_in+'/*fib.gz')[0]
+    
     # Set tracking based on track_param:
     if track_param == 'default':
         print('Using DSI Studio default tracking parameters')
@@ -414,8 +416,6 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
             # min streamline length = 2 * (voxel_size)
             params[7] = min_voxel_size_mm * 2
         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), params)
-    
-    filename = glob.glob(dir_in+'/*fib.gz')[0]
     
     os.system(cmd_trk % parameters)
 
