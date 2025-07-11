@@ -396,7 +396,7 @@ if __name__ == "__main__":
     if args.make_isotropic != 0:
         make_isotropic = args.make_isotropic
         logging.info(f"Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}")
-    
+        
     if args.expert_cpu:
         num_processes = int(args.expert_cpu)
 
@@ -406,11 +406,17 @@ if __name__ == "__main__":
         track_param = 'default'
     
     print(f"Running with {num_processes} parallel processes!")
-
+        
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
-    logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
     logging.info(f"Using {num_processes} CPUs for the parallelization")
     logging.info(f"Processing following datasets:\n{all_files}")
+    
+    if 'dwi' in args.data_types:
+        print(f'Using DSI Studio options reconstruction: {recon_method} for {vivo} data')
+        print(f'Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}')
+        logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
+        print(f'DSI Studio tracking parameter set selected: {track_param}')
+        logging.info(f"DSI Studio tracking parameter set selected: {track_param}")
 
     for key, value in all_files.items():
         if value:
