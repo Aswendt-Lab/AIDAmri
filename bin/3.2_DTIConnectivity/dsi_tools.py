@@ -294,7 +294,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     
     additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
     if make_isotropic != 0:
-        additional_cmd=f'"[Step T2][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+        additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
         print(f'Resampling to {make_isotropic} mm isotropic voxel size')
 
     # default method value for DTI 
