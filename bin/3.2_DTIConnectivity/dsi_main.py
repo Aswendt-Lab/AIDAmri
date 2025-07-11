@@ -49,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('-v',
                         '--vivo',
                         default='in_vivo',
-                        help='Specify in vivo or ex vivo data to adjust sampling length ratio (param0). "in_vivo" param0=1.25 (default), "ex_vivo" param0=0.60'.,
+                        help='Specify in vivo or ex vivo data to adjust sampling length ratio (param0). "in_vivo" param0=1.25 (default), "ex_vivo" param0=0.60.',
                         required=False
                        )
     parser.add_argument('-m',
