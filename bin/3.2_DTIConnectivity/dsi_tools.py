@@ -415,7 +415,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
             params[2] = min_voxel_size_mm / 2
             # min streamline length = 2 * (voxel_size)
             params[7] = min_voxel_size_mm * 2
-        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), params)
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), *params)
     
     os.system(cmd_trk % parameters)
 
