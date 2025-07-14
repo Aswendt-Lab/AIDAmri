@@ -24,3 +24,4 @@
  - [X] Auto populate tracking parameters "min length" to twice the voxel size and "step size" to half voxel size
  - [X] Auto populate `make_isotropic` in `srcgen` for DTI processing
  - [ ] Confirm that tracking options CLI and workflow works as intended
+ - [ ] If resampling, the parcellation image does not load for connectivity in DSI Studio. Either resample this or provide a t2 reference image in the connectivity matrix extraction steps.
