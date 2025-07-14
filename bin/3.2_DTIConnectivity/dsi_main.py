@@ -123,7 +123,10 @@ if __name__ == '__main__':
     confiles = os.path.join(file_cur,dir_con)
     data_list = os.listdir(confiles)
     for filename in data_list:
-        splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
+        if args.recon_method == "dti":
+            splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
+        elif args.recon_method == "gqi":
+            splittedName = filename.split('.src.gz.gqi.fib.gz.trk.gz.')
         if len(splittedName)>1:
             newName = splittedName[1]
             newName = os.path.join(confiles,newName)
