@@ -80,8 +80,10 @@ def run_subprocess(command,datatype,step,anat_process=False):
     timeout = 3600 # set maximum time in seconds after which the subprocess will be terminated
     command_args = shlex.split(command)
     file = command_args[-1]
-    if datatype == "func" and step =="process":
+    if datatype == "func" and step == "process":
         file = command_args[-3]
+    elif datatype == "dwi" and step == "process":
+        file = command_args[3]
     log_file = os.path.join(os.path.dirname(file), step + ".log")
     if datatype == "anat" and step == "process":
         log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
