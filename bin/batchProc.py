@@ -411,7 +411,7 @@ if __name__ == "__main__":
     logging.info(f"Using {num_processes} CPUs for the parallelization")
     logging.info(f"Processing following datasets:\n{all_files}")
     
-    if 'dwi' in args.data_types:
+    if 'dwi' in dataTypes:
         print(f'Using DSI Studio options reconstruction: {recon_method} for {vivo} data')
         print(f'Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}')
         logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
