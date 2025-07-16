@@ -138,7 +138,7 @@ def move_files(dir_in, dir_out, pattern):
         if os.path.isfile(file_out):
             os.remove(file_out)
 
-def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
+def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0,flip_image_y=False):
     """
     Calculates connectivity data (types: pass and end).
     """
@@ -161,6 +161,24 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con):
     filename = glob.glob(dir_in+'/*fib.gz')[0]
     file_trk = glob.glob(dir_in+'/*trk.gz')[0]
     file_seeds = dir_seeds
+
+    # Dev note: if we resample the diffusion image, we need to resample the file_seeds here
+    if make_isotropic != 0:
+        # resample seeds image to isotropic voxel size using AFNI 3dresample
+        resampled_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_resampled.nii.gz'))
+        cmd_resample = f"3dresample -rmode Cu -dxyz {make_isotropic} {make_isotropic} {make_isotropic} -prefix {resampled_seeds_path} -input {file_seeds} "
+        subprocess.run(cmd_resample, shell=True, check=True)
+        file_seeds = resampled_seeds_path
+    # Dev note: if we flip image Y, we need to flip the file_seeds here
+    if flip_image_y:
+        # flip image y axis
+        nii_file = nii.load(file_seeds)
+        flipped_data = np.flip(nii_file.get_fdata(), axis=1) 
+        flipped_nii = nii.Nifti1Image(flipped_data, nii_file.affine, nii_file.header)
+        # adjust the file name to indicate flipping
+        flipped_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_flippedY.nii.gz'))
+        flipped_nii.to_filename(flipped_seeds_path)
+        file_seeds = flipped_seeds_path
 
     # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
     connect_vals = ['qa', 'count']
@@ -228,9 +246,9 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False):
     """
-    Sources and creates fib files. Diffusivity and aniosotropy metrics are exported from data.
+    Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
     """
     dir_src = r'src'
     dir_fib = r'fib_map'
@@ -274,6 +292,15 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     # create fib files
     file_msk = dir_msk
+    if flip_image_y:
+        # flip image y axis
+        # adjust the file name to indicate flipping
+        file_msk = os.path.join(os.path.dirname(dir_msk), os.path.basename(dir_msk).replace('.nii', '_flippedY.nii.gz'))
+        nii_file = nii.load(dir_msk)
+        flipped_data = np.flip(nii_file.get_fdata(), axis=1) # flip 0 flipped left-right
+        flipped_nii = nii.Nifti1Image(flipped_data, nii_file.affine, nii_file.header)
+        # adjust the file name to indicate flipping
+        flipped_nii.to_filename(file_msk)
 
     param_zero='1.25'
     # Select reconstruction parameters
@@ -291,11 +318,19 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     min_vox_size_mm = str(min(spatial_dims))
     if make_isotropic == "auto":
         make_isotropic = min_vox_size_mm
-    
+
+    # flip_image_y = False
     additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
     if make_isotropic != 0:
         additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
         print(f'Resampling to {make_isotropic} mm isotropic voxel size')
+        # Dev note: if resampling diffusion image (and also if flipping), mask? and parcellation images must be changed also
+        if flip_image_y:
+            additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"' # do we need to flip bY in this case?
+            print(f'Flipping DWI image Y axis')
+    elif make_isotropic == 0 and flip_image_y:
+        additional_cmd=f'"[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+
 
     # default method value for DTI 
     method_rec=1
@@ -311,7 +346,10 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
     file_fib = glob.glob(dir_fib+'/*fib.gz')[0]
-    parameters = (dsi_studio, 'exp', file_fib, 'dti_fa')
+    if recon_method == "gqi":
+        parameters = (dsi_studio, 'exp', file_fib, 'dti_fa')
+    elif recon_method == "dti":
+        parameters = (dsi_studio, 'exp', file_fib, 'fa')
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
@@ -337,40 +375,70 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     move_files(dir_fib, dir_qa, '/*md.nii.gz')
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
     move_files(dir_fib, dir_qa, '/*rd.nii.gz')
-    
+
+    # Flip and save images
     fa_file = nii.load(glob.glob(os.path.join(dir_qa,"*fa.nii*"))[0])
     fa_data = fa_file.get_fdata()
     fa_data_flipped = np.flip(fa_data,0)
     fa_data_flipped = np.flip(fa_data_flipped,1)
     fa_file_flipped = nii.Nifti1Image(fa_data_flipped, fa_file.affine)
-    nii.save(fa_file_flipped,os.path.join(dir_qa,"fa_flipped.nii.gz"))
-    
+    fa_flipped_path = os.path.join(dir_qa,"fa_flipped.nii.gz")
+    nii.save(fa_file_flipped, fa_flipped_path)
+
     md_file = nii.load(glob.glob(os.path.join(dir_qa,"*md.nii*"))[0])
     md_data = md_file.get_fdata()
     md_data_flipped = np.flip(md_data,0)
     md_data_flipped = np.flip(md_data_flipped,1)
     md_file_flipped = nii.Nifti1Image(md_data_flipped, md_file.affine)
-    nii.save(md_file_flipped,os.path.join(dir_qa,"md_flipped.nii.gz"))
-    
+    md_flipped_path = os.path.join(dir_qa,"md_flipped.nii.gz")
+    nii.save(md_file_flipped, md_flipped_path)
+
     ad_file = nii.load(glob.glob(os.path.join(dir_qa,"*ad.nii*"))[0])
     ad_data = ad_file.get_fdata()
     ad_data_flipped = np.flip(ad_data,0)
     ad_data_flipped = np.flip(ad_data_flipped,1)
     ad_file_flipped = nii.Nifti1Image(ad_data_flipped, ad_file.affine)
-    nii.save(ad_file_flipped,os.path.join(dir_qa,"ad_flipped.nii.gz"))
-    
+    ad_flipped_path = os.path.join(dir_qa,"ad_flipped.nii.gz")
+    nii.save(ad_file_flipped, ad_flipped_path)
+
     rd_file = nii.load(glob.glob(os.path.join(dir_qa,"*rd.nii*"))[0])
     rd_data = rd_file.get_fdata()
     rd_data_flipped = np.flip(rd_data,0)
     rd_data_flipped = np.flip(rd_data_flipped,1)
     rd_file_flipped = nii.Nifti1Image(rd_data_flipped, rd_file.affine)
-    nii.save(rd_file_flipped,os.path.join(dir_qa,"rd_flipped.nii.gz"))
+    rd_flipped_path = os.path.join(dir_qa,"rd_flipped.nii.gz")
+    nii.save(rd_file_flipped, rd_flipped_path)
 
-    return min_vox_size_mm
-    
+    # Generate PNG images for each NIfTI file using FSL's slicer tool
+    # Collect all NIfTI files in dir_qa, including .nii and .nii.gz
+    all_nifti_files = glob.glob(os.path.join(dir_qa, "*.nii")) + glob.glob(os.path.join(dir_qa, "*.nii.gz"))
+
+    # Remove duplicates and ensure unique file paths
+    all_nifti_files = list(set(all_nifti_files))
+
+    # Add the flipped files if not already present
+    flipped_files = [fa_flipped_path, md_flipped_path, ad_flipped_path, rd_flipped_path]
+    for flipped_file in flipped_files:
+        if flipped_file not in all_nifti_files:
+            all_nifti_files.append(flipped_file)
+
+    nifti_files = all_nifti_files
+
+    for nifti_path in nifti_files:
+        base_name = os.path.splitext(os.path.basename(nifti_path))[0]
+        # Remove .gz if present
+        if base_name.endswith('.nii'):
+            base_name = base_name[:-4]
+        img = nii.load(nifti_path)
+        png_slice_path = os.path.join(dir_qa, f"{base_name}.png")
+        cmd = ["slicer", nifti_path, "-L -a", png_slice_path]
+        subprocess.run(cmd, check=True)
+
+    return min_vox_size_mm # , flip_image_y
+
 def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
     """
-    Performs seed-based fiber-tracking. 
+    Performs seed-based fiber-tracking.
     Default parameters are used unless a custom parameter is specified.
     """
     if not os.path.exists(dir_in):
@@ -395,9 +463,9 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
 
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
-    
+
     filename = glob.glob(dir_in+'/*fib.gz')[0]
-    
+
     # Set tracking based on track_param:
     if track_param == 'default':
         print('Using DSI Studio default tracking parameters')

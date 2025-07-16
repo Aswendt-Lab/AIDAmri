@@ -64,6 +64,12 @@ if __name__ == '__main__':
                         help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
                         required=False
                        )
+    parser.add_argument('-y',
+                        '--flip_image_y',
+                        default=False,
+                        help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.',
+                        required=False
+                       )
     parser.add_argument('-o',
                         '--optional',
                         nargs = '*',
@@ -94,12 +100,17 @@ if __name__ == '__main__':
     make_isotropic=0
     if args.make_isotropic != 0:
         make_isotropic=args.make_isotropic
+    
+    if args.flip_image_y is None:
+        flip_image_y = False
+    elif str(args.flip_image_y).lower() == 'true':
+        flip_image_y = True
 
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
     file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic)
+    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y)
     file_in = os.path.join(file_cur,'fib_map')
 
     track_param = args.track_params
