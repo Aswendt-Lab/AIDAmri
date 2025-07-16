@@ -84,6 +84,7 @@ def run_subprocess(command,datatype,step,anat_process=False):
         file = command_args[-3]
     elif datatype == "dwi" and step == "process":
         file = command_args[3]
+        print(file) # debug
     log_file = os.path.join(os.path.dirname(file), step + ".log")
     if datatype == "anat" and step == "process":
         log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
@@ -292,7 +293,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic}'
+                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y}'
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
@@ -304,7 +305,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             logging.error(message);
             errorList.append(message)
     else:
-        message = f"The folder {dataFormat} does not exist in {str(currentPath_wData)}"
+        message = 'The folder ' + dataFormat + ' does not exist in ' + str(currentPath_wData)
         logging.error(message)
         errorList.append(message)
     
@@ -344,6 +345,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-r', '--recon_method', required=False, default='dti', help='Specify diffusion reconstruction for DSI Studio (Default="dti", "gqi").')
     optionalNamed.add_argument('-v', '--vivo', required=False, default='in_vivo', help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
     optionalNamed.add_argument('-m', '--make_isotropic', required=False, default=0, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
+    optionalNamed.add_argument('-f', '--flip_image_y', required=False, default=False, help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.')
     optionalNamed.add_argument('-track_param', '--track_param', required=False, default='default', help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
     
 
@@ -385,6 +387,8 @@ if __name__ == "__main__":
     elif args.cpu_cores.upper() == "MAX":
         num_processes = multiprocessing.cpu_count()
 
+    print(args)
+
     if args.recon_method:
         recon_method = args.recon_method
     else:
@@ -398,7 +402,7 @@ if __name__ == "__main__":
     if args.make_isotropic != 0:
         make_isotropic = args.make_isotropic
         logging.info(f"Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}")
-        
+    
     if args.expert_cpu:
         num_processes = int(args.expert_cpu)
 
@@ -407,18 +411,17 @@ if __name__ == "__main__":
     else:
         track_param = 'default'
     
+    if args.flip_image_y is None:
+        flip_image_y = False
+    elif str(args.flip_image_y).lower() == 'true':
+        flip_image_y = True
+
     print(f"Running with {num_processes} parallel processes!")
-        
+
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
+    logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
     logging.info(f"Using {num_processes} CPUs for the parallelization")
     logging.info(f"Processing following datasets:\n{all_files}")
-    
-    if 'dwi' in dataTypes:
-        print(f'Using DSI Studio options reconstruction: {recon_method} for {vivo} data')
-        print(f'Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}')
-        logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
-        print(f'DSI Studio tracking parameter set selected: {track_param}')
-        logging.info(f"DSI Studio tracking parameter set selected: {track_param}")
 
     for key, value in all_files.items():
         if value:
