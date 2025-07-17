@@ -40,11 +40,11 @@ for dwifile in dwi_files:
         print(f"Skipping {dwifile} as it only has 1 time point.")
     else: 
         bvaltile_fact = image_shape[3]/len(bval)
-        print(f"Scaling up bval by a factor of {bvaltile_fact} repetitions.")
+        print(f"Replicating bval by a factor of {bvaltile_fact} repetitions.")
 
         #bvecsize = bvec.shape
         bvectile_fact = image_shape[3]/(bvec.shape[1])
-        print(f"Scaling up bvec by a factor of {bvectile_fact} repetitions.")
+        print(f"Replicating bvec by a factor of {bvectile_fact} repetitions.")
     
         if bvaltile_fact == int(bvaltile_fact):
            bvaltile_fact = int(bvaltile_fact)
