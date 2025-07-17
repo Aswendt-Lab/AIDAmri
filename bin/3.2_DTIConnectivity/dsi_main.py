@@ -128,7 +128,7 @@ if __name__ == '__main__':
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
-        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y)
 
     # rename files to reduce path length
     confiles = os.path.join(file_cur,dir_con)

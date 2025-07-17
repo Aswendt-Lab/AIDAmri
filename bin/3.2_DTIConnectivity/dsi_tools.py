@@ -137,6 +137,14 @@ def move_files(dir_in, dir_out, pattern):
         file_out = os.path.join(dir_out, file_mv)
         if os.path.isfile(file_out):
             os.remove(file_out)
+     
+def get_min_voxel_size_mm(nifti_path):
+    nii_file = nii.load(nifti_path)
+    header = nii_file.header
+    mm_voxel_size_arr = header.get_zooms()
+    spatial_dims = mm_voxel_size_arr[:3]
+    min_vox_size_mm = str(min(spatial_dims))
+    return min_vox_size_mm
 
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0,flip_image_y=False):
     """
@@ -166,9 +174,29 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
     if make_isotropic != 0:
         # resample seeds image to isotropic voxel size using AFNI 3dresample
         resampled_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_resampled.nii.gz'))
-        cmd_resample = f"3dresample -rmode Cu -dxyz {make_isotropic} {make_isotropic} {make_isotropic} -prefix {resampled_seeds_path} -input {file_seeds} "
+        # convert make_isotropic to float if it is a string
+        if isinstance(make_isotropic, str):
+            make_isotropic = float(make_isotropic)
+        # multiply by 10 to account for the scaling done in fsl_SeparateSliceMoCo
+        make_isotropic = float(make_isotropic) * 10
+        cmd_resample = f"flirt -in {file_seeds} -ref {file_seeds} -applyisoxfm {make_isotropic} -nosearch -interp trilinear -out {resampled_seeds_path}"
+        print(f'Resampling seeds image to {make_isotropic} mm isotropic voxel size')
         subprocess.run(cmd_resample, shell=True, check=True)
+        # create a quality control image for the resampling, with the original image and the resampled image side by side
+        # Generate PNG images for original and resampled seeds
+        qc_orig_png = os.path.join(dir_con, 'qc_seeds_orig.png')
+        qc_resampled_png = os.path.join(dir_con, 'qc_seeds_resampled.png')
+        subprocess.run(f"slicer {file_seeds} -L -a {qc_orig_png}", shell=True, check=True)
+        subprocess.run(f"slicer {resampled_seeds_path} -L -a {qc_resampled_png}", shell=True, check=True)
+        # Combine the two PNGs using pngappend
+        qc_combined_png = os.path.join(dir_con, 'qc_resampled_seeds_combined.png')
+        cmd_qc = f"pngappend {qc_orig_png} - {qc_resampled_png} {qc_combined_png}"
+        print(f'Creating quality control image for resampled seeds image')
+        subprocess.run(cmd_qc, shell=True, check=True)
+        # update file_seeds to the resampled path
         file_seeds = resampled_seeds_path
+        # # command needs to use the --t1t2 t2_rare.nii.gz to align the ROI files
+        # cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s --t1t2=%s'
     # Dev note: if we flip image Y, we need to flip the file_seeds here
     if flip_image_y:
         # flip image y axis
@@ -176,14 +204,29 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
         flipped_data = np.flip(nii_file.get_fdata(), axis=1) 
         flipped_nii = nii.Nifti1Image(flipped_data, nii_file.affine, nii_file.header)
         # adjust the file name to indicate flipping
-        flipped_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_flippedY.nii.gz'))
+        if file_seeds.endswith('.nii.gz'):
+            flipped_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii.gz', '_flippedY.nii.gz'))
+        else:
+            flipped_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_flippedY.nii.gz'))
         flipped_nii.to_filename(flipped_seeds_path)
         file_seeds = flipped_seeds_path
+        # # flip t2 rare on Y axis
+        # t2rare = nii.load(glob.glob(os.path.join(dir_in, '*Bet_T2w.nii*'))[0])
+        # flipped_t2rare = np.flip(t2rare.get_fdata(), axis=1)
+        # flipped_t2rare_nii = nii.Nifti1Image(flipped_t2rare, t2rare.affine, t2rare.header)
+        # flipped_t2rare_path = os.path.join(dir_con, 'Bet_flippedY_T2w.nii.gz')
+        # flipped_t2rare_nii.to_filename(flipped_t2rare_path)
+        # t2rare = flipped_t2rare_path
+    
+    # Inverse scale the file_seeds by 10
+    file_seeds = scaleBy10(file_seeds, inv=True)
 
     # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
     connect_vals = ['qa', 'count']
     for i in connect_vals:
         parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, i, 'pass,end')
+        # if make_isotropic != 0:
+        #     parameters += (t2rare)
         os.system(cmd_ana % parameters)
 
     #move_files(dir_in, dir_con, re.escape(filename) + '\.' + re.escape(pre_seeds) + '.*(?:\.pass\.|\.end\.)')
@@ -310,12 +353,8 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     elif vivo == "in_vivo":
         print(f'Using param0 value {param_zero} recommended for in vivo data')
 
-    # get voxel size from nifti header to resample if make_isotropic == 'auto'
-    img = nii.load(filename)
-    header = img.header
-    mm_voxel_size_arr = header.get_zooms()
-    spatial_dims = mm_voxel_size_arr[:3]
-    min_vox_size_mm = str(min(spatial_dims))
+    # get voxel size from nifti header to resample if make_isotropic == 'auto', use function get_min_voxel_size_mm
+    min_vox_size_mm = get_min_voxel_size_mm(filename)
     if make_isotropic == "auto":
         make_isotropic = min_vox_size_mm
 
