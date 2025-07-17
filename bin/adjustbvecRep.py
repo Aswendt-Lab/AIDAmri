@@ -22,6 +22,8 @@ os.chdir("dwi")
 
 dwi_files = glob.glob('*dwi.nii.gz')
 
+dwi_file_length = []
+
 for dwifile in dwi_files:
     print(f"Processing File: {dwifile}")
     img = nib.load(dwifile)
@@ -38,13 +40,23 @@ for dwifile in dwi_files:
  
     if image_shape[3] == 1:
         print(f"Skipping {dwifile} as it only has 1 time point.")
-    else: 
+        # For any image sets that have only one time point, move the .nii.gz, .json, .bval, and .bvec files to a separate hidden directory
+        hidden_dir = os.path.join(directory_use, '.single_time_point')
+        if not os.path.exists(hidden_dir):
+            os.makedirs(hidden_dir)
+            os.rename(dwifile, os.path.join(hidden_dir, dwifile))
+        if os.path.exists(dwibvalname):
+            os.rename(dwibvalname, os.path.join(hidden_dir, dwibvalname))
+        if os.path.exists(dwibvecname):
+            os.rename(dwibvecname, os.path.join(hidden_dir, dwibvecname))
+        continue
+    else:
         bvaltile_fact = image_shape[3]/len(bval)
-        print(f"Replicating bval by a factor of {bvaltile_fact} repetitions.")
+        print(f"Scaling up bval by a factor of {bvaltile_fact} repetitions.")
 
         #bvecsize = bvec.shape
         bvectile_fact = image_shape[3]/(bvec.shape[1])
-        print(f"Replicating bvec by a factor of {bvectile_fact} repetitions.")
+        print(f"Scaling up bvec by a factor of {bvectile_fact} repetitions.")
     
         if bvaltile_fact == int(bvaltile_fact):
            bvaltile_fact = int(bvaltile_fact)
@@ -64,8 +76,10 @@ for dwifile in dwi_files:
     
         np.savetxt(bval2name, bval, fmt="%1.15f", delimiter=" ")
         np.savetxt(bvec2name, bvec, fmt="%1.17f", delimiter=" ")
-  
-   
+        print(f"Saved bval to {bval2name} and bvec to {bvec2name}.")
+        dwi_file_length.append({'filename': dwifile, 'image_shape': image_shape})
 
-
+print("DWI files processed:")
+for item in dwi_file_length:
+    print(f" - {item['filename']} with shape {item['image_shape']}")
 
