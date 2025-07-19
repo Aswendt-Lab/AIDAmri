@@ -127,16 +127,6 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
     cwd = str(Path(__file__).resolve().parent)
     currentPath_wData = Path(currentPath_wData)
     # currentPath_wData = projectfolder/sub/ses/dataFormat (e.g. anat, func, dwi)
-    #Find logging file
-    root_path = Path(currentPath_wData).parents[2]
-    log_file_path = os.path.join(root_path, "batchproc_log.txt")
-    #Initialize logging only if no handler is active
-    if not logging.getLogger().hasHandlers():
-        logging.basicConfig(
-            filename=log_file_path,
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s'
-        )
     if os.path.isdir(currentPath_wData):
         if dataFormat == 'anat':
             if step == "preprocess":
@@ -180,10 +170,17 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 command = f'python getIncidenceSize_par.py -i {str(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step)
                 if isinstance(result, tuple) and len(result) == 4:
+                os.chdir(cwd + '/3.1_T2Processing')
+                command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
+                result = run_subprocess(command,dataFormat,step)
+                if result != 0:
                     errorList.append(result)
                 command = f'python getIncidenceSize.py -i {str(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step, anat_process=True)
                 if isinstance(result, tuple) and len(result) == 4:
+                command = f'python getIncidenceSize.py -i {currentPath_wData}'
+                result = run_subprocess(command,dataFormat,step,anat_process=True)
+                if result != 0:
                     errorList.append(result)
                 os.chdir(cwd)
 
@@ -293,7 +290,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y}'
+                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y} -template {template} -thread_count {num_processes}'
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
@@ -346,6 +343,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-v', '--vivo', required=False, default='in_vivo', help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
     optionalNamed.add_argument('-m', '--make_isotropic', required=False, default=0, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
     optionalNamed.add_argument('-f', '--flip_image_y', required=False, default=False, help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.')
+    optionalNamed.add_argument('-template', '--template', required=False, default=1, help='Specify the template to use for the reconstruction step T2 in DSI Studio. Default is 1 (mouse). Other options are "Rat" (5) or "Mouse" (1).')
     optionalNamed.add_argument('-track_param', '--track_param', required=False, default='default', help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
     
 
@@ -380,6 +378,8 @@ if __name__ == "__main__":
 
     all_files = findData(pathToData, sessions, dataTypes)
 
+    num_processes = 1
+
     if args.cpu_cores.upper() == "MIN":
         num_processes = 1
     elif args.cpu_cores.upper() == "HALF":
@@ -411,10 +411,24 @@ if __name__ == "__main__":
     else:
         track_param = 'default'
     
+    flip_image_y = False
     if args.flip_image_y is None:
         flip_image_y = False
     elif str(args.flip_image_y).lower() == 'true':
         flip_image_y = True
+
+    if args.template is None:
+        template = 1
+    elif args.template.lower() == 'rat':
+        template = 5
+    elif args.template.lower() == 'mouse':
+        template = 1
+    else:
+        try:
+            template = int(args.template)
+        except ValueError:
+            print(f"Invalid template value: {args.template}. Using default template 1 (mouse).")
+            template = 1
 
     print(f"Running with {num_processes} parallel processes!")
 
@@ -439,13 +453,10 @@ if __name__ == "__main__":
 
                     for future in concurrent.futures.as_completed(futures):
                         progress_bar.update(1)
-
+                     
                         errorList = future.result()
                         if errorList != 0:
-                            if isinstance(errorList, list):
-                                error_list_step.extend(errorList)
-                            else:
-                                error_list_step.append(errorList)
+                            error_list_step.append(errorList)
                         
                     concurrent.futures.wait(futures)
                 progress_bar.close()
@@ -457,13 +468,18 @@ if __name__ == "__main__":
                 logging.info(f"{key} {step} processing completed")
                 
                 
-            logging.error(f"Following errors were occuring {error_list_all}")
+            logging.error(f"Following errors were occuring {error_list_all}")   
             logging.info(f"{key} processing completed")
             if not error_list_all:
                 print(f"\n{key} processing \033[0;30;42m COMPLETED \33[0m")
             else:
                 print(f"\n{key} processing \033[0;30;41m INCOMPLETE \33[0m")
             if error_list_all:
+                    print()
+                    for error in error_list_all:
+                        error = error[0]
+                        print(f"Error in sub: {error[0]} in session: {error[1]} in datatype: {error[2]} and step: {error[3]}. Check logging file for further information")
+            
                     print()
                     for error in error_list_all:
                         error = error[0]
