@@ -171,7 +171,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
     file_seeds = dir_seeds
 
     # Dev note: if we resample the diffusion image, we need to resample the file_seeds here
-    if make_isotropic != 0:
+    if str(make_isotropic) != '0':
         # resample seeds image to isotropic voxel size using AFNI 3dresample
         resampled_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_resampled.nii.gz'))
         # convert make_isotropic to float if it is a string
@@ -218,8 +218,8 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
         # flipped_t2rare_nii.to_filename(flipped_t2rare_path)
         # t2rare = flipped_t2rare_path
     
-    # Inverse scale the file_seeds by 10
-    file_seeds = scaleBy10(file_seeds, inv=True)
+    # # Inverse scale the file_seeds by 10
+    # file_seeds = scaleBy10(file_seeds, inv=True)
 
     # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
     connect_vals = ['qa', 'count']
@@ -289,7 +289,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=1):
     """
     Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
     """
@@ -324,7 +324,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
     # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
     # flip image orientation in x, y or z direction !! needs to be adjusted according to your data, check fiber tracking result to be anatomically meaningful
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --other_output=all --check_btable=%d --half_sphere=%d --cmd=%s'
+    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --other_output=all --check_btable=%d --half_sphere=%d --template=%d --cmd=%s'
 
     # create source files
     filename = os.path.basename(dir_in)
@@ -357,6 +357,9 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     min_vox_size_mm = get_min_voxel_size_mm(filename)
     if make_isotropic == "auto":
         make_isotropic = min_vox_size_mm
+    # Dev note: The parcellation image must be registered to the resampled (and flipped) diffusion image if this is the case
+    #           We need to register the T2-weighted image to the resampled diffusion image to guide the registration of the parcellation image
+    #           This should be done using the equivalent commands from registration_DTI.py
 
     # flip_image_y = False
     additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
@@ -376,7 +379,14 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     if recon_method == "gqi":
         method_rec=4
 
-    parameters = (dsi_studio, 'rec', file_src, file_msk, method_rec, param_zero, 0, 1, additional_cmd)
+    # Select template for DSI Studio
+    # 1: C57BL6_mouse, 5: WHS_SD_rat 
+    if template == "Mouse":
+        template = 1
+    elif template == "Rat":
+        template = 5
+
+    parameters = (dsi_studio, 'rec', file_src, file_msk, method_rec, param_zero, 0, 1, template, additional_cmd)
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
@@ -475,7 +485,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     return min_vox_size_mm # , flip_image_y
 
-def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
+def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, thread_count=1):
     """
     Performs seed-based fiber-tracking.
     Default parameters are used unless a custom parameter is specified.
@@ -514,7 +524,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
     else:
         # Use this tracking parameters if you want to specify each tracking parameter separately.
-        cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s'
+        cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s --thread_count=%s'
         #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
         #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
         if track_param != 'aida_optimized':
@@ -522,7 +532,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1):
             params[2] = min_voxel_size_mm / 2
             # min streamline length = 2 * (voxel_size)
             params[7] = min_voxel_size_mm * 2
-        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), *params)
+        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), *params, thread_count)
     
     os.system(cmd_trk % parameters)
 
