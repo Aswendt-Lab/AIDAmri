@@ -26,6 +26,6 @@
  - [ ] Confirm that tracking options CLI and workflow works as intended
  - [ ] If resampling, the parcellation image does not load for connectivity in DSI Studio. Either resample this or provide a t2 reference image in the connectivity matrix extraction steps.
  - [ ] Image flip Y?
- - [ ] DTI processing does not handle existing outputs well. How should we address this?
- - [ ] FSL slicer images for quality control
- - [ ] DSI Studio fiber images and/or movie for quality control
+ - [ ] FSL slicer images for quality control. Might be worth replacing with a python plotting function for ease of use.
+ - [ ] DSI Studio fiber images and/or movie for quality control. Currently only possible through 2025+ "Hou" version command history function in GUI
+ - [ ] DSI Studio tract density image output (WIP)
