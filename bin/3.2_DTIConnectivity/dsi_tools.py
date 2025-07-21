@@ -197,6 +197,8 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
         file_seeds = resampled_seeds_path
         # # command needs to use the --t1t2 t2_rare.nii.gz to align the ROI files
         # cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s --t1t2=%s'
+        # # Inverse scale the file_seeds by 10
+        # # file_seeds = scaleBy10(file_seeds, inv=True)
     # Dev note: if we flip image Y, we need to flip the file_seeds here
     if flip_image_y:
         # flip image y axis
@@ -218,8 +220,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
         # flipped_t2rare_nii.to_filename(flipped_t2rare_path)
         # t2rare = flipped_t2rare_path
     
-    # # Inverse scale the file_seeds by 10
-    # file_seeds = scaleBy10(file_seeds, inv=True)
+
 
     # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
     connect_vals = ['qa', 'count']
@@ -524,7 +525,8 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
         parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
     else:
         # Use this tracking parameters if you want to specify each tracking parameter separately.
-        cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s --thread_count=%s'
+        # cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s --thread_count=%s'
+        cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s --thread_count=%s --export=tdi:color' # The tract-density image saved here may not be viewable in FSLeyes or ITK-SNAP, but is compatible with Mango viewer. 
         #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
         #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
         if track_param != 'aida_optimized':
