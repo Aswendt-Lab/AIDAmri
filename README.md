@@ -137,6 +137,39 @@ RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIC
 
 </details>
 
+<details>
+<summary>Note for Users with ARM processors (Apple)</summary></b>
+If you intend to install AIDAmri on a system equipped with an ARM processor (e.g., Apple Silicon Macs from 2020 onwards), the Docker build command requires a slight modification.
+
+To build the Docker image, run the following command in your terminal (note the period at the end):
+
+```
+docker build --platform linux/amd64 -t aidamri:latest -f Dockerfile .
+```
+
+This command forces Docker to emulate an x86_64 environment on ARM-based systems. This build process takes some time—this is normal.
+During the build, you may encounter the following warnings:
+
+```
+3 warnings found (use docker --debug to expand):
+ - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
+ - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
+ - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
+```
+
+These warnings are non-critical and can be safely ignored.
+When creating a container from the image, you may also see:
+
+```
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
+```
+This warning appears because the image was built for a different architecture than your host system. 
+It can also be ignored and does not affect the functionality of the container.
+
+With these adjustments, AIDAmri can be used on ARM-based systems. However, if an x86_64 (non-ARM) system is available, 
+we recommend using it for better performance, as emulation may result in a general slowdown.
+</details>
+
 ## EXAMPLE FILES
 
 Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
