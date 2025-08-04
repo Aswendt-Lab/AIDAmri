@@ -119,7 +119,11 @@ def write_html_report(report_entries, out_dir):
         f.write("</head><body>\n")
         f.write(f"<h1>{report_title}</h1>\n")
         for entry in report_entries:
-            f.write("<div class='qc-entry'>\n")
+            # Extract subject and session from filename
+            parts = entry['filename'].split('_')
+            subj = parts[0].replace('sub-', '') if len(parts) > 0 else "unknown"
+            sess = parts[1].replace('ses-', '') if len(parts) > 1 else "unknown"
+            f.write(f"<div class='qc-entry' data-subject='{subj}' data-session='{sess}' data-modality='{entry['modality']}'>\n")
             f.write(
                 f"<div class='qc-info'><b>File Name:</b> {entry['filename']} &nbsp; "
                 f"<b>Modality:</b> {entry['modality']} &nbsp; "
@@ -128,6 +132,63 @@ def write_html_report(report_entries, out_dir):
             )
             f.write(f"<img class='qc-img' src='{entry['qc_img_path']}' alt='{entry['filename']}'>\n")
             f.write("</div>\n")
+        # Build dropdown menu for navigation
+        subjects = sorted(set(
+            entry['filename'].split('_')[0].replace('sub-', '') for entry in report_entries
+        ))
+        sessions = sorted(set(
+            entry['filename'].split('_')[1].replace('ses-', '') for entry in report_entries
+        ))
+        modalities = sorted(set(entry['modality'] for entry in report_entries))
+        # Create dropdown HTML
+        f.write("""
+        <script>
+        function filterQC() {
+            var subj = document.getElementById('subjectDropdown').value;
+            var sess = document.getElementById('sessionDropdown').value;
+            var mod = document.getElementById('modalityDropdown').value;
+            var entries = document.getElementsByClassName('qc-entry');
+            for (var i = 0; i < entries.length; i++) {
+                var entry = entries[i];
+                var show = true;
+                if (subj !== 'all' && entry.getAttribute('data-subject') !== subj) show = false;
+                if (sess !== 'all' && entry.getAttribute('data-session') !== sess) show = false;
+                if (mod !== 'all' && entry.getAttribute('data-modality') !== mod) show = false;
+                entry.style.display = show ? '' : 'none';
+            }
+        }
+        </script>
+        <div id='qc-dropdown-bar' style='position:fixed;top:0;left:0;width:100%;background:#f9f9f9;border-bottom:1px solid #ccc;z-index:1000;padding:12px 0;'>
+            <label style='margin-right:20px;'>Subject:
+            <select id='subjectDropdown' onchange='filterQC()'>
+                <option value='all'>All</option>
+        """)
+        for s in subjects:
+            f.write(f"<option value='{s}'>{s}</option>\n")
+        f.write("""
+            </select>
+            </label>
+            <label style='margin-right:20px;'>Session:
+            <select id='sessionDropdown' onchange='filterQC()'>
+                <option value='all'>All</option>
+        """)
+        for s in sessions:
+            f.write(f"<option value='{s}'>{s}</option>\n")
+        f.write("""
+            </select>
+            </label>
+            <label style='margin-right:20px;'>Modality:
+            <select id='modalityDropdown' onchange='filterQC()'>
+                <option value='all'>All</option>
+        """)
+        for m in modalities:
+            f.write(f"<option value='{m}'>{m}</option>\n")
+        f.write("""
+            </select>
+            </label>
+        </div>
+        <div style='height:60px;'></div>
+        """)
         f.write("</body></html>\n")
     print(f"HTML report written to {html_path}")
 
