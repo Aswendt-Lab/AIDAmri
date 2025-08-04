@@ -39,9 +39,20 @@ for dwifile in dwi_files:
     bvec = np.loadtxt(dwibvecname, dtype = float)
  
     if image_shape[3] == 1:
-        print(f"Skipping {dwifile} as it only has 1 time point.")
+        print(f"Skipping {dwifile} as it only has 1 volume.")
+        hidden_dir = os.path.join(directory_use, '.single_volume')
+        if not os.path.exists(hidden_dir):
+            os.makedirs(hidden_dir)
+            os.rename(dwifile, os.path.join(hidden_dir, dwifile))
+        if os.path.exists(dwibvalname):
+            os.rename(dwibvalname, os.path.join(hidden_dir, dwibvalname))
+        if os.path.exists(dwibvecname):
+            os.rename(dwibvecname, os.path.join(hidden_dir, dwibvecname))
+        continue
+    elif image_shape[3] < 12:
+        print(f"Skipping {dwifile} as it has less than 12 diffusion encoding directions.")
         # For any image sets that have only one time point, move the .nii.gz, .json, .bval, and .bvec files to a separate hidden directory
-        hidden_dir = os.path.join(directory_use, '.single_time_point')
+        hidden_dir = os.path.join(directory_use, '.insufficient_volumes')
         if not os.path.exists(hidden_dir):
             os.makedirs(hidden_dir)
             os.rename(dwifile, os.path.join(hidden_dir, dwifile))
