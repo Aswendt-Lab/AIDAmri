@@ -419,9 +419,9 @@ if __name__ == "__main__":
 
     if args.template is None:
         template = 1
-    elif args.template.lower() == 'rat':
+    elif str(args.template).lower() == 'rat':
         template = 5
-    elif args.template.lower() == 'mouse':
+    elif str(args.template).lower() == 'mouse':
         template = 1
     else:
         try:
