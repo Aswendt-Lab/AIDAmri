@@ -50,13 +50,13 @@ def plot_nifti_slices(nifti_path, out_dir, n_slices=10):
             axes[i, j].axis('off')
             # Add orientation labels from axis_codes
             axes[i, j].annotate(left, xy=(0, 0.5), xycoords='axes fraction',
-                                va='center', ha='left', fontsize=12, color='green')
+                                va='center', ha='left', fontsize=12, color='lime')
             axes[i, j].annotate(right, xy=(1, 0.5), xycoords='axes fraction',
-                                va='center', ha='right', fontsize=12, color='green')
+                                va='center', ha='right', fontsize=12, color='lime')
             axes[i, j].annotate(top, xy=(0.5, 1), xycoords='axes fraction',
-                                va='top', ha='center', fontsize=12, color='green')
+                                va='top', ha='center', fontsize=12, color='lime')
             axes[i, j].annotate(bottom, xy=(0.5, 0), xycoords='axes fraction',
-                                va='bottom', ha='center', fontsize=12, color='green')
+                                va='bottom', ha='center', fontsize=12, color='lime')
     plt.suptitle(f"QC Slices: {fname}", fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     os.makedirs(out_dir, exist_ok=True)
