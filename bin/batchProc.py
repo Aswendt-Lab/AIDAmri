@@ -84,7 +84,9 @@ def run_subprocess(command,datatype,step,anat_process=False):
         file = command_args[-3]
     elif datatype == "dwi" and step == "process":
         file = command_args[3]
-        print(file) # debug
+        # print(file) # debug
+    elif datatype == "dwi" and step == "preprocess":
+        file = command_args[3]
     log_file = os.path.join(os.path.dirname(file), step + ".log")
     if datatype == "anat" and step == "process":
         log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
@@ -264,7 +266,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python preProcessing_DTI.py -i {currentFile[0]}'
+                    command = f'python preProcessing_DTI.py -i {currentFile[0]} -b {args.biasfieldcorr}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -274,15 +276,14 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "registration":
-                os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
+                currentFile = list(currentPath_wData.glob("*Smooth*Bet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_DTI.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *SmoothMicoBet.nii.gz in {str(currentPath_wData)}';
+                    message = f'Could not find *Smooth*Bet.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -339,6 +340,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
     optionalNamed.add_argument('-cpu', '--cpu_cores', required=False, default = "Half", help='Define how many parallel processes should be use to process your data. CAUTION: Too many processes will slow down your computer noticeably. Select between: ["Min", "Half", "Max"]')
     optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
+    optionalNamed.add_argument('-b', '--biasfieldcorr', help='Biasfield correction method - default=None, other options are "mico" or "ants"', nargs='?', type=str,default=None)
     optionalNamed.add_argument('-r', '--recon_method', required=False, default='dti', help='Specify diffusion reconstruction for DSI Studio (Default="dti", "gqi").')
     optionalNamed.add_argument('-v', '--vivo', required=False, default='in_vivo', help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
     optionalNamed.add_argument('-m', '--make_isotropic', required=False, default=0, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
@@ -419,9 +421,9 @@ if __name__ == "__main__":
 
     if args.template is None:
         template = 1
-    elif str(args.template).lower() == 'rat':
+    elif args.template.lower() == 'rat':
         template = 5
-    elif str(args.template).lower() == 'mouse':
+    elif args.template.lower() == 'mouse':
         template = 1
     else:
         try:
