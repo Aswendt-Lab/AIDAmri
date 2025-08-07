@@ -15,6 +15,7 @@ import nibabel as nii
 import numpy as np
 import applyMICO
 import cv2
+import nipype.interfaces.ants as ants
 from pathlib import Path
 import subprocess
 import shutil
@@ -82,6 +83,16 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     nii.save(unscaledNiiData, output_file)
     return output_file
 
+def dwibiasfieldcorr(input_file,outputPath):
+    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
+    # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
+    myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,
+                                        shrink_factor=4,bspline_fitting_distance=100,
+                                        bspline_order=3,n_iterations=[1000,0],dimension=3)
+    myAnts.run()
+    print("Biasfield correction completed")
+    return output_file
+
 def smoothIMG(input_file, output_path):
     """
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
@@ -136,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
     parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
                         type=float,default=0.0)
+    parser.add_argument('-b', '--biasfieldcorr', help='Biasfield correction method - default=None, other options are "mico" or "ants"', nargs='?', type=str,default=None)
     args = parser.parse_args()
 
     # set parameters
@@ -162,17 +174,29 @@ if __name__ == "__main__":
     except Exception as e:
         print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
         raise
-
-    # intensity correction using non parametric bias field correction algorithm
-    try:
-        output_mico = applyMICO.run_MICO(output_smooth,output_path)
-        print("Biasfieldcorrecttion was successful")
-    except Exception as e:
-        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
-        raise
+    
+    if args.biasfieldcorr is None:
+        print("No bias field correction applied")
+        output_biascorr = output_smooth
+    elif args.biasfieldcorr == "mico":
+        # intensity correction using MICO
+        try:
+            output_biascorr = applyMICO.run_MICO(output_smooth, output_path)
+            print("Biasfield correction was successful")
+        except Exception as e:
+            print(f'Error in bias field correction\nError message: {str(e)}')
+            raise
+    elif args.biasfieldcorr == "ants":
+        # intensity correction using ANTs N4BiasFieldCorrection
+        try:
+            output_biascorr = dwibiasfieldcorr(input_file=output_smooth, outputPath=output_path)
+            print("Biasfield correction was successful")
+        except Exception as e:
+            print(f'Error in bias field correction\nError message: {str(e)}')
+            raise
 
     # get rid of your skull         
-    outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
+    outputBET = applyBET(input_file = output_biascorr, frac = frac, radius = radius, output_path = output_path)
     print("Brainextraction was successful")
 
 
