@@ -6,7 +6,20 @@ import matplotlib.pyplot as plt
 
 def plot_nifti_slices(nifti_path, out_dir, n_slices=10):
     img = nib.load(nifti_path)
-    data = img.get_fdata()
+    # Attempt to load data, if end of file error occurs, skip this file and create a placeholder image
+    try:
+        data = img.get_fdata()
+    except EOFError as e:
+        print(f"Error loading {nifti_path}: {e}")
+        # Create a placeholder image
+        data = np.zeros((10, 10, 10))  # Placeholder for empty data
+        plt.imshow(data[:, :, 0], cmap='gray')  # Show a single slice
+        plt.title(f"Placeholder for {os.path.basename(nifti_path)}")
+        plt.axis('off')
+        out_path = os.path.join(out_dir, os.path.basename(nifti_path).replace('.nii', '').replace('.gz', '') + '_qc.png')
+        plt.savefig(out_path)
+        plt.close()
+        return out_path
     fname = os.path.basename(nifti_path)
     fig, axes = plt.subplots(3, n_slices, figsize=(3*n_slices, 9))
     orientations = ['Axial', 'Sagittal', 'Coronal']
@@ -33,8 +46,12 @@ def plot_nifti_slices(nifti_path, out_dir, n_slices=10):
         data = data[..., 0]
     for i, (ori, slcs) in enumerate(zip(orientations, slices)):
         ax1, ax2, _ = view_axes[i]
-        left, right = axis_codes[ax1], axis_codes[ax1][::-1]
-        top, bottom = axis_codes[ax2], axis_codes[ax2][::-1]
+        # axis_codes gives the positive direction for each axis; get negative direction by swapping L<->R, A<->P, S<->I
+        def opposite(code):
+            opposites = {'L': 'R', 'R': 'L', 'A': 'P', 'P': 'A', 'S': 'I', 'I': 'S'}
+            return opposites.get(code, code)
+        left, right = axis_codes[ax1], opposite(axis_codes[ax1])
+        top, bottom = axis_codes[ax2], opposite(axis_codes[ax2])
         for j, sl in enumerate(slcs):
             # Select slice based on orientation
             if ori == 'Axial':
@@ -76,7 +93,7 @@ def process_subject(subject_dir, out_dir, n_slices=10):
             if not os.path.isdir(modality_dir):
                 continue
             for fname in os.listdir(modality_dir):
-                if fname.endswith('.nii') or fname.endswith('.nii.gz'):
+                if (fname.endswith('.nii') or fname.endswith('.nii.gz')) and fname.startswith('sub-'):
                     nifti_path = os.path.join(modality_dir, fname)
                     img = nib.load(nifti_path)
                     shape = img.shape
