@@ -54,7 +54,7 @@ RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2023.07.08/dsi
 RUN wget https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubuntu18.04-X64-gcc.zip &&\
 	unzip ants-2.6.2-ubuntu18.04-X64-gcc.zip -d ants-2.6.2 &&\
 	rm ants-2.6.2-ubuntu18.04-X64-gcc.zip
-ENV PATH=$PATH:/aida/ants-2.6.2/bin
+ENV PATH=$PATH:/aida/ants-2.6.2/ants-2.6.2/bin
 
 # Python setup
 RUN apt install -y python3.7 python3-pip &&\
