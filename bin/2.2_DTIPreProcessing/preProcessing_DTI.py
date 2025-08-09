@@ -83,15 +83,17 @@ def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str
     nii.save(unscaledNiiData, output_file)
     return output_file
 
+
 def dwibiasfieldcorr(input_file,outputPath):
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
+    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'N4Bias.nii.gz')
     # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
     myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,
-                                        shrink_factor=4,bspline_fitting_distance=100,
+                                        shrink_factor=4,bspline_fitting_distance=20,
                                         bspline_order=3,n_iterations=[1000,0],dimension=3)
     myAnts.run()
     print("Biasfield correction completed")
     return output_file
+
 
 def smoothIMG(input_file, output_path):
     """
