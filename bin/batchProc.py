@@ -87,6 +87,8 @@ def run_subprocess(command,datatype,step,anat_process=False):
         # print(file) # debug
     elif datatype == "dwi" and step == "preprocess":
         file = command_args[3]
+    elif datatype == "anat" and step == "preprocess":
+        file = command_args[3]
     log_file = os.path.join(os.path.dirname(file), step + ".log")
     if datatype == "anat" and step == "process":
         log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
@@ -135,7 +137,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python preProcessing_T2.py -i {currentFile[0]}'
+                    command = f'python preProcessing_T2.py -i {currentFile[0]} --bias_method {args.biasfieldcorr}'
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
