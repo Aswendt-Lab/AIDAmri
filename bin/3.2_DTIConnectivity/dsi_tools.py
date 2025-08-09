@@ -111,6 +111,35 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     return output_file
 
 
+def fsl_eddy_correct(input_file, outputPath):
+    """
+    Correct eddy currents in DWI data using FSL's eddy command.
+    """
+    mask_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet_mask.nii.gz')
+    index = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'index.txt')
+    acqp = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'acqp.txt')
+    bvec = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + '.bvec')
+    bval = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + '.bval')
+    myEddy = fsl.preprocess.Eddy(in_file=input_file,
+                                  out_file=outputPath,
+                                  in_mask=mask_file,
+                                  in_index=index,
+                                  in_acqp=acqp,
+                                  in_bvec=bvec,
+                                  in_bval=bval)
+    myEddy.run()
+    print("Eddy current correction completed")
+    return outputPath
+
+
+def fsl_topup(input_file, outputPath):
+    mask_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet_mask.nii.gz')
+    myTopup = fsl.preprocess.Topup(in_file=input_file, out_file=outputPath, in_mask=mask_file)
+    myTopup.run()
+    print("Topup completed")
+    return outputPath
+
+
 def make_dir(dir_out, dir_sub):
     """
     Creates new directory.
@@ -137,7 +166,18 @@ def move_files(dir_in, dir_out, pattern):
         file_out = os.path.join(dir_out, file_mv)
         if os.path.isfile(file_out):
             os.remove(file_out)
-     
+
+
+def erode_mask(input_file, outputPath, n_voxels=1):
+    """
+    Erodes the mask by n voxels (default = 1).
+    """
+    myErode = fsl.preprocess.ErodeImage(in_file=input_file, out_file=outputPath, kernel_shape='sphere', kernel_size=n_voxels)
+    myErode.run()
+    print("Mask erosion completed")
+    return outputPath
+
+
 def get_min_voxel_size_mm(nifti_path):
     nii_file = nii.load(nifti_path)
     header = nii_file.header
@@ -145,6 +185,7 @@ def get_min_voxel_size_mm(nifti_path):
     spatial_dims = mm_voxel_size_arr[:3]
     min_vox_size_mm = str(min(spatial_dims))
     return min_vox_size_mm
+
 
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0,flip_image_y=False):
     """
@@ -334,6 +375,13 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     parameters = (dsi_studio, 'src', filename, file_src, b_table)
     os.system(cmd_src % parameters)
 
+    # If unrealistic streamlines cross top of cortex are present due to an oversized mask, erode mask
+    mask_erosion = 0
+    if mask_erosion > 0:
+        # Erode mask by 1 voxel
+        dir_msk = erode_mask(dir_msk, os.path.join(dir_msk, 'eroded_mask.nii.gz'), n_voxels=mask_erosion)
+        print(f'Eroded mask saved to {dir_msk}')
+
     # create fib files
     file_msk = dir_msk
     if flip_image_y:
@@ -373,7 +421,10 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
             print(f'Flipping DWI image Y axis')
     elif make_isotropic == 0 and flip_image_y:
         additional_cmd=f'"[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
-
+    
+    use_eddy_correct = False
+    if use_eddy_correct:
+        additional_cmd = f'"[Step T2][Corrections][EDDY]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
 
     # default method value for DTI 
     method_rec=1
