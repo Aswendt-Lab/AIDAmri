@@ -17,6 +17,15 @@ initials (e.g. VVF for Victor Vera Frazao) and the date at application, denoted 
 the end of the comment line. If code segments need clearance the comment line will be prefaced 
 by '#?'. Changes are prefaced by '#>' and other comments are prefaced ordinalrily 
 by '#'.
+
+Updated (August 2025) by Paul B Camacho
+Biomedical Imaging Center
+Beckman Institute for Advanced Science & Technology
+University of Illinois at Urbana Champaign
+Changes:
+Expanded options, CLI, N4BiasFieldCorrection support
+Compatibility with Ubuntu 22.04, Python 3.10, DSI-Studio release 2025/04/16 (more efficient storage 
+using '.fz' and '.sz' file formats)
 """
 
 
@@ -187,7 +196,7 @@ def get_min_voxel_size_mm(nifti_path):
     return min_vox_size_mm
 
 
-def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0,flip_image_y=False):
+def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, flip_image_y=False, legacy=False):
     """
     Calculates connectivity data (types: pass and end).
     """
@@ -207,7 +216,10 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
     os.chdir(os.path.dirname(dir_in))
     cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s'
 
-    filename = glob.glob(dir_in+'/*fib.gz')[0]
+    if legacy == True:
+        filename = glob.glob(dir_in+'/*.fib.gz')[0]
+    else:
+        filename = glob.glob(dir_in + f'/*.fz')[]
     file_trk = glob.glob(dir_in+'/*trk.gz')[0]
     file_seeds = dir_seeds
 
@@ -331,7 +343,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=1):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=1, legacy=False):
     """
     Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
     """
@@ -339,7 +351,13 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     dir_fib = r'fib_map'
     dir_qa  = r'DSI_studio'
     dir_con = r'connectivity'
-    ext_src = '.src.gz'
+    # Support for backwards compatibility with pre-2024 DSI Studio (AIDAmri <= v2.0)
+    if legacy == True:
+        ext_src = '.src.gz'
+        ext_fib = '.fib.gz'
+    else
+        ext_src = '.sz'
+        ext_fib = '.fz'
 
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
@@ -442,11 +460,11 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
-    move_files(dir_src, dir_fib, '/*fib.gz')
+    move_files(dir_src, dir_fib, f'/*{ext_fib}')
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib+'/*fib.gz')[0]
+    file_fib = glob.glob(dir_fib+f'/*{ext_fib}')[0]
     if recon_method == "gqi":
         parameters = (dsi_studio, 'exp', file_fib, 'dti_fa')
     elif recon_method == "dti":
@@ -455,19 +473,19 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
+    file_fib = glob.glob(dir_fib + f'/*{ext_fib}')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'md')
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
+    file_fib = glob.glob(dir_fib + f'/*{ext_fib}')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'ad')
     os.system(cmd_exp % parameters)
 
     # extracts maps: 2 ways:
     cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib + '/*fib.gz')[0]
+    file_fib = glob.glob(dir_fib + f'/*{ext_fib}')[0]
     parameters = (dsi_studio, 'exp', file_fib, 'rd')
     os.system(cmd_exp % parameters)
 
@@ -537,13 +555,18 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     return min_vox_size_mm # , flip_image_y
 
-def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, thread_count=1):
+def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, thread_count=1, legacy=False):
     """
     Performs seed-based fiber-tracking.
     Default parameters are used unless a custom parameter is specified.
     """
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
+
+    if legacy == True:
+        ext_fib = '.fib.gz'
+    else:
+        ext_fib = '.fz'
 
     # Define parameter sets
     param_sets = {
@@ -565,7 +588,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     # change to input directory
     os.chdir(os.path.dirname(dir_in))
 
-    filename = glob.glob(dir_in+'/*fib.gz')[0]
+    filename = glob.glob(dir_in + f'/*{ext_fib}')[0]
 
     # Set tracking based on track_param:
     if track_param == 'default':
