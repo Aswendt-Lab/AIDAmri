@@ -293,7 +293,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y} -template {template} -thread_count {num_processes}'
+                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y} -template {template} -thread_count {num_processes} -l {legacy}'
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
@@ -349,6 +349,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-f', '--flip_image_y', required=False, default=False, help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.')
     optionalNamed.add_argument('-template', '--template', required=False, default=1, help='Specify the template to use for the reconstruction step T2 in DSI Studio. Default is 1 (mouse). Other options are "Rat" (5) or "Mouse" (1).')
     optionalNamed.add_argument('-track_param', '--track_param', required=False, default='default', help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
+    optionalNamed.add_argument('-l', '--legacy', required=False, default=False, help='Support for legacy file types in DSI-Studio. Default is False. Set to True to use with ".fib.gz" and ".src.gz" files.')
     
 
     args = parser.parse_args()
@@ -432,8 +433,15 @@ if __name__ == "__main__":
             template = int(args.template)
         except ValueError:
             print(f"Invalid template value: {args.template}. Using default template 1 (mouse).")
+            logging.info(f"Using template: {template}")
             template = 1
-
+    
+    legacy = False
+    if args.legacy:
+        legacy = True
+        print(f"Using legacy file types .fib.gz and .src.gz for DSI Studio")
+        logging.info(f"Using legacy file types .fib.gz and .src.gz for DSI Studio")
+    
     print(f"Running with {num_processes} parallel processes!")
 
     logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
