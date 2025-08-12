@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -13,7 +13,10 @@ RUN apt-get update -y && apt-get upgrade -y &&\
 	dc \
 	ffmpeg \
 	libsm6 \
-	libxext6
+	libxext6 \
+	python3 \
+	python3-pip \
+	python3-venv
 
 RUN wget https://github.com/Kitware/CMake/releases/download/v3.23.2/cmake-3.23.2.tar.gz &&\
 	tar -xvzf cmake-3.23.2.tar.gz &&\
@@ -24,56 +27,55 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.23.2/cmake-3.23.2
 	make install
 
 # create and switch to working directory
-RUN mkdir aida/
+RUN mkdir /aida/
 WORKDIR /aida/
 
 # Niftyreg preparation and installation
 RUN mkdir -p NiftyReg/niftyreg_source/
 WORKDIR /aida/NiftyReg
 RUN git clone git://git.code.sf.net/p/niftyreg/git niftyreg_source &&\
-cd niftyreg_source &&\
-git reset --hard 83d8d1182ed4c227ce4764f1fdab3b1797eecd8d &&\
- 	mkdir niftyreg_install niftyreg_build && cd .. &&\
- 	cmake niftyreg_source &&\
- 	cmake -D CMAKE_BUILD_TYPE=Release niftyreg_source &&\
- 	cmake -D CMAKE_INSTALL_PREFIX=niftyreg_source/niftyreg_build niftyreg_source &&\
- 	cmake -D CMAKE_C_COMPILER=/usr/bin/gcc-7 niftyreg_source &&\
- 	make && make install
-RUN export NIFTYRREG_INSTALL=../niftyreg_install
+	cd niftyreg_source &&\
+	git reset --hard 83d8d1182ed4c227ce4764f1fdab3b1797eecd8d &&\
+	mkdir niftyreg_install niftyreg_build && cd .. &&\
+	cmake niftyreg_source &&\
+	cmake -D CMAKE_BUILD_TYPE=Release niftyreg_source &&\
+	cmake -D CMAKE_INSTALL_PREFIX=niftyreg_source/niftyreg_build niftyreg_source &&\
+	cmake -D CMAKE_C_COMPILER=/usr/bin/gcc niftyreg_source &&\
+	make && make install
+ENV NIFTYREG_INSTALL=/aida/NiftyReg/niftyreg_source/niftyreg_build
 ENV PATH=${PATH}:${NIFTYREG_INSTALL}/bin
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${NIFTYREG_INSTALL}/lib
-RUN export PATH && export LD_LIBRARY_PATH
 
 WORKDIR /aida
-# download DSI studio
-RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2023.07.08/dsi_studio_ubuntu1804.zip &&\
-	unzip dsi_studio_ubuntu1804.zip -d dsi_studio_ubuntu1804 &&\
-	rm dsi_studio_ubuntu1804.zip
+# download DSI studio (latest version, check compatibility)
+# https://github.com/frankyeh/DSI-Studio/releases/download/2025.04.16/dsi_studio_ubuntu2204.zip
+RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2025.04.16/dsi_studio_ubuntu2204.zip &&\
+	unzip dsi_studio_ubuntu2204.zip -d dsi_studio_ubuntu2204 &&\
+	rm dsi_studio_ubuntu2204.zip
 
-# Install ANTs
-RUN wget https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubuntu18.04-X64-gcc.zip &&\
-	unzip ants-2.6.2-ubuntu18.04-X64-gcc.zip -d ants-2.6.2 &&\
-	rm ants-2.6.2-ubuntu18.04-X64-gcc.zip
+# Install ANTs (if no 22.04 binary, keep 18.04 version)
+# https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubuntu-22.04-X64-gcc.zip
+RUN wget https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubuntu-22.04-X64-gcc.zip &&\
+	unzip ants-2.6.2-ubuntu-22.04-X64-gcc.zip -d ants-2.6.2 &&\
+	rm ants-2.6.2-ubuntu-22.04-X64-gcc.zip
 ENV PATH=$PATH:/aida/ants-2.6.2/ants-2.6.2/bin
 
-# Python setup
-RUN apt install -y python3.7 python3-pip &&\
-	python3 -m pip install --user --upgrade pip &&\
-	apt-get install -y python3.7-venv &&\
-	apt clean &&\
-	rm -rf /var/lib/apt/lists/*
+# Python setup (Default for Ubuntu 22.04 is Python 3.10)
 ENV VIRTUAL_ENV=/opt/env
-RUN python3.7 -m venv $VIRTUAL_ENV
+RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN	python3 -m pip install --upgrade setuptools
+RUN python3 -m pip install --upgrade pip setuptools
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip &&\
 	pip install -r requirements.txt
 
 # installation of FSL 5.0.11 with modified installer 
-# (disabling interactive allocation query)
 COPY fslinstaller_mod.py ./
 RUN python3 fslinstaller_mod.py -V 5.0.11
+
+# Configure environment
+ENV FSLDIR=/usr/local/fsl
+ENV FSLOUTPUTTYPE=NIFTI_GZ
 
 # Configure environment
 ENV FSLDIR=/usr/local/fsl
@@ -89,6 +91,6 @@ RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
 ENV PATH=/aida/bin/3.2_DTIConnectivity:$PATH
 RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
 COPY lib/ lib/
-RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
+RUN echo "/aida/bin/dsi_studio_ubuntu_2204/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
 
 
