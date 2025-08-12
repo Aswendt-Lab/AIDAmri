@@ -82,6 +82,12 @@ if __name__ == '__main__':
                         help='Specify the number of threads to use for fiber tracking. Default is 1.',
                         required=False
                         )
+    parser.add_argument('-l',
+                        '--legacy',
+                        default=False,
+                        help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient '.sz' and '.fz' file types)',
+                        required=False
+                        )
     parser.add_argument('-o',
                         '--optional',
                         nargs = '*',
@@ -135,14 +141,14 @@ if __name__ == '__main__':
         shutil.rmtree(mcf_path)
     os.mkdir(mcf_path)
     file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y, template)
+    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y, template, args.legacy)
     file_in = os.path.join(file_cur,'fib_map')
 
     track_param = args.track_params
 
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools.tracking(dsi_studio, file_in, track_param, voxel_size, args.thread_count)
+    dsi_tools.tracking(dsi_studio, file_in, track_param, voxel_size, args.thread_count, args.legacy)
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
@@ -153,16 +159,22 @@ if __name__ == '__main__':
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
-        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y)
+        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y, args.legacy)
 
     # rename files to reduce path length
     confiles = os.path.join(file_cur,dir_con)
     data_list = os.listdir(confiles)
     for filename in data_list:
         if args.recon_method == "dti":
-            splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
+            if args.legacy:
+                splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
+            else:
+                splittedName = filename.split('.sz.dti.fz.trk.gz.')
         elif args.recon_method == "gqi":
-            splittedName = filename.split('.src.gz.gqi.fib.gz.trk.gz.')
+            if args.legacy:
+                splittedName = filename.split('.src.gz.gqi.fib.gz.trk.gz.')
+            else:
+                splittedName = filename.split('.sz.gqi.fz.trk.gz.')
         if len(splittedName)>1:
             newName = splittedName[1]
             newName = os.path.join(confiles,newName)
