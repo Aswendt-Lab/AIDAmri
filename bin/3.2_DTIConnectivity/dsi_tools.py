@@ -355,7 +355,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     if legacy == True:
         ext_src = '.src.gz'
         ext_fib = '.fib.gz'
-    else
+    else:
         ext_src = '.sz'
         ext_fib = '.fz'
 
