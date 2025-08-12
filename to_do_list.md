@@ -23,9 +23,9 @@
    Why is the auto-check not preferred? Datasets may vary in which axes to flip in the B-table.
  - [X] Auto populate tracking parameters "min length" to twice the voxel size and "step size" to half voxel size
  - [X] Auto populate `make_isotropic` in `srcgen` for DTI processing
- - [ ] Confirm that tracking options CLI and workflow works as intended
+ - [X] Confirm that tracking options CLI and workflow works as intended
  - [ ] If resampling, the parcellation image does not load for connectivity in DSI Studio. Either resample this or provide a t2 reference image in the connectivity matrix extraction steps.
- - [ ] Image flip Y?
- - [ ] FSL slicer images for quality control. Might be worth replacing with a python plotting function for ease of use.
+ - [ ] Image flip Y? (This does not currently work well with atlas images in `connectivity` step)
+ - [X] FSL slicer images for quality control. Might be worth replacing with a python plotting function for ease of use.
  - [ ] DSI Studio fiber images and/or movie for quality control. Currently only possible through 2025+ "Hou" version command history function in GUI
- - [ ] DSI Studio tract density image output (WIP)
+ - [x] DSI Studio tract density image output (WIP)
