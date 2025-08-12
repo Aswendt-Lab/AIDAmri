@@ -219,7 +219,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
     if legacy == True:
         filename = glob.glob(dir_in+'/*.fib.gz')[0]
     else:
-        filename = glob.glob(dir_in + f'/*.fz')[]
+        filename = glob.glob(dir_in + f'/*.fz')[0]
     file_trk = glob.glob(dir_in+'/*trk.gz')[0]
     file_seeds = dir_seeds
 
