@@ -85,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('-l',
                         '--legacy',
                         default=False,
-                        help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient '.sz' and '.fz' file types)',
+                        help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient ".sz" and ".fz" file types)',
                         required=False
                         )
     parser.add_argument('-o',
