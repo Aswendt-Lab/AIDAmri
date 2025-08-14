@@ -216,10 +216,10 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
     os.chdir(os.path.dirname(dir_in))
     cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s'
 
-    if legacy == True:
+    if legacy:
         filename = glob.glob(dir_in+'/*.fib.gz')[0]
     else:
-        filename = glob.glob(dir_in + f'/*.fz')[0]
+        filename = glob.glob(dir_in + '/*.fz')[0]
     file_trk = glob.glob(dir_in+'/*trk.gz')[0]
     file_seeds = dir_seeds
 
@@ -343,7 +343,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=1, legacy=False):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=6, legacy=False):
     """
     Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
     """
@@ -352,7 +352,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     dir_qa  = r'DSI_studio'
     dir_con = r'connectivity'
     # Support for backwards compatibility with pre-2024 DSI Studio (AIDAmri <= v2.0)
-    if legacy == True:
+    if legacy:
         ext_src = '.src.gz'
         ext_fib = '.fib.gz'
     else:
@@ -384,12 +384,14 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
     # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
     # flip image orientation in x, y or z direction !! needs to be adjusted according to your data, check fiber tracking result to be anatomically meaningful
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --other_output=all --check_btable=%d --half_sphere=%d --template=%d --cmd=%s'
+    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --other_output=all --correct_bias_field=0 --output=%s --check_btable=%d --template=%d --cmd=%s' # Dev note: if not using slice-wise motion correction, --motion_correction 1
 
     # create source files
     filename = os.path.basename(dir_in)
-    pos = filename.rfind('.')
-    file_src = os.path.join(dir_src, filename[:pos] + ext_src)
+    # pos = filename.rfind('.')
+    # file_src = os.path.join(dir_src, filename[:pos] + ext_src)
+    filename_base = filename.split('.')[0]
+    file_src = os.path.join(dir_src, filename_base + ext_src)
     parameters = (dsi_studio, 'src', filename, file_src, b_table)
     os.system(cmd_src % parameters)
 
@@ -430,14 +432,14 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     # flip_image_y = False
     additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
-    if make_isotropic != 0:
+    if str(make_isotropic) != '0':
         additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
         print(f'Resampling to {make_isotropic} mm isotropic voxel size')
         # Dev note: if resampling diffusion image (and also if flipping), mask? and parcellation images must be changed also
-        if flip_image_y:
+        if flip_image_y is True:
             additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"' # do we need to flip bY in this case?
             print(f'Flipping DWI image Y axis')
-    elif make_isotropic == 0 and flip_image_y:
+    elif str(make_isotropic) == '0' and flip_image_y:
         additional_cmd=f'"[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
     
     use_eddy_correct = False
@@ -452,11 +454,13 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # Select template for DSI Studio
     # 1: C57BL6_mouse, 5: WHS_SD_rat 
     if template == "Mouse":
-        template = 1
+        template = 6
     elif template == "Rat":
         template = 5
 
-    parameters = (dsi_studio, 'rec', file_src, file_msk, method_rec, param_zero, 0, 1, template, additional_cmd)
+    file_fib = os.path.join(dir_fib, filename_base + ext_fib)
+
+    parameters = (dsi_studio, 'rec', file_src+'.sz', file_msk, method_rec, param_zero, file_fib, 0, template, additional_cmd)
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
@@ -563,7 +567,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
-    if legacy == True:
+    if legacy:
         ext_fib = '.fib.gz'
     else:
         ext_fib = '.fz'
