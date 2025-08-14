@@ -437,7 +437,7 @@ if __name__ == "__main__":
             template = 1
     
     legacy = False
-    if args.legacy:
+    if args.legacy is True:
         legacy = True
         print(f"Using legacy file types .fib.gz and .src.gz for DSI Studio")
         logging.info(f"Using legacy file types .fib.gz and .src.gz for DSI Studio")
