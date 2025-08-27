@@ -11,3 +11,4 @@ opencv-python
 git+https://github.com/brkraw/bruker@e27c5039c9c3a84ce7cd19c9627360e5a31b4ebc
 openpyxl
 traits==6.3.0
+scikit-learn

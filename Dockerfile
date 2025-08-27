@@ -16,7 +16,8 @@ RUN apt-get update -y && apt-get upgrade -y &&\
 	libxext6 \
 	python3 \
 	python3-pip \
-	python3-venv
+	python3-venv \
+        bc
 
 RUN wget https://github.com/Kitware/CMake/releases/download/v3.23.2/cmake-3.23.2.tar.gz &&\
 	tar -xvzf cmake-3.23.2.tar.gz &&\
@@ -50,7 +51,7 @@ WORKDIR /aida
 # download DSI studio (latest version, check compatibility)
 # https://github.com/frankyeh/DSI-Studio/releases/download/2025.04.16/dsi_studio_ubuntu2204.zip
 RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2025.04.16/dsi_studio_ubuntu2204.zip &&\
-	unzip dsi_studio_ubuntu2204.zip -d dsi_studio_ubuntu2204 &&\
+	unzip dsi_studio_ubuntu2204.zip -d /aida/dsi_studio_ubuntu2204 &&\
 	rm dsi_studio_ubuntu2204.zip
 
 # Install ANTs (if no 22.04 binary, keep 18.04 version)
@@ -84,13 +85,14 @@ ENV FSLOUTPUTTYPE=NIFTI_GZ
 ENV PATH=${FSLDIR}/bin:${PATH}
 RUN export FSLDIR PATHs
 
-
 # copy bin/ and lib/ from AIDAmri into image
 COPY bin/ bin/
 RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
-ENV PATH=/aida/bin/3.2_DTIConnectivity:$PATH
+ENV PATH=/aida/bin:/aida/bin/3.2_DTIConnectivity:$PATH
 RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
 COPY lib/ lib/
 RUN echo "/aida/bin/dsi_studio_ubuntu_2204/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
 
-
+RUN pip install dipy scikit-learn
+RUN pip install fslpy
+RUN cd /aida/bin && wget https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false
