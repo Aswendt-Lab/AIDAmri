@@ -96,3 +96,4 @@ RUN echo "/aida/bin/dsi_studio_ubuntu_2204/dsi-studio/dsi_studio" > bin/3.2_DTIC
 RUN pip install dipy scikit-learn
 RUN pip install fslpy
 RUN cd /aida/bin && wget https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false
+RUN cd /aida/bin && bash -c "/aida/bin/install_immv.sh"
