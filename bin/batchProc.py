@@ -268,7 +268,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python preProcessing_DTI.py -i {currentFile[0]} -b {args.biasfieldcorr}'
+                    command = (f'python preProcessing_DTI.py -i {currentFile[0]} -f 0.5 -b {args.biasfieldcorr} --denoiser {args.denoiser} --use_bet4animal {args.bet4animal} --average_b0 {args.average_b0} --skip_min {args.skip_min}')
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -291,15 +291,17 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(cwd)
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
+                if args.denoiser == 'patch2self':
+                    currentFile = list(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y} -template {template} -thread_count {num_processes} -l {legacy}'
+                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y} -template {template} -thread_count {num_processes} -l {legacy} -nomcf {no_mcf}'
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
-                    os.chdir(cwd)
+                os.chdir(cwd)
         else:
             message = 'The data folders'' names do not match anat, dwi, func or t2map';
             logging.error(message);
@@ -342,7 +344,12 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
     optionalNamed.add_argument('-cpu', '--cpu_cores', required=False, default = "Half", help='Define how many parallel processes should be use to process your data. CAUTION: Too many processes will slow down your computer noticeably. Select between: ["Min", "Half", "Max"]')
     optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
+    optionalNamed.add_argument('-denoise', '--denoiser', required=False, default=None, help='Specify the denoising method to use. Options: "patch2self" for Patch2Self denoising.')
+    optionalNamed.add_argument('-bet4animal', '--bet4animal', required=False, default=False, help='Use FSL BET tuned for animal data. Default is False. Set to True to use FSL BET tuned for animal data.')
+    optionalNamed.add_argument('-average_b0', '--average_b0', required=False, default=False, help='Average b0 volumes in DTI data. Default is False. Set to True to average b0 volumes.')
+    optionalNamed.add_argument('-skip_min', '--skip_min', required=False, default=False, help='Skip the minimum intensity projection step in DTI preprocessing. Default is False. Set to True to skip this step.')
     optionalNamed.add_argument('-b', '--biasfieldcorr', help='Biasfield correction method - default=None, other options are "mico" or "ants"', nargs='?', type=str,default=None)
+    optionalNamed.add_argument('-no_mcf', '--no_mcf', required=False, default=False, help='Skip the slice-wise MCFLIRT motion and correction step in DTI processing. Default is False. Set to True to skip this step.')
     optionalNamed.add_argument('-r', '--recon_method', required=False, default='dti', help='Specify diffusion reconstruction for DSI Studio (Default="dti", "gqi").')
     optionalNamed.add_argument('-v', '--vivo', required=False, default='in_vivo', help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
     optionalNamed.add_argument('-m', '--make_isotropic', required=False, default=0, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
@@ -394,15 +401,26 @@ if __name__ == "__main__":
 
     print(args)
 
+    no_mcf = False
+    if args.no_mcf is True or str(args.no_mcf).lower() == 'true':
+        no_mcf = True
+        print(f"Skipping slice-wise MCFLIRT motion and correction step.")
+        logging.info(f"Skipping slice-wise MCFLIRT motion and correction step.")
+
     if args.recon_method:
         recon_method = args.recon_method
     else:
         recon_method = 'dti'
+        
+    logging.info(f"Using DSI Studio option for reconstruction: {recon_method}")
 
     if args.vivo:
         vivo = args.vivo
     else:
         vivo = 'in_vivo'
+    
+    logging.info(f"Using DSI Studio option param0 = {recon_method}")
+
 
     if args.make_isotropic != 0:
         make_isotropic = args.make_isotropic
@@ -422,20 +440,19 @@ if __name__ == "__main__":
     elif str(args.flip_image_y).lower() == 'true':
         flip_image_y = True
 
-    if args.template is None:
-        template = 1
-    elif args.template.lower() == 'rat':
+    template = 6 # new default for mouse
+    if args.template.lower() == 'rat':
         template = 5
     elif args.template.lower() == 'mouse':
-        template = 1
+        template = 6 # new default for mouse, pre-2024 DSI Studio used 1 for mouse template
     else:
         try:
             template = int(args.template)
         except ValueError:
-            print(f"Invalid template value: {args.template}. Using default template 1 (mouse).")
+            print(f"Invalid template value: {args.template}. Using default template 6 (mouse).")
             logging.info(f"Using template: {template}")
-            template = 1
-    
+            template = 6
+
     legacy = False
     if args.legacy is True:
         legacy = True
