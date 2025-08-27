@@ -44,7 +44,7 @@ def reset_orientation(input_file):
 
 
 
-def applyBET(input_file,frac,radius,vertical_gradient):
+def applyBET(input_file,frac,radius,vertical_gradient, center=None):
     """Apply BET"""
     # scale Nifti data by factor 10
     data = nii.load(input_file)
@@ -69,8 +69,19 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     # extract brain
     output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
 
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
-                    vertical_gradient=vertical_gradient,robust=True, mask = True)
+    myBet = fsl.BET(
+        in_file=fslPath,
+        out_file=output_file,
+        frac=frac,
+        radius=radius,
+        vertical_gradient=vertical_gradient,
+        robust=False if center else True,  # robust only if no center
+        mask=True
+    )
+
+    if center:
+        myBet.center = center
+
     myBet.run()
     os.remove(fslPath)
 
@@ -140,6 +151,14 @@ if __name__ == "__main__":
         default=0.0,
         )
 
+    parser.add_argument(
+        '-c',
+        '--center',
+        help='Manuelles Zentrum: x y z',
+        nargs=3,
+        type=float,
+        default=None
+    )
     args = parser.parse_args()
 
     # set Parameters
@@ -174,7 +193,14 @@ if __name__ == "__main__":
     # brain extraction
     print("Starting brain extraction")
     try:
-        outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
+        outputBET = applyBET(
+            input_file=outputMICO,
+            frac=frac,
+            radius=radius,
+            vertical_gradient=vertical_gradient,
+            center=args.center
+        )
+
         print("Brain extraction was successful")
     except Exception as e:
         print(f'Error in brain extraction\nFehlermeldung: {str(e)}')
