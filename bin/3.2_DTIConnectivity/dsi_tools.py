@@ -91,7 +91,7 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     mySplit.run()
     os.remove(fslPath)
 
-    # sparate ref and src volume in slices
+    # separate ref and src volume in slices
     sliceFiles = findSlicesData(os.getcwd(), dataName)
 
     # start to correct motions slice by slice

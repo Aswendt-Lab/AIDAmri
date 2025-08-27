@@ -88,6 +88,12 @@ if __name__ == '__main__':
                         help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient ".sz" and ".fz" file types)',
                         required=False
                         )
+    parser.add_argument('-nomcf',
+                        '--no_motion_correction',
+                        default=False,
+                        help='Specify whether to skip motion correction. Default is False (perform motion correction). Set to "true" to skip motion correction.',
+                        required=False
+                        )
     parser.add_argument('-o',
                         '--optional',
                         nargs = '*',
@@ -103,7 +109,7 @@ if __name__ == '__main__':
         # Use the default "Jones30" btable
             b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/DTI_Jones30.txt'
 
-
+    bet4animal = False
     # Preparing directories
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
@@ -111,6 +117,11 @@ if __name__ == '__main__':
     dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii'))
     if not dir_mask:
         dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz')) # check for ending (either .nii or .nii.gz)
+        if not dir_mask:
+            # check for mask without scaled in name
+            dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz'))
+            bet4animal = True
+            
     dir_mask = dir_mask[0]
 
     dir_out = args.file_in
@@ -125,22 +136,37 @@ if __name__ == '__main__':
     elif str(args.flip_image_y).lower() == 'true':
         flip_image_y = True
     
-    template = 1
+    template = 6
     if args.template.lower() == 'rat':
         template = 5
-    elif args.template.lower() == 'mouse':
-        template = 1
+    elif args.template.lower() == 'mouse' or str(args.template) == '1':
+        template = 6
     else:
         try:
             template = int(args.template)
         except ValueError:
-            print(f"Invalid template value: {args.template}. Using default template 1 (mouse).")
-            template = 1
+            print(f"Invalid template value: {args.template}. Using default template 6 (mouse).")
+            template = 6
+
+    # if it exists, find the denoised dwi data and use it as file_in
+    if os.path.exists(file_cur):
+        file_in = glob.glob(os.path.join(file_cur, '*Denoised.nii*'))
+        if file_in:
+            file_in = file_in[0]
 
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
-    os.mkdir(mcf_path)
-    file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
+   
+    if args.no_motion_correction is True or str(args.no_motion_correction).lower() == 'true':
+        print("Skipping motion correction")
+    else:
+        print("Performing slice-wise motion correction")
+        os.mkdir(mcf_path)
+        # Use FSL's SeparateSliceMoCo to perform motion correction
+        if not os.path.exists(dsi_path):
+            os.makedirs(dsi_path)
+        file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
+
     voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y, template, args.legacy)
     file_in = os.path.join(file_cur,'fib_map')
 
@@ -152,6 +178,8 @@ if __name__ == '__main__':
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
+    # if bet4animal is True:
+    #     suffixes = ['*StrokeMask.nii', '*parental_Mask.nii', '*Anno.nii', '*AnnoSplit_parental.nii']
     for f in suffixes:
         dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
         if not dir_seeds:
