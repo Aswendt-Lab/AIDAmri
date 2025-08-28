@@ -105,9 +105,11 @@ def applyBET(input_file,frac,radius,vertical_gradient, center=None):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.2
+default_frac = 0.38
 default_rad  = 60
-default_vert = 0.21
+default_vert = 0.08
+default_bias_skip = 1 #1 for skip 0 for run
+default_center = [13.6, 9.6, 9.9]
 
 if __name__ == "__main__":
     import argparse
@@ -148,7 +150,7 @@ if __name__ == "__main__":
         help='Set value to 1 to skip bias field correction',
         nargs='?',
         type=float, 
-        default=0.0,
+        default=default_bias_skip,
         )
 
     parser.add_argument(
@@ -157,7 +159,7 @@ if __name__ == "__main__":
         help='Manuelles Zentrum: x y z',
         nargs=3,
         type=float,
-        default=None
+        default=default_center
     )
     args = parser.parse_args()
 
@@ -173,7 +175,7 @@ if __name__ == "__main__":
     vertical_gradient = args.vertical_gradient
     bias_skip = args.bias_skip
 
-    print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
+    print(f"Frac: {frac}  Radius: {radius}  Gradient: {vertical_gradient}  Center: {args.center}  BiasSkip: {bias_skip}")
 
     reset_orientation(input_file)
     print("Orientation resetted to RAS")
