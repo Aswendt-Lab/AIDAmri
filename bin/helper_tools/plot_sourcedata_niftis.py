@@ -106,6 +106,28 @@ def process_subject(subject_dir, out_dir, n_slices=10):
                         'n_volumes': n_vols,
                         'qc_img_path': os.path.basename(qc_img_path)
                     })
+            if modality == 'dwi':
+                # Plot niftis in subfolders
+                for subfolder in os.listdir(modality_dir):
+                    subfolder_path = os.path.join(modality_dir, subfolder)
+                    if os.path.isdir(subfolder_path):
+                        for fname in os.listdir(subfolder_path):
+                            if (fname.endswith('.nii') or fname.endswith('.nii.gz')) and fname.startswith('sub-'):
+                                try:
+                                    nifti_path = os.path.join(subfolder_path, fname)
+                                    img = nib.load(nifti_path)
+                                    shape = img.shape
+                                    n_vols = shape[3] if (modality in ['dwi'] and len(shape) > 3) else 1
+                                    qc_img_path = plot_nifti_slices(nifti_path, out_dir, n_slices)
+                                    report_entries.append({
+                                    'filename': fname,
+                                    'modality': modality,
+                                    'dimensions': shape,
+                                    'n_volumes': n_vols,
+                                    'qc_img_path': os.path.basename(qc_img_path)
+                                })
+                                except Exception as e:
+                                    print(f"Error processing {nifti_path}: {e}")
     # Sort entries by modality and filename
     report_entries.sort(key=lambda x: (x['modality'], x['filename']))
     return report_entries
