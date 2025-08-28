@@ -105,10 +105,10 @@ def applyBET(input_file,frac,radius,vertical_gradient, center=None):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.38
+default_frac = 0.34
 default_rad  = 60
 default_vert = 0.08
-default_bias_skip = 1.0 #1.0 for skip 0.0 for run
+default_bias_skip = 0.0 #1.0 for skip 0.0 for run
 default_center = [13.6, 9.6, 9.9]
 
 if __name__ == "__main__":
