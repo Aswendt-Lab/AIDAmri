@@ -154,7 +154,7 @@ def cropToSmall(input_file,outputPath):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.34
+default_frac = 0.38
 default_rad  = 60
 default_vert = 0.08
 default_bias_skip = 1.0 #1.0 for skip 0.0 for run
