@@ -63,11 +63,11 @@ def crop_T2(input_file, x_min, x_max, y_min, y_max, z_min, z_max, output_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crop T2-weighted images to a usable FOV")
     parser.add_argument("-i", "--input_file", required=True, help="Input file (T2 image)")
-    parser.add_argument("-x_min", type=int, required=True, help="Minimum x index")
+    parser.add_argument("-x_min", type=int, required=False, default=0, help="Minimum x index")
     parser.add_argument("-x_max", type=int, required=True, help="Maximum x index")
-    parser.add_argument("-y_min", type=int, required=True, help="Minimum y index")
+    parser.add_argument("-y_min", type=int, required=False, default=0, help="Minimum y index")
     parser.add_argument("-y_max", type=int, required=True, help="Maximum y index")
-    parser.add_argument("-z_min", type=int, required=True, help="Minimum z index")
+    parser.add_argument("-z_min", type=int, required=False, default=0, help="Minimum z index")
     parser.add_argument("-z_max", type=int, required=True, help="Maximum z index")
     parser.add_argument("-o", "--output_file", required=True, help="Output file for cropped image")
     args = parser.parse_args()
@@ -75,13 +75,23 @@ if __name__ == "__main__":
     input_file = args.input_file
     output_path = args.output_file
 
+    x_min = 0
+    if args.x_min > 0:
+        x_min = args.x_min
+    y_min = 0
+    if args.y_min > 0:
+        y_min = args.y_min
+    z_min = 0
+    if args.z_min > 0:
+        z_min = args.z_min
+
     crop_T2(
         input_file,
-        args.x_min,
+        x_min,
         args.x_max,
-        args.y_min,
+        y_min,
         args.y_max,
-        args.z_min,
+        z_min,
         args.z_max,
         output_path
     )
