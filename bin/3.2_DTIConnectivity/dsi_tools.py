@@ -431,20 +431,27 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     #           This should be done using the equivalent commands from registration_DTI.py
 
     # flip_image_y = False
-    additional_cmd='"[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+    flip_b_cmd='[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]'
+    additional_cmd = flip_b_cmd
     if str(make_isotropic) != '0':
-        additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+        additional_cmd=f'[Step T2][Edit][Resample]={make_isotropic}+'f'{flip_b_cmd}'
         print(f'Resampling to {make_isotropic} mm isotropic voxel size')
         # Dev note: if resampling diffusion image (and also if flipping), mask? and parcellation images must be changed also
         if flip_image_y is True:
-            additional_cmd=f'"[Step T2][Edit][Resample]={make_isotropic}+[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"' # do we need to flip bY in this case?
+            additional_cmd=f'[Step T2][Edit][Resample]={make_isotropic}+[Step T2][Edit][Image flip y]+'f'{flip_b_cmd}' # do we need to flip bY in this case?
             print(f'Flipping DWI image Y axis')
     elif str(make_isotropic) == '0' and flip_image_y:
-        additional_cmd=f'"[Step T2][Edit][Image flip y]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+        additional_cmd=f'[Step T2][Edit][Image flip y]+'f'{flip_b_cmd}'
     
     use_eddy_correct = False
-    if use_eddy_correct:
-        additional_cmd = f'"[Step T2][Corrections][EDDY]+[Step T2][B-table][flip by]+[Step T2][B-table][flip bz]"'
+    use_dsi_topup = False
+    rev_pe_image = '' # path to reverse phase encoding image if using dsi topup
+    if use_eddy_correct and use_dsi_topup:
+        additional_cmd = f'[Step T2][Corrections][TOPUP EDDY]={rev_pe_image}+{additional_cmd}'
+    elif use_eddy_correct and not use_dsi_topup:
+        additional_cmd = f'[Step T2][Corrections][EDDY]+{additional_cmd}'
+    if use_dsi_topup:
+        additional_cmd = f'[Step T2][Edit][TOPUP]={rev_pe_image}+{additional_cmd}'
 
     # default method value for DTI 
     method_rec=1
@@ -460,7 +467,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     file_fib = os.path.join(dir_fib, filename_base + ext_fib)
 
-    parameters = (dsi_studio, 'rec', file_src+'.sz', file_msk, method_rec, param_zero, file_fib, 0, template, additional_cmd)
+    parameters = (dsi_studio, 'rec', file_src+'.sz', file_msk, method_rec, param_zero, file_fib, 0, template, '"'f'{additional_cmd}"')
     os.system(cmd_rec % parameters)
 
     # move fib to corresponding folders
