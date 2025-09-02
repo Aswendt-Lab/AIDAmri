@@ -51,9 +51,9 @@ def applyBET(input_file,frac,radius,vertical_gradient, center=None):
     scale = np.eye(4)* 10
     scale[3][3] = 1
     
-    #imgTemp = np.flip(imgTemp, 2)
+    imgTemp = np.flip(imgTemp, 2)
     #imgTemp = np.flip(imgTemp, 1)
-    imgTemp = np.flip(imgTemp, 0)
+    #imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp,2)
     
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
