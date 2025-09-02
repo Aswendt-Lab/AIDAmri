@@ -158,7 +158,7 @@ default_frac = 0.3
 default_rad  = 60
 default_vert = 0.08
 default_bias_skip = 1.0 #1.0 for skip 0.0 for run
-default_center = [0.7, -4.1, 3.2]
+default_center = [12.01, 7.6, 8.4]
 
 if __name__ == "__main__":
     import argparse
