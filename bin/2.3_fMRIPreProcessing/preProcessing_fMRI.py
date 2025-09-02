@@ -154,11 +154,11 @@ def cropToSmall(input_file,outputPath):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.38
+default_frac = 0.3
 default_rad  = 60
 default_vert = 0.08
 default_bias_skip = 1.0 #1.0 for skip 0.0 for run
-default_center = [13.6, 9.6, 9.9]
+default_center = [0.7, -4.1, 3.2]
 
 if __name__ == "__main__":
     import argparse
