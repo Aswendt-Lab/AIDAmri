@@ -64,19 +64,19 @@ def reorient_and_save(input_file):
         data_reoriented = np.transpose(data, (0, 2, 1))      # permute axes for 3D
         data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
     
-    # Downsample the reoriented data by a factor of 2
+    # Downsample the reoriented data by a factor of 1 --> no sample down
     downsampling_factor = 1
     data_downsampled = zoom(data_reoriented, zoom=[downsampling_factor] * len(data_reoriented.shape), order=3)
 
-    # Update the affine matrix to account for the new voxel sizes (adjust by a factor of 2)
+    # Update the affine matrix to account for the new voxel sizes
     affine = img.affine.copy()
-    affine[:3, :3] *= 2  # Adjust voxel scaling (double the voxel size because we halved the data size)
+    affine[:3, :3] *= 1 
 
     # Update header with new data shape and zooms (voxel sizes)
     header = img.header.copy()
     header.set_data_shape(data_downsampled.shape)
     zooms = np.array(header.get_zooms())
-    header.set_zooms(zooms * 2)  # Since the data is downsampled, voxel size doubles
+    header.set_zooms(zooms * 1) 
     
     # Create a new NIfTI image with the reoriented and downsampled data
     reoriented_img = nib.Nifti1Image(data_downsampled, affine, header)
@@ -91,6 +91,84 @@ def reorient_and_save(input_file):
     os.remove(input_file)
     
     return reoriented_file
+
+def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=50):
+    """
+    Resample a 4D NIfTI file in smaller batches using NiftyReg (reg_resample).
+    Each batch is temporarily saved to disk, processed, and then merged back into one 4D file.
+
+    Parameters
+    ----------
+    flo_file : str
+        Path to the 4D floating (input) file to be resampled.
+    ref_file : str
+        Path to the reference image (template).
+    trans_file : str
+        Path to the transformation matrix.
+    out_file : str
+        Path where the merged resampled 4D file will be saved.
+    batch_size : int, optional
+        Number of volumes per batch (default = 50).
+
+    Returns
+    -------
+    str
+        Path to the saved resampled 4D file.
+    """
+    import tempfile
+
+    # Lade die 4D Datei
+    img = nib.load(flo_file)
+    data = img.get_fdata()
+    affine = img.affine
+    header = img.header.copy()
+
+    if len(data.shape) != 4:
+        raise ValueError(f"Expected 4D input for batch resampling, got shape {data.shape}")
+
+    n_vols = data.shape[3]
+    resampled_vols = []
+
+    for start in range(0, n_vols, batch_size):
+        end = min(start + batch_size, n_vols)
+        print(f"[Batching] Resampling volumes {start}–{end-1}/{n_vols-1}")
+
+        batch = data[..., start:end]
+
+        # temporäres Verzeichnis für diesen Block
+        with tempfile.TemporaryDirectory() as tmpdir:
+            batch_file = os.path.join(tmpdir, "batch_in.nii.gz")
+            nib.save(nib.Nifti1Image(batch, affine, header), batch_file)
+
+            batch_out = os.path.join(tmpdir, "batch_out.nii.gz")
+
+            # NiftyReg reg_resample aufrufen
+            cmd = f"reg_resample -ref {ref_file} -flo {batch_file} -trans {trans_file} -res {batch_out} -inter 3"
+            subprocess.run(shlex.split(cmd), check=True)
+
+            # Ergebnis laden
+            resampled_batch = nib.load(batch_out).get_fdata().astype(np.float32)
+            print(f"[Batching] Finished batch {start}-{end-1}, shape {resampled_batch.shape}")
+
+            resampled_vols.append(resampled_batch)
+
+    # Überprüfen, ob wir überhaupt was gesammelt haben
+    if not resampled_vols:
+        raise RuntimeError(f"No batches were resampled for {flo_file}")
+
+    # Debug: Shapes der Batches ausgeben
+    for i, arr in enumerate(resampled_vols):
+        print(f"[Debug] Batch {i} shape: {arr.shape}")
+
+    # Alle Batches wieder zusammenfügen
+    resampled_data = np.concatenate(resampled_vols, axis=3)
+    print(f"[Merging] Final merged shape: {resampled_data.shape}")
+
+    resampled_img = nib.Nifti1Image(resampled_data, affine, header)
+    nib.save(resampled_img, out_file)
+    print(f"[Done] Saved merged 4D result: {out_file}")
+
+    return out_file
 
 def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_template_address):
     transformed_files = []
@@ -126,8 +204,16 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
         subprocess.run(shlex.split(command), check=True)
 
         # Step 4: Resample the flipped file to the template
-        command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template} -inter 3"
-        subprocess.run(shlex.split(command), check=True)
+        img = nib.load(file_flipped)
+        if len(img.shape) == 4 and img.shape[3] > 1:
+            # 4D → Batch-Verarbeitung
+            file_st_f_on_template = resample_4d_in_batches(
+                file_flipped, sigma_template_address, merged_inverted, file_st_f_on_template, batch_size=100
+            )
+        else:
+            # 3D → normal resamplen
+            command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template} -inter 3"
+            subprocess.run(shlex.split(command), check=True)
 
         # Reorient the transformed file
         reoriented_file = reorient_and_save(file_st_f_on_template)
