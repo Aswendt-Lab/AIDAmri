@@ -58,38 +58,36 @@ def reorient_and_save(input_file):
     if len(data.shape) == 4:
         # Data is 4D; permute and flip along the third axis for each 3D volume
         data_reoriented = np.transpose(data, (0, 2, 1, 3))  # permute axes for 4D
-        data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
     else:
         # Data is 3D; permute and flip the 3D volume
         data_reoriented = np.transpose(data, (0, 2, 1))      # permute axes for 3D
-        data_reoriented = np.flip(data_reoriented, axis=2)    # flip along the third axis
-    
+
     # Downsample the reoriented data by a factor of 1 --> no sample down
     downsampling_factor = 1
     data_downsampled = zoom(data_reoriented, zoom=[downsampling_factor] * len(data_reoriented.shape), order=3)
 
     # Update the affine matrix to account for the new voxel sizes
     affine = img.affine.copy()
-    affine[:3, :3] *= 1 
+    affine[:3, :3] *= 1
 
     # Update header with new data shape and zooms (voxel sizes)
     header = img.header.copy()
     header.set_data_shape(data_downsampled.shape)
     zooms = np.array(header.get_zooms())
-    header.set_zooms(zooms * 1) 
-    
+    header.set_zooms(zooms * 1)
+
     # Create a new NIfTI image with the reoriented and downsampled data
     reoriented_img = nib.Nifti1Image(data_downsampled, affine, header)
-    
+
     # Define output file path
     reoriented_file = input_file.replace('.nii.gz', '_originated.nii')
-    
+
     # Save the reoriented image
     nib.save(reoriented_img, reoriented_file)
 
     # Delete the original input file
     os.remove(input_file)
-    
+
     return reoriented_file
 
 def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=50):
