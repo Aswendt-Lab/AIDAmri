@@ -8,6 +8,8 @@ import numpy as np
 import shutil
 from scipy.ndimage import zoom
 from tqdm import tqdm  # Import tqdm for the progress bar
+import os
+import tempfile
 
 def flip_file_in_z_dimension(input_file, header_from_smooth_bet):
     """
@@ -47,50 +49,57 @@ def flip_file_in_z_dimension(input_file, header_from_smooth_bet):
 
 def reorient_and_save(input_file):
     """
-    Reorient the image, downsample it by a factor of 2, and save it with '_originated.nii' suffix.
-    After saving, delete the input file.
+    Reorient only by swapping y and z axes.
+    For 3D: in-memory.
+    For 4D: chunked volume-wise to reduce RAM.
+    Writes '*_originated.nii' and deletes input_file.
     """
-    # Load the image
+
     img = nib.load(input_file)
-    data = img.get_fdata()
+    hdr = img.header.copy()
+    aff = img.affine.copy()
 
-    # Check if the data is 4D or 3D
-    if len(data.shape) == 4:
-        # Data is 4D; permute and flip along the third axis for each 3D volume
-        data_reoriented = np.transpose(data, (0, 2, 1, 3))  # permute axes for 4D
+    out_file = input_file.replace('.nii.gz', '_originated.nii')
+    shape = img.shape
+    ndim = len(shape)
+
+    out_dtype = np.float32
+    hdr.set_data_dtype(out_dtype)
+
+    if ndim == 3:
+        # small enough: handle in RAM
+        data = img.get_fdata(dtype=out_dtype)
+        data = np.transpose(data, (0, 2, 1))  # swap y <-> z
+        nib.save(nib.Nifti1Image(data, aff, hdr), out_file)
+
+    elif ndim == 4:
+        X, Y, Z, T = shape
+        out_shape = (X, Z, Y, T)  # because we swap y <-> z
+
+        # Create output memmap file
+        with tempfile.TemporaryDirectory() as tmpd:
+            mmap_path = os.path.join(tmpd, "reoriented.dat")
+            mm = np.memmap(mmap_path, dtype=out_dtype, mode='w+', shape=out_shape)
+
+            dataobj = img.dataobj  # lazy loader
+            for t in range(T):
+                vol = np.asanyarray(dataobj[..., t], dtype=out_dtype)  # only one volume loaded
+                mm[..., t] = np.transpose(vol, (0, 2, 1))  # swap y <-> z
+                if t % 50 == 0:
+                    print(f"[reorient] processed volume {t + 1}/{T}")
+
+            # Save without copying entire memmap into RAM
+            img_out = nib.Nifti1Image(mm, aff, hdr)
+            nib.save(img_out, out_file)
+
     else:
-        # Data is 3D; permute and flip the 3D volume
-        data_reoriented = np.transpose(data, (0, 2, 1))      # permute axes for 3D
+        raise ValueError(f"Unsupported ndim {ndim} for {input_file}")
 
-    # Downsample the reoriented data by a factor of 1 --> no sample down
-    downsampling_factor = 1
-    data_downsampled = zoom(data_reoriented, zoom=[downsampling_factor] * len(data_reoriented.shape), order=3)
-
-    # Update the affine matrix to account for the new voxel sizes
-    affine = img.affine.copy()
-    affine[:3, :3] *= 1
-
-    # Update header with new data shape and zooms (voxel sizes)
-    header = img.header.copy()
-    header.set_data_shape(data_downsampled.shape)
-    zooms = np.array(header.get_zooms())
-    header.set_zooms(zooms * 1)
-
-    # Create a new NIfTI image with the reoriented and downsampled data
-    reoriented_img = nib.Nifti1Image(data_downsampled, affine, header)
-
-    # Define output file path
-    reoriented_file = input_file.replace('.nii.gz', '_originated.nii')
-
-    # Save the reoriented image
-    nib.save(reoriented_img, reoriented_file)
-
-    # Delete the original input file
     os.remove(input_file)
+    return out_file
 
-    return reoriented_file
 
-def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=50):
+def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=100):
     """
     Resample a 4D NIfTI file in smaller batches using NiftyReg (reg_resample).
     Each batch is temporarily saved to disk, processed, and then merged back into one 4D file.
@@ -205,18 +214,24 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
         img = nib.load(file_flipped)
         if len(img.shape) == 4 and img.shape[3] > 1:
             # 4D → Batch-Verarbeitung
+            print('>> resampling 4D')
             file_st_f_on_template = resample_4d_in_batches(
                 file_flipped, sigma_template_address, merged_inverted, file_st_f_on_template, batch_size=100
             )
         else:
             # 3D → normal resamplen
+            print('>> resampling 3D')
             command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template} -inter 3"
             subprocess.run(shlex.split(command), check=True)
 
         # Reorient the transformed file
+        print(">> calling reorient_and_save:", file_st_f_on_template)
         reoriented_file = reorient_and_save(file_st_f_on_template)
+        print(">> reoriented ->", reoriented_file)
         transformed_files.append(reoriented_file)
+        print(">> removing flipped:", file_flipped)
         os.remove(file_flipped)
+        print(">> flipped removed")
     
     return transformed_files
 
