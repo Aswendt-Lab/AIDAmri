@@ -121,7 +121,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
     #KEEP IN MIND DUE TO PARALLEL COMPUTING NO ERRORS IN THIS FUNCTION WILL BE PRINTED OUT => GREY ZONE
     errorList = [];
     message = '';
-    cwd = str(os.getcwd())
+    cwd = str(Path(__file__).resolve().parent)
     currentPath_wData = Path(currentPath_wData)
     # currentPath_wData = projectfolder/sub/ses/dataFormat (e.g. anat, func, dwi)
     #Find logging file
@@ -136,7 +136,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
         )
     if os.path.isdir(currentPath_wData):
         if dataFormat == 'anat':
-            os.chdir(cwd + '/2.1_T2PreProcessing')
+            os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile)>0:
@@ -170,7 +170,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     logging.info(message)  #write in log-file
                     #print(message, flush=True)
                     return 0
-                os.chdir(cwd + '/3.1_T2Processing')
+                os.chdir(os.path.join(cwd, '3.1_T2Processing'))
                 command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
                 result = run_subprocess(command,dataFormat,step)
                 if isinstance(result, tuple) and len(result) == 4:
@@ -181,7 +181,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(result)
                 os.chdir(cwd)
         elif dataFormat == 'func':
-            os.chdir(cwd + '/2.3_fMRIPreProcessing')
+            os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
@@ -209,14 +209,14 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
-                    os.chdir(cwd + '/3.3_fMRIActivity')
+                    os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
                     command = f'python process_fMRI.py -i {currentFile[0]} -stc {stc}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
                     os.chdir(cwd)
         elif dataFormat == 't2map':
-            os.chdir(cwd + '/4.1_T2mapPreProcessing')
+            os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*MEMS.nii.gz"))
                 if len(currentFile)>0:
@@ -254,7 +254,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
         elif dataFormat == 'dwi':
-            os.chdir(cwd + '/2.2_DTIPreProcessing')
+            os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile)>0:
@@ -284,7 +284,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
                     cli_str = f'dsi_main.py -i {currentFile[0]}'
-                    os.chdir(cwd + '/3.2_DTIConnectivity')
+                    os.chdir(os.path.join(cwd, '3.2_DTIConnectivity'))
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
@@ -295,7 +295,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             logging.error(message);
             errorList.append(message)
     else:
-        message = 'The folder '+dataFormat+' does not exist in '+currentPath
+        message = 'The folder '+dataFormat+' does not exist in '+currentPath_wData
         logging.error(message)
         errorList.append(message)
     
