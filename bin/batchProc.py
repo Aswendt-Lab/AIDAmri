@@ -139,32 +139,34 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
             if step == "preprocess":
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
-                if len(currentFile)>0:
+                if len(currentFile) > 0:
                     command = f'python preProcessing_T2.py -i {currentFile[0]}'
-                    result = run_subprocess(command,dataFormat,step)
+                    result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = 'Could not find *T2w.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *T2w.nii.gz in {currentPath_wData}'
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
+
             elif step == "registration":
                 currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
-                if len(currentFile)>0:
+                if len(currentFile) > 0:
                     command = f'python registration_T2.py -i {currentFile[0]}'
-                    result = run_subprocess(command,dataFormat,step)
+                    result = run_subprocess(command, dataFormat, step)
                     command = f'python t2_value_extraction.py -i {currentFile[0]}'
-                    result = run_subprocess(command,dataFormat,step)
+                    result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = 'Could not find *BiasBet.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *BiasBet.nii.gz in {currentPath_wData}'
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
+
             elif step == "process":
-                has_stroke_mask = any(currentPath_wData.glob("**/*Stroke_mask.nii.gz")) #search for stroke mask
+                has_stroke_mask = any(currentPath_wData.glob("**/*Stroke_mask.nii.gz"))
                 if not has_stroke_mask:
                     message = f"No stroke mask found for {currentPath_wData}, proceeding without mask."
                     logging.info(message)  #write in log-file
@@ -172,14 +174,15 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     return 0
                 os.chdir(os.path.join(cwd, '3.1_T2Processing'))
                 command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
-                result = run_subprocess(command,dataFormat,step)
+                result = run_subprocess(command, dataFormat, step)
                 if isinstance(result, tuple) and len(result) == 4:
                     errorList.append(result)
                 command = f'python getIncidenceSize.py -i {currentPath_wData}'
-                result = run_subprocess(command,dataFormat,step,anat_process=True)
+                result = run_subprocess(command, dataFormat, step, anat_process=True)
                 if isinstance(result, tuple) and len(result) == 4:
                     errorList.append(result)
                 os.chdir(cwd)
+
         elif dataFormat == 'func':
             os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
             if step == "preprocess":
@@ -190,7 +193,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = 'Could not find *EPI.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *EPI.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -202,7 +205,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = 'Could not find *SmoothBet.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *SmoothBet.nii.gz in {currentPath_wData}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
