@@ -136,8 +136,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
         )
     if os.path.isdir(currentPath_wData):
         if dataFormat == 'anat':
-            os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
             if step == "preprocess":
+                os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python preProcessing_T2.py -i {currentFile[0]}'
@@ -151,6 +151,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(cwd)
 
             elif step == "registration":
+                os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python registration_T2.py -i {currentFile[0]}'
@@ -184,8 +185,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(cwd)
 
         elif dataFormat == 'func':
-            os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
             if step == "preprocess":
+                os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_fMRI.py -i {currentFile[0]}'
@@ -198,6 +199,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "registration":
+                os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*SmoothBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_rsfMRI.py -i {currentFile[0]}'
@@ -219,8 +221,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                         errorList.append(result)
                     os.chdir(cwd)
         elif dataFormat == 't2map':
-            os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
             if step == "preprocess":
+                os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*MEMS.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_T2MAP.py -i {currentFile[0]}'
@@ -233,6 +235,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "registration":
+                os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_T2MAP.py -i {currentFile[0]}'
@@ -257,8 +260,8 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
         elif dataFormat == 'dwi':
-            os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
             if step == "preprocess":
+                os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_DTI.py -i {currentFile[0]}'
@@ -271,6 +274,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "registration":
+                os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_DTI.py -i {currentFile[0]}'
