@@ -145,7 +145,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *T2w.nii.gz in {currentPath_wData}'
+                    message = f'Could not find *T2w.nii.gz in {str(currentPath_wData)}'
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -161,7 +161,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *BiasBet.nii.gz in {currentPath_wData}'
+                    message = f'Could not find *Bet.nii.gz in {str(currentPath_wData)}'
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -169,16 +169,16 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             elif step == "process":
                 has_stroke_mask = any(currentPath_wData.glob("**/*Stroke_mask.nii.gz"))
                 if not has_stroke_mask:
-                    message = f"No stroke mask found for {currentPath_wData}, proceeding without mask."
+                    message = f"No stroke mask found for {str(currentPath_wData)}, proceeding without mask."
                     logging.info(message)  #write in log-file
                     #print(message, flush=True)
                     return 0
                 os.chdir(os.path.join(cwd, '3.1_T2Processing'))
-                command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
+                command = f'python getIncidenceSize_par.py -i {str(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step)
                 if isinstance(result, tuple) and len(result) == 4:
                     errorList.append(result)
-                command = f'python getIncidenceSize.py -i {currentPath_wData}'
+                command = f'python getIncidenceSize.py -i {str(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step, anat_process=True)
                 if isinstance(result, tuple) and len(result) == 4:
                     errorList.append(result)
@@ -194,7 +194,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *EPI.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *EPI.nii.gz in {str(currentPath_wData)}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -207,7 +207,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *SmoothBet.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *SmoothBet.nii.gz in {str(currentPath_wData)}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -230,7 +230,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *MEMS.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *MEMS.nii.gz in {str(currentPath_wData)}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -243,7 +243,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *SmoothMicoBet.nii.gz in {str(currentPath_wData)}';
                     print(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -255,7 +255,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *T2w_MAP.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *T2w_MAP.nii.gz in {str(currentPath_wData)}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -269,7 +269,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *dwi.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *dwi.nii.gz in {str(currentPath_wData)}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -282,7 +282,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     if result != 0:
                         errorList.append(result)
                 else:
-                    message = f'Could not find *SmoothMicoBet.nii.gz in {currentPath_wData}';
+                    message = f'Could not find *SmoothMicoBet.nii.gz in {str(currentPath_wData)}';
                     logging.error(message)
                     errorList.append(message)
                 os.chdir(cwd)
@@ -302,7 +302,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             logging.error(message);
             errorList.append(message)
     else:
-        message = 'The folder '+dataFormat+' does not exist in '+currentPath_wData
+        message = f"The folder {dataFormat} does not exist in {str(currentPath_wData)}"
         logging.error(message)
         errorList.append(message)
     
