@@ -44,17 +44,16 @@ def reset_orientation(input_file):
     forceradiological_command = f"fslorient -forceradiological {input_file}"
     subprocess.run(forceradiological_command, shell=True)
 
-def applyBET(input_file,frac,radius,outputPath):
-
+def applyBET(input_file,frac,radius,vertical_gradient, center=None):
     # scale Nifti data by factor 10
     data = nii.load(input_file)
     imgTemp = data.get_fdata()
     scale = np.eye(4)* 10
     scale[3][3] = 1
     
-    #imgTemp = np.flip(imgTemp, 2)
+    imgTemp = np.flip(imgTemp, 2)
     #imgTemp = np.flip(imgTemp, 1)
-    imgTemp = np.flip(imgTemp, 0)
+    #imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp,2)
     
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
@@ -67,8 +66,21 @@ def applyBET(input_file,frac,radius,outputPath):
     nii.save(scaledNiiData, fslPath)
 
     # extract brain
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
+    output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+
+    myBet = fsl.BET(
+        in_file=fslPath,
+        out_file=output_file,
+        frac=frac,
+        radius=radius,
+        vertical_gradient=vertical_gradient,
+        robust=True,  # robust only if no center
+        mask=True
+    )
+
+    if center:
+        myBet.center = center
+
     myBet.run()
     os.remove(fslPath)
 
@@ -111,7 +123,7 @@ def smoothIMG(input_file,outputPath):
     nii.save(unscaledNiiData, output_file)
     input_file = output_file
     #output_file =  os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
-    output_file = os.path.join(outputPath, os.path.basename(inputFile).split('.')[0] + 'Smooth.nii.gz')
+    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
     myGauss =  fsl.SpatialFilter(in_file=input_file,out_file=output_file,operation='median',kernel_shape='box',kernel_size=0.1)
     myGauss.run()
     print("Smoothing completed")
@@ -142,10 +154,12 @@ def cropToSmall(input_file,outputPath):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.2
-default_rad  = 60
-default_vert = 0.21
-    
+default_frac = 0.3
+default_rad  = 55
+default_vert = 0.07
+default_bias_skip = 1.0 #1.0 for skip 0.0 for run
+default_center = [12.01, 7.6, 8.4]
+
 if __name__ == "__main__":
     import argparse
     
@@ -184,8 +198,17 @@ if __name__ == "__main__":
         help='Set value to 1 to skip bias field correction',
         nargs='?',
         type=float, 
-        default=0.0,
+        default=default_bias_skip,
         )
+
+    parser.add_argument(
+        '-c',
+        '--center',
+        help='Manuelles Zentrum: x y z',
+        nargs=3,
+        type=float,
+        default=default_center
+    )
     args = parser.parse_args()
         
     # set parameters
@@ -199,6 +222,7 @@ if __name__ == "__main__":
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
+    bias_skip = args.bias_skip
     outputPath = os.path.dirname(inputFile)
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
@@ -206,19 +230,20 @@ if __name__ == "__main__":
     reset_orientation(inputFile)
     print("Orientation resetted to RAS")
 
-    outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
+    # Bias-Feldkorrektur falls nicht übersprungen
+    if bias_skip == 0:
+        inputForSmooth = biasfieldcorr(inputFile, outputPath)
+    else:
+        inputForSmooth = inputFile
 
-    # get rid of your skull
-    outputBET = applyBET(input_file=outputSmooth,frac=frac,radius=radius,outputPath=outputPath)
+    # Smoothing
+    outputSmooth = smoothIMG(input_file=inputForSmooth, outputPath=outputPath)
+
+    # Skull stripping
+    outputBET = applyBET(input_file=outputSmooth,
+                         frac=frac,
+                         radius=radius,
+                         vertical_gradient=vertical_gradient,
+                         center=args.center)
 
     print("Preprocessing completed")
-
-
-
-
-
-
-
-
-
-

@@ -75,7 +75,7 @@ def applyBET(input_file,frac,radius,vertical_gradient, center=None):
         frac=frac,
         radius=radius,
         vertical_gradient=vertical_gradient,
-        robust=False if center else True,  # robust only if no center
+        robust=True,  # robust only if no center
         mask=True
     )
 
@@ -105,10 +105,10 @@ def applyBET(input_file,frac,radius,vertical_gradient, center=None):
 #default_rad  = 45
 #default_vert = 0.0
 
-default_frac = 0.38
-default_rad  = 60
-default_vert = 0.08
-default_bias_skip = 1.0 #1.0 for skip 0.0 for run
+default_frac = 0.3
+default_rad  = 55
+default_vert = 0.0
+default_bias_skip = 0.0 #1.0 for skip 0.0 for run
 default_center = [13.6, 9.6, 9.9]
 
 if __name__ == "__main__":
@@ -209,14 +209,3 @@ if __name__ == "__main__":
         raise
     
     print("Preprocessing completed")
- 
-
-
-
-
-
-
-
-
-
-
