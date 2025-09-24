@@ -109,52 +109,63 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
 
     # Load input file lazily
     img = nib.load(flo_file)
-    dataobj = img.dataobj  # lazy proxy
+    dataobj = img.dataobj
     affine = img.affine
     header = img.header.copy()
 
     if len(img.shape) != 4:
         raise ValueError(f"Expected 4D input for batch resampling, got shape {img.shape}")
 
-    X, Y, Z, T = img.shape
+    T = img.shape[3]
 
-    # --- preallocate output file as memmap ---
-    # Use .nii (uncompressed) to reduce overhead
+    # --- Step 1: probe output shape with first volume ---
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_in = os.path.join(tmpdir, "test_in.nii")
+        test_out = os.path.join(tmpdir, "test_out.nii")
+
+        vol0 = np.asanyarray(dataobj[..., 0], dtype=np.float32)
+        nib.save(nib.Nifti1Image(vol0, affine, header), test_in)
+
+        cmd = f"reg_resample -ref {ref_file} -flo {test_in} -trans {trans_file} -res {test_out} -inter 3"
+        subprocess.run(shlex.split(cmd), check=True)
+
+        test_img = nib.load(test_out)
+        out_shape_3d = test_img.shape  # (X, Y, Z)
+        out_affine = test_img.affine
+        out_header = test_img.header.copy()
+
+    out_shape = out_shape_3d + (T,)
+    print(f"[Info] Resampled output shape will be {out_shape}")
+
+    # --- Step 2: preallocate memmap file with correct shape ---
     tmp_out_path = out_file.replace(".nii.gz", "_tmp.nii")
-    resampled_img = nib.Nifti1Image(np.zeros((X, Y, Z, T), dtype=np.float32), affine, header)
+    resampled_img = nib.Nifti1Image(np.zeros(out_shape, dtype=np.float32), out_affine, out_header)
     nib.save(resampled_img, tmp_out_path)
+    mm = np.memmap(tmp_out_path, dtype=np.float32, mode="r+", shape=out_shape)
 
-    # Open memmap for direct writing
-    mm = np.memmap(tmp_out_path, dtype=np.float32, mode="r+", shape=(X, Y, Z, T))
-
-    # --- process in batches ---
+    # --- Step 3: process in batches ---
     for start in range(0, T, batch_size):
         end = min(start + batch_size, T)
         print(f"[Batching] Resampling volumes {start}–{end-1}/{T-1}")
 
-        # Load only this slice of the data
         batch = np.asanyarray(dataobj[..., start:end], dtype=np.float32)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            batch_file = os.path.join(tmpdir, "batch_in.nii")
-            nib.save(nib.Nifti1Image(batch, affine, header), batch_file)
-
+            batch_in = os.path.join(tmpdir, "batch_in.nii")
             batch_out = os.path.join(tmpdir, "batch_out.nii")
 
-            # Call NiftyReg
-            cmd = f"reg_resample -ref {ref_file} -flo {batch_file} -trans {trans_file} -res {batch_out} -inter 3"
+            nib.save(nib.Nifti1Image(batch, affine, header), batch_in)
+
+            cmd = f"reg_resample -ref {ref_file} -flo {batch_in} -trans {trans_file} -res {batch_out} -inter 3"
             subprocess.run(shlex.split(cmd), check=True)
 
-            # Load resampled result and write into memmap directly
             resampled_batch = nib.load(batch_out).get_fdata(dtype=np.float32)
             mm[..., start:end] = resampled_batch
 
         print(f"[Batching] Finished batch {start}-{end-1}, shape {resampled_batch.shape}")
 
-    # Flush memmap changes
+    # Flush and finalize
     del mm
-
-    # Reload into nibabel and save compressed final file
     final_img = nib.load(tmp_out_path)
     nib.save(final_img, out_file)
     os.remove(tmp_out_path)
