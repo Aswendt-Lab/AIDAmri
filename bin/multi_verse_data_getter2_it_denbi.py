@@ -104,7 +104,6 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
     Resample a 4D NIfTI file in smaller batches using NiftyReg (reg_resample),
     with lazy loading and direct writing into a preallocated memmap file.
     """
-
     import tempfile
 
     # Load input file lazily
@@ -130,18 +129,16 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
         subprocess.run(shlex.split(cmd), check=True)
 
         test_img = nib.load(test_out)
-        out_shape_3d = test_img.shape  # (X, Y, Z)
+        out_shape_3d = test_img.shape
         out_affine = test_img.affine
         out_header = test_img.header.copy()
 
     out_shape = out_shape_3d + (T,)
     print(f"[Info] Resampled output shape will be {out_shape}")
 
-    # --- Step 2: preallocate memmap file with correct shape ---
+    # --- Step 2: create memmap-backed array ---
     tmp_out_path = out_file.replace(".nii.gz", "_tmp.nii")
-    resampled_img = nib.Nifti1Image(np.zeros(out_shape, dtype=np.float32), out_affine, out_header)
-    nib.save(resampled_img, tmp_out_path)
-    mm = np.memmap(tmp_out_path, dtype=np.float32, mode="r+", shape=out_shape)
+    mm = np.memmap(tmp_out_path, dtype=np.float32, mode="w+", shape=out_shape)
 
     # --- Step 3: process in batches ---
     for start in range(0, T, batch_size):
@@ -164,17 +161,12 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
 
         print(f"[Batching] Finished batch {start}-{end-1}, shape {resampled_batch.shape}")
 
-        # Flush and finalize
-    del mm  # ensure memmap is written to disk
+    # --- Step 4: save final NIfTI ---
+    img_out = nib.Nifti1Image(mm, out_affine, out_header)
+    nib.save(img_out, out_file)
 
-    # Reload memmap as numpy array
-    mm_final = np.memmap(tmp_out_path, dtype=np.float32, mode="r", shape=out_shape)
-
-    # Wrap in NIfTI and save compressed
-    final_img = nib.Nifti1Image(mm_final, out_affine, out_header)
-    nib.save(final_img, out_file)
-
-    # Clean up
+    # cleanup
+    del mm
     os.remove(tmp_out_path)
 
     print(f"[Done] Saved merged 4D result: {out_file}")
