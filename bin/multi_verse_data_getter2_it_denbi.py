@@ -174,6 +174,7 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
     return out_file
 
 
+
 def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_template_address):
     transformed_files = []
     
