@@ -164,15 +164,21 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
 
         print(f"[Batching] Finished batch {start}-{end-1}, shape {resampled_batch.shape}")
 
-    # Flush and finalize
-    del mm
-    final_img = nib.load(tmp_out_path)
+        # Flush and finalize
+    del mm  # ensure memmap is written to disk
+
+    # Reload memmap as numpy array
+    mm_final = np.memmap(tmp_out_path, dtype=np.float32, mode="r", shape=out_shape)
+
+    # Wrap in NIfTI and save compressed
+    final_img = nib.Nifti1Image(mm_final, out_affine, out_header)
     nib.save(final_img, out_file)
+
+    # Clean up
     os.remove(tmp_out_path)
 
     print(f"[Done] Saved merged 4D result: {out_file}")
     return out_file
-
 
 
 def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_template_address):
