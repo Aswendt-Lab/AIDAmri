@@ -21,6 +21,7 @@ import subprocess
 import shutil
 import averageb0
 import dipy.denoise.patch2self as patch2self
+import extracted_brain_output
 
 def reset_orientation(input_file):
 
@@ -72,8 +73,14 @@ def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=
             mask_file = os.path.join(os.path.dirname(input_file), bet4animal_mask_files[0])
             bet_file = mask_file.replace('_brain_mask.nii.gz', '.nii.gz')
             brain_file = mask_file.replace('brain_mask.nii.gz', 'brain.nii.gz')
-            # output_brain_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).replace('.nii.gz', 'Bet_brain.nii.gz'))
-            os.rename(bet_file, output_file)
+            if os.path.exists(brain_file):
+                print(f"Found brain file: {brain_file}")
+                # if multiple files are found ending in brain.nii.gz, use extracted_brain_output to select the one with lower voxel sum
+                extracted_file = extracted_brain_output.extracted_brain_output(os.path.dirname(input_file), os.path.basename(input_file).replace('.nii.gz', 'Bet.nii.gz'))
+                print(f"Selected brain file: {extracted_file}")
+                os.rename(extracted_file, output_file)
+            else:
+                os.rename(bet_file, output_file)            
             # os.rename(brain_file, output_brain_file)
         output_mask_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'BetMask.nii.gz')
         os.rename(mask_file, output_mask_file)
@@ -180,6 +187,39 @@ def denoise_patch2self(input_file, output_path):
     #     print("Final denoised affine matrix after copying geometry:", output.affine)
     #     print("Final denoised image sform after copying geometry:", output.header.get_sform())
     return output_file
+
+
+# def denoise_mppca(input_file, output_path):
+#     """
+#     Denoises the input DTI image using MP-PCA (as inplemented in MRtrix3)
+#     Requires an appropriate input file (input_file) and the output path (output_path).
+#     """
+#     data = nii.load(input_file)
+#     img = data.get_fdata()
+#     affine = data.affine
+#     debug = True
+#     if debug is True:
+#         print("Debugging information:")
+#         print("Image header:", data.header)
+#         print("Affine matrix:", affine)
+#         print("Image sform:", data.header.get_sform())
+#     if img.ndim != 4:
+#         raise ValueError("Input image must be a 4D NIfTI file.")
+
+#     # Apply MP-PCA denoising
+#     denoised_img = mppca.mppca(img, n_components=5)
+
+#     # Save the denoised image
+#     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'MPPCA_Denoised.nii.gz')
+#     denoised_nii = nii.Nifti1Image(denoised_img, affine)
+#     denoised_nii.header.set_xyzt_units('mm')
+#     if debug is True:
+#         print("Denoised image header:", denoised_nii.header)
+#         print("Denoised affine matrix:", denoised_nii.affine)
+#         print("Denoised image sform:", denoised_nii.header.get_sform())
+#     nii.save(denoised_nii, output_file)
+
+#     return output_file
 
 
 def dwibiasfieldcorr(input_file,outputPath):
