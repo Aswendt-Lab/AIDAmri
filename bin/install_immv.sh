@@ -25,4 +25,5 @@ else
     echo "${immv_wrapper_code}" >> ${FSLDIR}/bin/immv
     # Make the immv wrapper executable
     chmod +x ${FSLDIR}/bin/immv
+    ${FSLDIR}/fslpython/bin/python -m pip install fslpy
 fi
