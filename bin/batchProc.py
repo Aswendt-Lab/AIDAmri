@@ -345,7 +345,7 @@ if __name__ == "__main__":
     pathToData = args.input
     sessions = args.sessions
     
-    #Konfiguriere das Logging-Modul
+    #configurate the logging module
     log_file_path = os.path.join(pathToData, "batchproc_log.txt")
     logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
