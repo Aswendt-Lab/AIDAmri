@@ -124,7 +124,7 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
     """
     import tempfile
 
-    # Lade die 4D Datei
+    #Load 4D data
     img = nib.load(flo_file)
     data = img.get_fdata()
     affine = img.affine
@@ -142,32 +142,32 @@ def resample_4d_in_batches(flo_file, ref_file, trans_file, out_file, batch_size=
 
         batch = data[..., start:end]
 
-        # temporäres Verzeichnis für diesen Block
+        #temporary directory for this block
         with tempfile.TemporaryDirectory() as tmpdir:
             batch_file = os.path.join(tmpdir, "batch_in.nii.gz")
             nib.save(nib.Nifti1Image(batch, affine, header), batch_file)
 
             batch_out = os.path.join(tmpdir, "batch_out.nii.gz")
 
-            # NiftyReg reg_resample aufrufen
+            # Call NiftyReg reg_resample 
             cmd = f"reg_resample -ref {ref_file} -flo {batch_file} -trans {trans_file} -res {batch_out} -inter 3"
             subprocess.run(shlex.split(cmd), check=True)
 
-            # Ergebnis laden
+            # Load results
             resampled_batch = nib.load(batch_out).get_fdata().astype(np.float32)
             print(f"[Batching] Finished batch {start}-{end-1}, shape {resampled_batch.shape}")
 
             resampled_vols.append(resampled_batch)
 
-    # Überprüfen, ob wir überhaupt was gesammelt haben
+    #Check if resampled
     if not resampled_vols:
         raise RuntimeError(f"No batches were resampled for {flo_file}")
 
-    # Debug: Shapes der Batches ausgeben
+    # Debug: print shape of batches
     for i, arr in enumerate(resampled_vols):
         print(f"[Debug] Batch {i} shape: {arr.shape}")
 
-    # Alle Batches wieder zusammenfügen
+    # Merge all batches
     resampled_data = np.concatenate(resampled_vols, axis=3)
     print(f"[Merging] Final merged shape: {resampled_data.shape}")
 
@@ -219,7 +219,7 @@ def apply_affine_transformations(files_list, func_folder, anat_folder, sigma_tem
                 file_flipped, sigma_template_address, merged_inverted, file_st_f_on_template, batch_size=100
             )
         else:
-            # 3D → normal resamplen
+            # 3D → normal resample
             print('>> resampling 3D')
             command = f"reg_resample -ref {sigma_template_address} -flo {file_flipped} -trans {merged_inverted} -res {file_st_f_on_template} -inter 3"
             subprocess.run(shlex.split(command), check=True)
