@@ -404,7 +404,7 @@ if __name__ == "__main__":
         # adjust bvecs and bvals for length of acquisition (number of repetitions)
         if os.path.exists(os.path.join(subject_session_output_dir, "dwi")):
             try:
-                adjust_bvec_rep(os.path.join(subject_session_output_dir, "dwi"))
+                adjust_bvec_rep(subject_session_output_dir)
             except FileNotFoundError as e:
                 print(f"Valid diffusion data files missing in {subject_session_output_dir}/dwi, skipping.")
                 logging.warning(f"Valid diffusion data files missing in {subject_session_output_dir}/dwi: {e}")
