@@ -170,6 +170,17 @@ With these adjustments, AIDAmri can be used on ARM-based systems. However, if an
 we recommend using it for better performance, as emulation may result in a general slowdown.
 </details>
 
+## BRANCHES
+
+AIDAmri is organized into multiple branches to support development, collaboration, and species-specific adaptations:
+
+- **`main`** – the stable branch containing officially released and validated versions of AIDAmri for mice.  
+- **`open-dev`** – the public development branch that can be used by external contributors to implement code modifications, enhancements, or bug fixes.  
+  *Researchers and developers are welcome to fork the repository, work within the `open-dev` branch, and submit pull requests for review.*  
+- **`rat`** – a dedicated branch for rat MRI data, including modified atlas and template versions optimized for rat brain imaging and analysis.  
+
+Each branch is continuously synchronized to ensure compatibility with the core AIDAmri framework and Docker-based environment.
+
 ## EXAMPLE FILES
 
 Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
