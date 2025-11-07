@@ -191,8 +191,10 @@ rs-fMRI (functional connectivity scan).
 
 ## Data Format and Orientation Requirements
 
-AIDAmri supports data processing exclusively for datasets in NIfTI (.nii/.nii.gz) or Bruker formats. To ensure accurate registration and reproducible results, all input data must follow the same spatial orientation as the provided AIDAmri test dataset.
-Furthermore, the image header information must be consistent with the physical orientation of the data array. Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation.
+AIDAmri supports data processing exclusively for datasets in NIfTI (.nii/.nii.gz) or Bruker formats. To ensure accurate registration and reproducible results, 
+all input data must follow the same spatial orientation as the provided AIDAmri test dataset [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA).
+Furthermore, the image header information must be consistent with the physical orientation of the data array. 
+Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation.
 
 ## ARA CREATOR
 [Matlab script](https://github.com/maswendt/AIDAmri/ARA) to generate a custom version of the Allen Mouse Brain Atlas.
