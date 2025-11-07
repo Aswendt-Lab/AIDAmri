@@ -170,6 +170,17 @@ With these adjustments, AIDAmri can be used on ARM-based systems. However, if an
 we recommend using it for better performance, as emulation may result in a general slowdown.
 </details>
 
+## BRANCHES
+
+AIDAmri is organized into multiple branches to support development, collaboration, and species-specific adaptations:
+
+- **`main`** – the stable branch containing officially released and validated versions of AIDAmri for mice.  
+- **`open-dev`** – the public development branch that can be used by external contributors to implement code modifications, enhancements, or bug fixes.  
+  *Researchers and developers are welcome to fork the repository, work within the `open-dev` branch, and submit pull requests for review.*  
+- **`rat`** – a dedicated branch for rat MRI data, including modified atlas and template versions optimized for rat brain imaging and analysis.  
+
+Each branch is continuously synchronized to ensure compatibility with the core AIDAmri framework and Docker-based environment.
+
 ## EXAMPLE FILES
 
 Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
@@ -177,6 +188,11 @@ Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mous
 T2-weighted (anatomical scan),
 DTI (structural connectivity scan),
 rs-fMRI (functional connectivity scan).
+
+## Data Format and Orientation Requirements
+
+AIDAmri supports data processing exclusively for datasets in NIfTI (.nii/.nii.gz) or Bruker formats. To ensure accurate registration and reproducible results, all input data must follow the same spatial orientation as the provided AIDAmri test dataset.
+Furthermore, the image header information must be consistent with the physical orientation of the data array. Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation.
 
 ## ARA CREATOR
 [Matlab script](https://github.com/maswendt/AIDAmri/ARA) to generate a custom version of the Allen Mouse Brain Atlas.
