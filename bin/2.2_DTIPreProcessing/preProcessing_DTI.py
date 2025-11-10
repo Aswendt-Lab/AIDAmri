@@ -64,9 +64,11 @@ def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=
             f for f in os.listdir(os.path.dirname(input_file))
             if f.startswith(os.path.basename(input_file).replace('.nii.gz', 'Bet_bet4animal_')) and f.endswith('brain_mask.nii.gz')
         ]
+        output_mask_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'BetMask.nii.gz')
         if os.path.exists(output_file):
             print(f"Brain extraction completed, output saved to {output_file}")
             mask_file = output_file.replace('Bet.nii.gz', 'Bet_mask.nii.gz')
+            os.rename(mask_file, output_mask_file)
         elif bet4animal_mask_files:
             print(f"Found bet4animal mask file(s): {bet4animal_mask_files}")
             # change names for files ending in brain.nii.gz and brain_mask.nii.gz
@@ -80,10 +82,10 @@ def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=
                 print(f"Selected brain file: {extracted_file}")
                 os.rename(extracted_file, output_file)
             else:
-                os.rename(bet_file, output_file)            
+                os.rename(bet_file, output_file)
+            os.rename(mask_file, output_mask_file)
             # os.rename(brain_file, output_brain_file)
-        output_mask_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'BetMask.nii.gz')
-        os.rename(mask_file, output_mask_file)
+        # os.rename(mask_file, output_mask_file)
         # copy geometry information from input file to output files using fslcpgeom
         for image in [output_file, output_mask_file]: # , output_brain_file
             fslcpgeom_cmd = f"fslcpgeom {input_file} {image}"

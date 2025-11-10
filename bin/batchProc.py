@@ -174,16 +174,16 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 command = f'python getIncidenceSize_par.py -i {str(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step)
                 if isinstance(result, tuple) and len(result) == 4:
-                os.chdir(cwd + '/3.1_T2Processing')
-                command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
-                result = run_subprocess(command,dataFormat,step)
+                    os.chdir(cwd + '/3.1_T2Processing')
+                    command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
+                    result = run_subprocess(command,dataFormat,step)
                 if result != 0:
                     errorList.append(result)
-                command = f'python getIncidenceSize.py -i {str(currentPath_wData)}'
-                result = run_subprocess(command, dataFormat, step, anat_process=True)
+                    command = f'python getIncidenceSize.py -i {str(currentPath_wData)}'
+                    result = run_subprocess(command, dataFormat, step, anat_process=True)
                 if isinstance(result, tuple) and len(result) == 4:
-                command = f'python getIncidenceSize.py -i {currentPath_wData}'
-                result = run_subprocess(command,dataFormat,step,anat_process=True)
+                    command = f'python getIncidenceSize.py -i {currentPath_wData}'
+                    result = run_subprocess(command,dataFormat,step,anat_process=True)
                 if result != 0:
                     errorList.append(result)
                 os.chdir(cwd)
@@ -278,6 +278,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "registration":
+                os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*Smooth*Bet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_DTI.py -i {currentFile[0]}'
