@@ -52,10 +52,11 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     scale = np.eye(4)* 10
     scale[3][3] = 1
 
-    # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
-    #imgTemp = np.flip(imgTemp,2)
-    #imgTemp = np.flip(imgTemp,1)
-    imgTemp = np.flip(imgTemp,0)
+    # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose.
+        #AIDAmri expects the brkraw data to be anterior - posterior. If this is not the case this axis flip has to be adjusted
+    imgTemp = np.flip(imgTemp,2) #z-flip
+    #imgTemp = np.flip(imgTemp,1) #y-flip
+    #imgTemp = np.flip(imgTemp,0) #x-flip
     #imgTemp = np.rot90(imgTemp,2)
 
     scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
