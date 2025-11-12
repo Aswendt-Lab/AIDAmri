@@ -139,7 +139,7 @@ def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=
     return output_file
 
 
-def denoise_patch2self(input_file, output_path):
+def denoise_patch2self(input_file, output_path, b0_thresh=100):
     """
     Denoises the input DTI image using Patch2Self from DIPY.
     Requires an appropriate input file (input_file) and the output path (output_path).
@@ -167,7 +167,7 @@ def denoise_patch2self(input_file, output_path):
         raise ValueError("Input image must be a 4D NIfTI file.")
     
     # Apply Patch2Self denoising
-    denoised_img = patch2self.patch2self(img, bvals, b0_threshold=50, model='ols', out_dtype=np.int16)
+    denoised_img = patch2self.patch2self(img, bvals, b0_threshold=b0_thresh, model='ols', out_dtype=np.int16)
     
     # Save the denoised image
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
@@ -380,6 +380,7 @@ if __name__ == "__main__":
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     output_path = os.path.dirname(input_file)
+    b0_thresh=100
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
@@ -390,14 +391,14 @@ if __name__ == "__main__":
     
     if args.denoiser == "patch2self":
         # Denoising using Patch2Self
-        denoised_image = denoise_patch2self(input_file, output_path)
+        denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
         print("Denoising completed, output saved to", denoised_image)
         # reset_orientation(denoised_image)
         input_file = denoised_image
 
     if args.average_b0 is True:
         # Average b0 volumes
-        b0image = averageb0.averageb0(input_file)
+        b0image = averageb0.averageb0(input_file,b0_thresh)
         # # Copy header with fslcopygeom
         # myFslCpGeom = fsl.utils.CopyGeom(dest_file=b0image, in_file=input_file)
         # myFslCpGeom.run()

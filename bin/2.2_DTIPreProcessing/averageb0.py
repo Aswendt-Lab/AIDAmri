@@ -35,9 +35,9 @@ import nibabel as nii
 import nipype.interfaces.fsl as fsl
 
 
-def averageb0(input_file, use_mcflirt=False):
+def averageb0(input_file, b0_thresh=100, use_mcflirt=False):
     """
-    Averages all b0 images in a DTI dataset, based on the bvals. 
+    Averages all b0 images in a DTI dataset, based on the bvals.
     Requires a 4D dwi image (input_file), with an existing bvals file in the same directory.
     """
     bvalsname = input_file.replace(".nii.gz", ".bval")
@@ -56,15 +56,15 @@ def averageb0(input_file, use_mcflirt=False):
     bvals = np.loadtxt(bvalsname, dtype=float)
     if bvals.ndim > 1:
         bvals = bvals[0, :]
-    # find b-values < 75
-    b0_indices = np.where(bvals < 75)[0]
+    # find b-values < b0_thresh
+    b0_indices = np.where(bvals < b0_thresh)[0]
     if len(b0_indices) == 0:
-        sys.exit("Error: No b0 images found (b-values < 75).")
+        sys.exit(f'Error: No b0 images found (b-values < {str(b0_thresh)}).')
     data = nii.load(input_file)
     img = data.get_fdata()
     b0 = img[:, :, :, b0_indices]
     if b0.ndim < 4 or b0.shape[3] == 1:
-        sys.exit("Error: No b0 images found (b-values < 75).")
+        sys.exit(f'Error: No b0 images found (b-values < {str(b0_thresh)}).')
     if b0.shape[3] > 1:
         b0_filename = os.path.join(os.path.dirname(input_file),
                                    os.path.basename(input_file).split('.')[0] + '_b0.nii.gz')
@@ -102,6 +102,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Average b0 images in a DTI dataset')
     parser.add_argument('-i', '--input_file', help='Path to the input 4D DWI NIfTI file', required=True)
+    parser.add_argument('-b', '--b0_thresh', default=100, help='B-value threshold under which volumes are treated as b0', required=False)
     parser.add_argument('-mcflirt', '--use_mcflirt', help='Use FSL MCFLIRT to align b0 volumes', action='store_true', required=False)
     args = parser.parse_args()
 
