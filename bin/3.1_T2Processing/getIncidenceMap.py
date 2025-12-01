@@ -4,8 +4,12 @@ import nibabel as nii
 import glob
 import numpy as np
 import progressbar
+import matplotlib
 import matplotlib.pyplot as plt
 
+# --- Fonts & Text Display ---
+matplotlib.rcParams['svg.fonttype'] = 'none'     #text remains editable in SVG
+matplotlib.rcParams['pdf.fonttype'] = 42         # Editable text in PDF (Type 42)
 
 def heatMap(incidenceMap, araVol, outputLocation):
     maxV = int(np.max(incidenceMap))
@@ -26,6 +30,15 @@ def heatMap(incidenceMap, araVol, outputLocation):
     # Save the heatmap instead of showing
     output_file = os.path.join(outputLocation, 'heatMap.png')
     plt.savefig(output_file)
+
+    # Save heatmap as PDF
+    output_pdf = os.path.join(outputLocation, 'heatMap.pdf')
+    plt.savefig(output_pdf)
+
+    # Save heatmap as SVG (vector graphics)
+    output_svg = os.path.join(outputLocation, 'heatMap.svg')
+    plt.savefig(output_svg)
+
     plt.close()
 
 
