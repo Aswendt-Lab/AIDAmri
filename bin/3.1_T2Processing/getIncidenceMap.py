@@ -61,6 +61,8 @@ def incidenceMap2(path_listInc, araTemplate, inputFile, outputLocation):
     output_file = os.path.join(outputLocation, 'incMap.nii.gz')
     nii.save(overlayNII, output_file)
     heatMap(incidenceMap=overlaidIncidences, araVol=realAraImg, outputLocation=outputLocation)
+    max_overlap = int(np.max(overlaidIncidences))
+    print("Maximum number of subjects overlapping at any voxel in the incidence volume:", max_overlap)
 
 
 def findIncData(path):
