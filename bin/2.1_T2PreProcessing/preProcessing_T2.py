@@ -52,7 +52,8 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     scale[3][3] = 1
 
     # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
-    imgTemp = np.flip(imgTemp,2)
+    # AIDAmri expects the brkraw data to be anterior - posterior. If this is not the case this axis flip has to be adjusted
+    imgTemp = np.flip(imgTemp,2)# z-flip
     #imgTemp = np.flip(imgTemp, 0)
     #imgTemp = np.rot90(imgTemp, 2)
 
