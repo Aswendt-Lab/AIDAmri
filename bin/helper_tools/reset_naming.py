@@ -8,7 +8,7 @@ if __name__ == "__main__":
         description=(
             "This script prepares Bruker raw data before running "
             "1_PV2NIfTiConverter/pv_conv2Nifti.py. "
-            "The raw data must follow the structure: projectfolder/days/subjects/data/. "
+            "The raw data must follow the structure: projectfolder/subjects/ses/data. "
             "It automatically scans for all 'subject' files within the input folder and "
             "performs two modifications: "
             "1) Removes the first underscore '_' in the SUBJECT_id and SUBJECT_study_name lines; "
