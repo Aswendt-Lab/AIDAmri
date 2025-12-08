@@ -361,11 +361,14 @@ if __name__ == "__main__":
     sheet['A1'] = "Subject"
     sheet['B1'] = "Group"
 
+    #Create sourcedata folder
+    sourcedata_dir = os.path.join(output_dir, "Sourcedata")
+    os.makedirs(sourcedata_dir, exist_ok=True)
     # Save the workbook
-    workbook.save(os.path.join(output_dir,"GroupMapping.xlsx"))
+    workbook.save(os.path.join(sourcedata_dir,"GroupMapping.xlsx"))
      
     # Konfiguriere das Logging-Modul
-    log_file_path = os.path.join(output_dir, "conv2nifti_log.txt") 
+    log_file_path = os.path.join(sourcedata_dir, "conv2nifti_log.txt")
     logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     # get list of raw data in input folder
