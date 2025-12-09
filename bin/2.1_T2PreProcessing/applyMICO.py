@@ -31,11 +31,12 @@ from tqdm import tqdm
 
 def run_MICO(IMGdata,outputPath):
     data = nii.load(IMGdata)
-    v = 8
 
     # get UNSCALED img data
     vol = data.get_fdata()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
+
+    #1) Scaling factor depending on image intensity
     ImgMe = np.mean(vol)
     if ImgMe > 10000:
         nCvalue = 1000
@@ -44,7 +45,25 @@ def run_MICO(IMGdata,outputPath):
     else:
         nCvalue = 1
 
+    #2) Global threshold over whole volume
+    #Scale the volume as it will later be used for the slices.
+    if vol.ndim == 4:
+        vol_norm = vol[:, :, :, 0] / nCvalue
+    else:
+        vol_norm = vol / nCvalue
+
+    nz_all = vol_norm[vol_norm > 0]  # all voxels above 0 in volume
+    if nz_all.size > 0:
+        #e.g. global median as threshold (50. Perzentil)
+        global_thr = np.percentile(nz_all, 50)
+        print(f"Global ROI-Threshold over volumen: {global_thr:.3f}")
+    else:
+        global_thr = 0.0
+        print("Warning: No Voxels above zero in volume, global_thr = 0")
+
     progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
+
+    # 3) loop over slices, ROI with global threshold
     for idx in range(vol.shape[2]):
         if np.size(vol.shape) == 4:
             Img = vol[:, :, idx, 0] / nCvalue
@@ -60,8 +79,15 @@ def run_MICO(IMGdata,outputPath):
         nrow = Img.shape[0]
         ncol = Img.shape[1]
         n = nrow * ncol
-        ROIt = Img > 20
-        ROI = np.zeros([nrow,ncol])
+
+        #Global ROI thresholding
+        if global_thr > 0:
+            ROIt = Img > global_thr
+        else:
+            # Fallback: simple non-zero thresholding
+            ROIt = Img > 0
+
+        ROI = np.zeros((nrow, ncol))
         ROI[ROIt] = 1
 
         Bas = getBasisOrder3(nrow, ncol)

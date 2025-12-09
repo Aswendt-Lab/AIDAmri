@@ -67,7 +67,14 @@ def updateB(Img, q, C, M, Bas, GGT, ImgG):
     #clear PC2;
     #clear B;
     #clear ImgG_PC;
-    w = np.dot(np.linalg.inv(A) , V)
+    try:
+        # numerical stable: solves Ax = V
+        w = np.linalg.solve(A, V)
+    except np.linalg.LinAlgError:
+        # Fallback if A is rank deficient / singular:
+        print("Warning: A is singular, uses pseudoinverse in updateB")
+        w = np.dot(np.linalg.pinv(A), V)
+
     b = np.zeros(Img.shape)
     for kk in range (N_bas):
         b = b + np.dot(w[kk] , Bas[:,:, kk])
