@@ -30,11 +30,12 @@ from tqdm import tqdm
 
 def run_MICO(IMGdata,outputPath):
     data = nii.load(IMGdata)
-    v = 8
 
+    # get UNSCALED img data
     vol = data.get_fdata()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
 
+    #1) Scaling factor depending on image intensity
     ImgMe = np.mean(vol)
     
     if ImgMe > 10000:
@@ -44,7 +45,39 @@ def run_MICO(IMGdata,outputPath):
     else:
         nCvalue = 1
 
+    #2) Global threshold over whole volume
+    #Scale the volume as it will later be used for the slices.
+    vol_norm = vol / nCvalue
+
+    nz_all = vol_norm[vol_norm > 0]  # all voxels above 0 in volume
+    if nz_all.size > 0:
+        #e.g. global median as threshold (50. Perzentil)
+        global_thr = np.percentile(nz_all, 50)
+        print(f"Global ROI-threshold of volumen: {global_thr:.3f}")
+    else:
+        global_thr = 0.0
+        print("Warning: No voxels above zero in volume, global_thr = 0")
+
+    #Debug
+    # --- Debug: Test how large the ROI would be for some slices ---
+    print("\nROI-Check for example slices:")
+    for idx in [0, vol.shape[2] // 2, vol.shape[2] - 1]:  # first, middle, last slice
+        Img_test = vol_norm[:, :, idx]
+        ROIt_test = Img_test > global_thr
+        print(f"Slice {idx}: ROI voxels = {ROIt_test.sum()} of {Img_test.size}")
+    print("------------------------------------------------------------\n")
+    #--- Ende Debug ---
+
     progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
+
+    #Debug output
+    print(f"Amount of non-zero voxels in total volumen: {nz_all.size}")
+    print(
+        f"Min/Median/Max of nz_all Voxels: {nz_all.min():.3f} / {np.percentile(nz_all, 50):.3f} / {nz_all.max():.3f}")
+    print(f"Global ROI-threshold of volume: {global_thr:.3f}")
+    #--- Ende Debug output --
+
+    # 3) loop over slices, ROI with global threshold
     for idx in range(vol.shape[2]):
 
         Img = vol[:,:,idx] / nCvalue
@@ -54,16 +87,21 @@ def run_MICO(IMGdata,outputPath):
         iterNum = 100
         N_region = 1
         q = 1
-        thres = 100
-
         A = 1
         Img_original = Img
 
         nrow = Img.shape[0]
         ncol = Img.shape[1]
         n = nrow * ncol
-        ROIt = Img > thres
-        ROI = np.zeros([nrow,ncol])
+
+        #Global ROI thresholding
+        if global_thr > 0:
+            ROIt = Img > global_thr
+        else:
+            # Fallback: simple non-zero thresholding
+            ROIt = Img > 0
+
+        ROI = np.zeros((nrow, ncol))
         ROI[ROIt] = 1
 
         Bas = getBasisOrder3(nrow, ncol)
