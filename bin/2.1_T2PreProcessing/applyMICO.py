@@ -61,7 +61,24 @@ def run_MICO(IMGdata,outputPath):
         global_thr = 0.0
         print("Warning: No Voxels above zero in volume, global_thr = 0")
 
+    #Debug
+    # --- Debug: Testen wie groß die ROI für einige Slices wäre ---
+    print("\nROI-Check for example slices:")
+    for idx in [0, vol.shape[2] // 2, vol.shape[2] - 1]:  # erster, mittlerer, letzter Slice
+        Img_test = vol_norm[:, :, idx]
+        ROIt_test = Img_test > global_thr
+        print(f"Slice {idx}: ROI voxels = {ROIt_test.sum()} of {Img_test.size}")
+    print("------------------------------------------------------------\n")
+    #--- Ende Debug ---
+
     progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
+
+    #Debug output
+    print(f"Amount of non-zero voxels in total volumen: {nz_all.size}")
+    print(
+        f"Min/Median/Max of nz_all voxels: {nz_all.min():.3f} / {np.percentile(nz_all, 50):.3f} / {nz_all.max():.3f}")
+    print(f"Global ROI-threshold of volume: {global_thr:.3f}")
+    #--- Ende Debug output --
 
     # 3) loop over slices, ROI with global threshold
     for idx in range(vol.shape[2]):
