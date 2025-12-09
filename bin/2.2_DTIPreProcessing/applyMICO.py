@@ -59,9 +59,9 @@ def run_MICO(IMGdata,outputPath):
         print("Warning: No voxels above zero in volume, global_thr = 0")
 
     #Debug
-    # --- Debug: Testen wie groß die ROI für einige Slices wäre ---
+    # --- Debug: Test how large the ROI would be for some slices ---
     print("\nROI-Check for example slices:")
-    for idx in [0, vol.shape[2] // 2, vol.shape[2] - 1]:  # erster, mittlerer, letzter Slice
+    for idx in [0, vol.shape[2] // 2, vol.shape[2] - 1]:  # first, middle, last slice
         Img_test = vol_norm[:, :, idx]
         ROIt_test = Img_test > global_thr
         print(f"Slice {idx}: ROI voxels = {ROIt_test.sum()} of {Img_test.size}")
