@@ -61,7 +61,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
         print("Using BET for animal brains")
         species_id = 6 if species == 'mouse' else 5
         output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-        command = f"bet {input_file} {output_file} -f {frac} -m -z {species_id}"
+        command = f"/aida/bin/bet4animal {input_file} {output_file} -f {frac} -m -w {w_value} -z {species_id}"
         subprocess.run(command)
     else:
         # scale Nifti data by factor 10
