@@ -29,6 +29,26 @@ Usage:
 # Log file name in destination root
 LOG_FILENAME = "reorient_log.txt"
 
+def reorient_bvecs_fsl(src_bvec, dst_bvec, ornt_trans):
+    """
+    Reorient FSL-style bvecs (3xN) using nibabel orientation transform.
+    """
+    bvec = np.loadtxt(src_bvec)
+
+    if bvec.shape[0] != 3:
+        if bvec.shape[1] == 3:
+            bvec = bvec.T
+        else:
+            raise ValueError(f"Unexpected bvec shape: {bvec.shape}")
+
+    new = np.zeros_like(bvec)
+
+    for new_ax in range(3):
+        old_ax = int(ornt_trans[new_ax, 0])
+        flip = float(ornt_trans[new_ax, 1])
+        new[new_ax, :] = flip * bvec[old_ax, :]
+
+    np.savetxt(dst_bvec, new, fmt="%.16f")
 
 def ask_target_orientation_with_default() -> str:
     """
@@ -169,11 +189,28 @@ def reorient_single_image(src_path: str, dst_path: str, target_ori: str, log):
     # If the current orientation is already the target, just copy to dst
     if curr_str == target_ori:
         log("  Current orientation already matches target. Copying image with unchanged affine.")
+
+        # copy image
         hdr_copy = img.header.copy()
         img_copy = nib.Nifti1Image(data, img.affine, header=hdr_copy)
         img_copy.set_sform(img.affine, code=img.get_sform(coded=True)[1])
         img_copy.set_qform(img.affine, code=img.get_qform(coded=True)[1])
         nib.save(img_copy, dst_path)
+
+        # ALSO copy sidecars if present (no change needed)
+        def strip_nii_ext(p):
+            if p.endswith(".nii.gz"): return p[:-7]
+            if p.endswith(".nii"):    return p[:-4]
+            return p
+
+        src_base = strip_nii_ext(src_path)
+        dst_base = strip_nii_ext(dst_path)
+
+        for ext in (".bval", ".bvec"):
+            src_sc = src_base + ext
+            dst_sc = dst_base + ext
+            if os.path.exists(src_sc):
+                shutil.copy2(src_sc, dst_sc)
         return
 
     # Build orientation arrays
@@ -184,6 +221,29 @@ def reorient_single_image(src_path: str, dst_path: str, target_ori: str, log):
 
     # Transformation from current orientation to target orientation
     ornt_trans = nio.ornt_transform(curr_ornt, target_ornt)
+
+    # --- Handle DWI sidecars (bval/bvec) ---
+    def strip_nii_ext(p):
+        if p.endswith(".nii.gz"):
+            return p[:-7]
+        if p.endswith(".nii"):
+            return p[:-4]
+        return p
+
+    src_base = strip_nii_ext(src_path)
+    dst_base = strip_nii_ext(dst_path)
+
+    src_bval = src_base + ".bval"
+    src_bvec = src_base + ".bvec"
+    dst_bval = dst_base + ".bval"
+    dst_bvec = dst_base + ".bvec"
+
+    if os.path.exists(src_bval):
+        shutil.copy2(src_bval, dst_bval)  # bval bleibt identisch
+
+    if os.path.exists(src_bvec):
+        reorient_bvecs_fsl(src_bvec, dst_bvec, ornt_trans)
+        log("  Reoriented bvec file accordingly.")
 
     # Reorient data
     log("  Applying orientation transform to image data...")
@@ -274,12 +334,16 @@ def batch_reorient(src_root: str, dst_root: str):
 
                 # NIfTI or not?
                 is_nifti = fname.endswith(".nii") or fname.endswith(".nii.gz")
+                is_sidecar = fname.endswith(".bvec") or fname.endswith(".bval")
 
                 try:
                     if is_nifti:
                         n_total_nifti += 1
                         reorient_single_image(src_path, dst_path, target_ori, log)
                         n_processed_nifti += 1
+                    elif is_sidecar:
+                        # skip: handled together with the .nii/.nii.gz
+                        continue
                     else:
                         copy_non_nifti(src_path, dst_path, log)
                         n_copied_non_nifti += 1
