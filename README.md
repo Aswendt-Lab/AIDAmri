@@ -149,14 +149,12 @@ docker build --platform linux/amd64 -t aidamri:latest -f Dockerfile .
 
 This command forces Docker to emulate an x86_64 environment on ARM-based systems. This build process takes some time—this is normal.
 During the build, you may encounter the following warnings:
-
 ```
-3 warnings found (use docker --debug to expand):
+3 warnings found (use docker --debug to expand):`
  - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
  - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
  - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
 ```
-
 These warnings are non-critical and can be safely ignored.
 When creating a container from the image, you may also see:
 
@@ -196,6 +194,150 @@ all input data for preprocessing must be in LIP (Left-Inferior-Posterior) orient
 Furthermore, the image header information must be consistent with the physical orientation of the data array. 
 Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation.
 If your data is in a different orientation than LIP please use our ReorientBatch.py script in the helpertools folder. The script should be used after convert2Nifti script and can reorient the whole proc_data folder. 
+
+## Troubleshooting / Common Issues
+
+<details>
+<summary><strong>This section lists frequently encountered problems when using AIDAmri and possible solutions.</strong></summary>
+	
+If your problem is not listed here, please use our Gitter Chat or open an issue on GitHub and include:
+- OS
+- Docker version
+- Command used
+- Full error log
+
+
+---
+
+<details>
+<summary><strong>General debugging tips</strong></summary>
+
+Always process **T2 data** first
+
+Visually inspect outputs after:
+
+- Bias correction
+
+- Brain extraction
+
+- Registration
+
+Check logs instead of relying only on exit codes
+
+</details>
+
+<details>
+<summary><strong>NIfTI orientation problems</strong></summary>
+	
+**Symptom**
+
+- Atlas is flipped or registration fails
+
+- Brain appears flipped or rotated
+
+
+**Explanation**
+
+AIDAmri expects LIP orientation for preprocessing.
+
+**Solution**
+
+We recommend verifying the NIfTI header information and the actual image orientation using the FSL tools `fsleyes` and `fslhd`. Installation instructions for FSL on the **host** system are available [here](https://fsl.fmrib.ox.ac.uk/fsl/docs/).
+
+In cases where the images are not in a consistent LIP orientation, the provided reorientation script should be applied **after** `convert2nifti` and **prior to preprocessing**.:
+
+```
+python ReorientBatch.py -i proc_data -o proc_data_reoriented
+```
+
+</details>
+
+
+<details>
+<summary><strong>Docker build takes a very long time, finishes after under 1 min or aborts</strong></summary>
+	
+**Symptom**
+
+docker build hangs for several minutes or fails during apt-get / FSL installation
+
+**Explanation**
+
+- Possible causes
+
+- Slow internet connection
+
+- Docker build cache corrupted
+
+- Insufficient disk space
+
+**Solution**
+```
+docker system prune -a
+
+docker build --no-cache -t aidamri:latest .
+```
+
+</details>
+
+<details>
+<summary><strong>A is singular, uses pseudoinverse in updateB</strong></summary>
+	
+**Symptom**
+
+`Warning: A is singular, uses pseudoinverse in updateB`
+
+**Explanation**
+
+This warning originates from the MICO bias-field correction and usually indicates:
+
+- Low SNR
+
+- Strong intensity inhomogeneities
+
+- Empty or corrupted slices
+
+**Solution**
+
+- Usually safe to ignore if preprocessing finishes successfully
+
+- Check input image for NaNs, zero-only slices or low voxel values
+
+- Verify correct image orientation before preprocessing
+
+</details>
+
+<details>
+<summary><strong>Brain extraction fails (SVD did not converge)</strong></summary>
+	
+**Symptom**
+
+`Error in brain extraction`
+
+`SVD did not converge`
+
+**Explanation**
+
+- Corrupted NIfTI header
+
+- NaN or Inf values in the image
+
+- Extreme bias-field artifacts
+
+**Solution**
+
+- Re-run bias-field correction
+
+- Reorient the image manually before preprocessing
+
+- Check header consistency:
+```
+fslhd input.nii.gz
+```
+
+</details>
+
+</details>
+
 
 ## ARA CREATOR
 [Matlab script](https://github.com/maswendt/AIDAmri/ARA) to generate a custom version of the Allen Mouse Brain Atlas.
