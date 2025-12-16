@@ -200,7 +200,7 @@ If your data is in a different orientation than LIP please use our ReorientBatch
 <details>
 <summary><strong>This section lists frequently encountered problems when using AIDAmri and possible solutions.</strong></summary>
 	
-If your problem is not listed here, please use our Gitter Chat oropen an issue on GitHub and include:
+If your problem is not listed here, please use our Gitter Chat or open an issue on GitHub and include:
 - OS
 - Docker version
 - Command used
