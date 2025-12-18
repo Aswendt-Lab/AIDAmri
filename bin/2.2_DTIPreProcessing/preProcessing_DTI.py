@@ -50,7 +50,7 @@ def reset_orientation(input_file):
 
 def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=False, species='mouse', verbose=True):
     """Apply BET"""
-    if use_bet4animal:
+    if use_bet4animal == True:
         # Use BET for animal brains - this does not work very well with some mouse diffusion data
         print("Using BET for animal brains")
         w_value = 2
@@ -190,38 +190,6 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     #     print("Final denoised image sform after copying geometry:", output.header.get_sform())
     return output_file
 
-
-# def denoise_mppca(input_file, output_path):
-#     """
-#     Denoises the input DTI image using MP-PCA (as inplemented in MRtrix3)
-#     Requires an appropriate input file (input_file) and the output path (output_path).
-#     """
-#     data = nii.load(input_file)
-#     img = data.get_fdata()
-#     affine = data.affine
-#     debug = True
-#     if debug is True:
-#         print("Debugging information:")
-#         print("Image header:", data.header)
-#         print("Affine matrix:", affine)
-#         print("Image sform:", data.header.get_sform())
-#     if img.ndim != 4:
-#         raise ValueError("Input image must be a 4D NIfTI file.")
-
-#     # Apply MP-PCA denoising
-#     denoised_img = mppca.mppca(img, n_components=5)
-
-#     # Save the denoised image
-#     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'MPPCA_Denoised.nii.gz')
-#     denoised_nii = nii.Nifti1Image(denoised_img, affine)
-#     denoised_nii.header.set_xyzt_units('mm')
-#     if debug is True:
-#         print("Denoised image header:", denoised_nii.header)
-#         print("Denoised affine matrix:", denoised_nii.affine)
-#         print("Denoised image sform:", denoised_nii.header.get_sform())
-#     nii.save(denoised_nii, output_file)
-
-#     return output_file
 
 
 def dwibiasfieldcorr(input_file,outputPath):
