@@ -137,7 +137,7 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python preProcessing_T2.py -i {currentFile[0]} --bias_method {args.biasfieldcorr}'
+                    command = f'python preProcessing_T2.py -i {currentFile[0]} --bias_method {args.biasfieldcorr} --use_bet4animal {args.bet4animal}'
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
