@@ -56,13 +56,14 @@ def n4biasfieldcorr(input_file):
 
 def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, species='mouse'):
     """Apply BET"""
-    if use_bet4animal:
+    if use_bet4animal == True:
         # Use BET for animal brains
         print("Using BET for animal brains")
+        w_value = 2
         species_id = 6 if species == 'mouse' else 5
         output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
         command = f"/aida/bin/bet4animal {input_file} {output_file} -f {frac} -m -w {w_value} -z {species_id}"
-        subprocess.run(command)
+        subprocess.run(command, shell=True)
     else:
         # scale Nifti data by factor 10
         data = nii.load(input_file)
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '-bet4animal',
         '--use_bet4animal',
-        help='Set value to 1 to use BET for animal brains',
+        help='Set value to True to use BET for animal brains',
         nargs='?',
         type=bool,
         default=False,
