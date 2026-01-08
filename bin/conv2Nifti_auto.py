@@ -333,6 +333,8 @@ def fileCopy(list_of_data, input_path):
 
 if __name__ == "__main__":
     import argparse
+    from adjustbvecRep import adjust_bvec_rep
+
     parser = argparse.ArgumentParser(description='This script automates the conversion from the raw bruker data format to the NIfTI format using 1_PV2NIfTiConverter/pv_conv2Nifti.py. The raw data needs to be in the following structure: projectfolder/days/subjects/data/. For this script to work, the groupMapping.csv needs to be adjusted, where the group name of every subject''s folder in the raw data structure needs to be specified. This script computes the converison either for all data in the raw project folder or for certain days and/or groups specified through the optional arguments -d and -g. During the processing a new folder called proc_data is being created in the same directory where the raw data folder is located. Example: python conv2Nifti_auto.py -f /Volumes/Desktop/MRI/raw_data -d Baseline P1 P7 P14 P28')
     parser.add_argument('-i', '--input', required=True,
                         help='Path to the parent project folder of the dataset, e.g. raw_data, WARNING:  all of the raw subjects have to be in one folder and not to have a subfolder structure. otherwise the conversion to bids wont work.', type=str)                 
@@ -398,6 +400,46 @@ if __name__ == "__main__":
     bids_convert(pathToRawData, output_dir)
     print("\rBIDS conversion \033[0;30;42m COMPLETED \33[0m                   ")
     
+    # adjust bvecs and bvals for diffusion data for each subject and session
+    print("Adjusting bvecs and bvals for diffusion data \33[5m...\33[0m (wait!)")
+    for subject_session_output_dir in glob.glob(os.path.join(output_dir, "sub-*", "ses-*")):
+        print(f"Processing directory: {subject_session_output_dir}")
+        # adjust bvecs and bvals for length of acquisition (number of repetitions)
+        if os.path.exists(os.path.join(subject_session_output_dir, "dwi")):
+            try:
+                adjust_bvec_rep(subject_session_output_dir)
+            except FileNotFoundError as e:
+                print(f"Valid diffusion data files missing in {subject_session_output_dir}/dwi, skipping.")
+                logging.warning(f"Valid diffusion data files missing in {subject_session_output_dir}/dwi: {e}")
+                continue
+            except Exception as e:
+                print(f"Error processing diffusion data in {subject_session_output_dir}/dwi: {e}")
+                logging.error(f"Error processing diffusion data in {subject_session_output_dir}/dwi: {e}")
+                continue
+        else:
+            print(f"No diffusion data found in {subject_session_output_dir}, skipping.")
+            logging.warning(f"No diffusion data found in {subject_session_output_dir}, skipping.")
+            continue
+    print("\rAdjusting bvecs and bvals \033[0;30;42m COMPLETED \33[0m       ")
+
+    # plot QC images for nifti files
+    print("Plotting QC images for nifti files \33[5m...\33[0m (wait!)")
+    from helper_tools.plot_sourcedata_niftis import process_subject, write_html_report
+    qc_output_dir = os.path.join(output_dir, "qc_images")
+    if not os.path.exists(qc_output_dir):
+        os.mkdir(qc_output_dir)
+    report_entries = []
+    for subject_dir in glob.glob(os.path.join(output_dir, "sub-*")):
+        subject_id = os.path.basename(subject_dir)
+        print(f"Processing subject: {subject_id}")
+        report_entries.extend(process_subject(subject_dir, qc_output_dir, n_slices=10))
+    if report_entries:
+        write_html_report(report_entries, qc_output_dir)
+        print(f"QC report written to {os.path.join(qc_output_dir, 'sub-*_ses-*_qc_report.html')}")
+    else:
+        print("No NIfTI files found for QC reporting.")
+        logging.warning("No NIfTI files found for QC reporting.")
+
     # find MEMS and fmri files 
     mese_scan_data = {}
     mese_scan_ids = []
@@ -420,7 +462,7 @@ if __name__ == "__main__":
                     fmri_scan_ids[row["RawData"]]["SessID"] = row["SessID"]
                     fmri_scan_ids[row["RawData"]]["SubjID"] = row["SubjID"]           
     
-    # iterate over all fmri scans to calculate and save costum slice timings
+    # iterate over all fmri scans to calculate and save custom slice timings
     for sub, data in fmri_scan_ids.items():
         scanid = str(data["ScanID"])
         sessid = str(data["SessID"])

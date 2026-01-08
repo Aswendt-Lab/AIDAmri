@@ -234,7 +234,7 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
     # Mask
     outputMaskScaled = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-    dataMask = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_mask.nii.gz'))
+    dataMask = nii.load(os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Mask.nii.gz'))
     imgMask = dataMask.get_fdata()
 
     imgMask = np.flip(imgMask, 2)
@@ -421,8 +421,13 @@ if __name__ == "__main__":
     output = regABA2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
 
     current_dir = os.path.dirname(inputVolume)
-    search_string = os.path.join(current_dir, "*dwi.nii.gz")
-    currentFile = glob.glob(search_string)
+    # look for denoised data and register if found
+    search_string = os.path.join(current_dir, "*Patch2SelfDenoised.nii.gz")
+    if os.path.exists(search_string):
+        currentFile = glob.glob(search_string)
+    else:
+        search_string = os.path.join(current_dir, "*dwi.nii.gz")
+        currentFile = glob.glob(search_string)  
 
     search_string = os.path.join(current_dir, "*.nii*")
     created_imgs = glob.glob(search_string, recursive=True)

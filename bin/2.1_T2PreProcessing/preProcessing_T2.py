@@ -16,6 +16,7 @@ import numpy as np
 import applyMICO
 import subprocess
 import shutil
+import nipype.interfaces.ants as ants
 
 def reset_orientation(input_file):
 
@@ -42,47 +43,62 @@ def reset_orientation(input_file):
     subprocess.run(forceradiological_command, shell=True)
 
 
+def n4biasfieldcorr(input_file):
+    output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
+    # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
+    myAnts = ants.N4BiasFieldCorrection(input_image=input_file, output_image=output_file,
+                                        shrink_factor=2, bspline_fitting_distance=20,
+                                        bspline_order=3, n_iterations=[50, 50, 50, 50, 0], dimension=3)
+    myAnts.run()
+    print("Biasfield correction completed")
+    return output_file
 
-def applyBET(input_file,frac,radius,vertical_gradient):
+
+def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, species='mouse'):
     """Apply BET"""
-    # scale Nifti data by factor 10
-    data = nii.load(input_file)
-    imgTemp = data.get_fdata()
-    scale = np.eye(4)* 10
-    scale[3][3] = 1
+    if use_bet4animal == True:
+        # Use BET for animal brains
+        print("Using BET for animal brains")
+        w_value = 2
+        species_id = 6 if species == 'mouse' else 5
+        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+        command = f"/aida/bin/bet4animal {input_file} {output_file} -f {frac} -m -w {w_value} -z {species_id}"
+        subprocess.run(command, shell=True)
+    else:
+        # scale Nifti data by factor 10
+        data = nii.load(input_file)
+        imgTemp = data.get_fdata()
+        scale = np.eye(4) * 10
+        scale[3][3] = 1
+        imgTemp = np.flip(imgTemp, 2)
 
-    # this has to be adapted in the case the output image is not RAS orientated - Siding from feet to nose
-    # AIDAmri expects the brkraw data to be anterior - posterior. If this is not the case this axis flip has to be adjusted
-    imgTemp = np.flip(imgTemp,2)# z-flip
-    #imgTemp = np.flip(imgTemp, 0)
-    #imgTemp = np.rot90(imgTemp, 2)
+        scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
+        hdrIn = scaledNiiData.header
+        hdrIn.set_xyzt_units('mm')
+        scaledNiiData = nii.as_closest_canonical(scaledNiiData)
 
-    scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-    hdrIn = scaledNiiData.header
-    hdrIn.set_xyzt_units('mm')
-    scaledNiiData = nii.as_closest_canonical(scaledNiiData)
+        fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
+        nii.save(scaledNiiData, fslPath)
 
-    fslPath = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
-    nii.save(scaledNiiData, fslPath)
+        # extract brain
+        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
 
-    # extract brain
-    output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+        myBet = fsl.BET(in_file=fslPath, out_file=output_file, frac=frac, radius=radius,
+                        vertical_gradient=vertical_gradient, robust=True, mask=True)
+        myBet.run()
+        os.remove(fslPath)
 
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
-                    vertical_gradient=vertical_gradient,robust=True, mask = True)
-    myBet.run()
-    os.remove(fslPath)
+        # unscale result data by factor 10ˆ(-1)
+        dataOut = nii.load(output_file)
+        imgOut = dataOut.get_fdata()
+        scale = np.eye(4) / 10
+        scale[3][3] = 1
 
-    # unscale result data by factor 10ˆ(-1)
-    dataOut = nii.load(output_file)
-    imgOut = dataOut.get_fdata()
-    scale = np.eye(4)/ 10
-    scale[3][3] = 1
-
-    unscaledNiiData = nii.Nifti1Image(imgOut, dataOut.affine * scale)
-    hdrOut = unscaledNiiData.header
-    hdrOut.set_xyzt_units('mm')
-    nii.save(unscaledNiiData, output_file)
+        unscaledNiiData = nii.Nifti1Image(imgOut, dataOut.affine * scale)
+        hdrOut = unscaledNiiData.header
+        hdrOut.set_xyzt_units('mm')
+        nii.save(unscaledNiiData, output_file)
+    print(f"Brain extraction completed, output saved to {output_file}")
     return output_file
 
 #%% Program
@@ -128,6 +144,22 @@ if __name__ == "__main__":
         type=float, 
         default=0.0,
         )
+    parser.add_argument(
+        '-bias_method',
+        '--bias_method',
+        help='Biasfield correction method - default="mico", other options are "mico" or "ants"',
+        nargs='?',
+        type=str,
+        default="mico",
+        )
+    parser.add_argument(
+        '-bet4animal',
+        '--use_bet4animal',
+        help='Set value to True to use BET for animal brains',
+        nargs='?',
+        type=bool,
+        default=False,
+        )
 
     args = parser.parse_args()
 
@@ -142,6 +174,7 @@ if __name__ == "__main__":
     radius = args.radius
     vertical_gradient = args.vertical_gradient
     bias_skip = args.bias_skip
+    bias_method = args.bias_method
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
@@ -151,19 +184,31 @@ if __name__ == "__main__":
     #intensity correction using non parametric bias field correction algorithm
     print("Starting Biasfieldcorrection:")
     if bias_skip == 0:
-        try:
-            outputMICO = applyMICO.run_MICO(input_file,os.path.dirname(input_file))
-            print("Biasfieldcorrecttion was successful")
-        except Exception as e:
-            print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
-            raise
+        if bias_method == "mico":
+            try:
+                outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
+                print("Biasfield correction was successful")
+            except Exception as e:
+                print(f'Error in bias field correction\nError message: {str(e)}')
+                raise
+        elif bias_method == "ants":
+            try:
+                outputBiasCorr = n4biasfieldcorr(input_file=input_file)
+                print("Biasfield correction was successful")
+            except Exception as e:
+                print(f'Error in bias field correction\nError message: {str(e)}')
+                raise
     else:
-        outputMICO = input_file
-        
+        outputBiasCorr = input_file
+    
+    print(os.path.exists(outputBiasCorr))
+
+    use_bet4animal = args.use_bet4animal
+
     # brain extraction
     print("Starting brain extraction")
     try:
-        outputBET = applyBET(input_file=outputMICO,frac=frac,radius=radius,vertical_gradient=vertical_gradient)
+        outputBET = applyBET(input_file=outputBiasCorr,frac=frac,radius=radius,vertical_gradient=vertical_gradient,use_bet4animal=use_bet4animal)
         print("Brain extraction was successful")
     except Exception as e:
         print(f'Error in brain extraction\nFehlermeldung: {str(e)}')

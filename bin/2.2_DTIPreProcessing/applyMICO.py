@@ -252,4 +252,5 @@ if __name__ == "__main__":
     if not os.path.exists(input):
         sys.exit("Error: '%s' is not an existing directory of file %s is not in directory." % (input, args.file,))
 
-    result = run_MICO(input)
+    #result = run_MICO(input)
+    result = input

@@ -40,11 +40,65 @@ if __name__ == '__main__':
                         default='auto',  # Default to 'auto' for automatic selection
                         help='Specify the b-table source: "auto" (will look for bvec and bval, create the btable. If val or vec can not be found, it uses the Jones30 file)'
                         )
+    parser.add_argument('-r',
+                        '--recon_method',
+                        default='dti',
+                        help='Specify diffusion reconstruction method ("gqi" or default "dti").',
+                        required=False
+                       )
+    parser.add_argument('-v',
+                        '--vivo',
+                        default='in_vivo',
+                        help='Specify in vivo or ex vivo data to adjust sampling length ratio (param0). "in_vivo" param0=1.25 (default), "ex_vivo" param0=0.60.',
+                        required=False
+                       )
+    parser.add_argument('-m',
+                        '--make_isotropic',
+                        default=0,
+                        help='Specify an isotropic voxel size in mm for resampling. Default 0 = no resampling. "auto" uses nibabel to read the NIFTI header for the minimum voxel size',
+                        required=False
+                       )
+    parser.add_argument('-t',
+                        '--track_params',
+                        default='default',
+                        help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
+                        required=False
+                       )
+    parser.add_argument('-y',
+                        '--flip_image_y',
+                        default=False,
+                        help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.',
+                        required=False
+                       )
+    parser.add_argument('-template',
+                        '--template',
+                        default=1,
+                        help='Specify the template to use for the reconstruction. Default is 1 (mouse). Other options are "Rat" (5) or "Mouse" (1).',
+                        required=False
+                       )
+    parser.add_argument('-thread_count',
+                        '--thread_count',
+                        default=1,
+                        help='Specify the number of threads to use for fiber tracking. Default is 1.',
+                        required=False
+                        )
+    parser.add_argument('-l',
+                        '--legacy',
+                        default=False,
+                        help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient ".sz" and ".fz" file types)',
+                        required=False
+                        )
+    parser.add_argument('-nomcf',
+                        '--no_motion_correction',
+                        default=False,
+                        help='Specify whether to skip motion correction. Default is False (perform motion correction). Set to "true" to skip motion correction.',
+                        required=False
+                        )
     parser.add_argument('-o',
                         '--optional',
                         nargs = '*',
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
-                        )    
+                        )
     args = parser.parse_args()
         
      # Determine the btable source based on the -b option
@@ -55,7 +109,7 @@ if __name__ == '__main__':
         # Use the default "Jones30" btable
             b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/DTI_Jones30.txt'
 
-
+    bet4animal = False
     # Preparing directories
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
@@ -63,23 +117,69 @@ if __name__ == '__main__':
     dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii'))
     if not dir_mask:
         dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz')) # check for ending (either .nii or .nii.gz)
+        if not dir_mask:
+            # check for mask without scaled in name
+            dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz'))
+            bet4animal = True
+            
     dir_mask = dir_mask[0]
 
     dir_out = args.file_in
 
+    make_isotropic=0
+    if args.make_isotropic != 0:
+        make_isotropic=args.make_isotropic
+    
+    flip_image_y = False
+    if args.flip_image_y is None:
+        flip_image_y = False
+    elif str(args.flip_image_y).lower() == 'true':
+        flip_image_y = True
+    
+    template = 6
+    if args.template.lower() == 'rat':
+        template = 5
+    elif args.template.lower() == 'mouse' or str(args.template) == '1':
+        template = 6
+    else:
+        try:
+            template = int(args.template)
+        except ValueError:
+            print(f"Invalid template value: {args.template}. Using default template 6 (mouse).")
+            template = 6
+
+    # if it exists, find the denoised dwi data and use it as file_in
+    if os.path.exists(file_cur):
+        file_in = glob.glob(os.path.join(file_cur, '*Denoised.nii*'))
+        if file_in:
+            file_in = file_in[0]
+
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
-    os.mkdir(mcf_path)
-    file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
-    dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table)
+   
+    if args.no_motion_correction is True or str(args.no_motion_correction).lower() == 'true':
+        print("Skipping motion correction")
+    else:
+        print("Performing slice-wise motion correction")
+        os.mkdir(mcf_path)
+        # Use FSL's SeparateSliceMoCo to perform motion correction
+        if not os.path.exists(dsi_path):
+            os.makedirs(dsi_path)
+        file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
+
+    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y, template, args.legacy)
     file_in = os.path.join(file_cur,'fib_map')
+
+    track_param = args.track_params
 
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools.tracking(dsi_studio, file_in)
+    dsi_tools.tracking(dsi_studio, file_in, track_param, voxel_size, args.thread_count, args.legacy)
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
+    # if bet4animal is True:
+    #     suffixes = ['*StrokeMask.nii', '*parental_Mask.nii', '*Anno.nii', '*AnnoSplit_parental.nii']
     for f in suffixes:
         dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
         if not dir_seeds:
@@ -87,13 +187,22 @@ if __name__ == '__main__':
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
-        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con)
+        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y, args.legacy)
 
     # rename files to reduce path length
     confiles = os.path.join(file_cur,dir_con)
     data_list = os.listdir(confiles)
     for filename in data_list:
-        splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
+        if args.recon_method == "dti":
+            if args.legacy:
+                splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
+            else:
+                splittedName = filename.split('.sz.dti.fz.trk.gz.')
+        elif args.recon_method == "gqi":
+            if args.legacy:
+                splittedName = filename.split('.src.gz.gqi.fib.gz.trk.gz.')
+            else:
+                splittedName = filename.split('.sz.gqi.fz.trk.gz.')
         if len(splittedName)>1:
             newName = splittedName[1]
             newName = os.path.join(confiles,newName)
