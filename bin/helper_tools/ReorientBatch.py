@@ -101,7 +101,7 @@ def copy_sidecars_if_present(src_base: str, dst_base: str, *, reorient: bool, or
 def ask_target_orientation_with_default(non_interactive: bool, target_cli: Optional[str]) -> str:
     if non_interactive:
         if not target_cli:
-            raise ValueError("--n was set but -t is missing.")
+            raise ValueError("-n was set but -t is missing.")
         return target_cli.upper()
 
     # if target_cli set, dont ask
