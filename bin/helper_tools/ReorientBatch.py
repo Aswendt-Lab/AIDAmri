@@ -101,7 +101,7 @@ def copy_sidecars_if_present(src_base: str, dst_base: str, *, reorient: bool, or
 def ask_target_orientation_with_default(non_interactive: bool, target_cli: Optional[str]) -> str:
     if non_interactive:
         if not target_cli:
-            raise ValueError("--non-interactive was set but --target is missing.")
+            raise ValueError("-n was set but -t is missing.")
         return target_cli.upper()
 
     # if target_cli set, dont ask
@@ -284,37 +284,41 @@ def validate_target_ori(ori: str) -> str:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Batch reorientation of NIfTI files using nibabel (AIDAmri compatible)."
+        description="Batch reorientation of NIfTI files (AIDAmri compatible)."
     )
 
     parser.add_argument(
-        "--src-root",
+        "-i",
         required=True,
-        help="Source root directory (BIDS-like proc_data)"
+        metavar="INPUT_ROOT",
+        help="Input root directory (BIDS-like proc_data)"
     )
 
     parser.add_argument(
-        "--dst-root",
+        "-o",
         required=True,
-        help="Destination root directory for reoriented data"
+        metavar="OUTPUT_ROOT",
+        help="Output root directory for reoriented data"
     )
 
     parser.add_argument(
-        "--target",
+        "-t",
+        metavar="ORI",
         default=None,
-        help="Target orientation"
+        help="Target orientation (e.g. LIP). If omitted, ask interactively."
     )
 
     parser.add_argument(
-        "--log",
+        "-l",
         default="reorient_log.txt",
-        help="Log filename (written into dst-root)"
+        metavar="LOGFILE",
+        help="Log filename (written into output root)"
     )
 
     parser.add_argument(
-        "--non-interactive",
+        "-n",
         action="store_true",
-        help="Do not ask questions, use --target directly"
+        help="Non-interactive mode (requires -t)"
     )
 
     return parser.parse_args()
@@ -322,9 +326,11 @@ def parse_args():
 def main():
     args = parse_args()
 
-    src_root = args.src_root
-    dst_root = args.dst_root
-    LOG_FILENAME = args.log
+    src_root = args.i
+    dst_root = args.o
+    LOG_FILENAME = args.l
+    target_cli = args.t
+    non_interactive = args.n
 
     if not os.path.isdir(src_root):
         print(f"Source root folder not found:\n{src_root}")
@@ -334,8 +340,8 @@ def main():
     log_path = os.path.join(dst_root, LOG_FILENAME)
 
     target_ori = ask_target_orientation_with_default(
-        non_interactive=args.non_interactive,
-        target_cli=args.target
+        non_interactive=non_interactive,
+        target_cli=target_cli
     )
     target_ori = validate_target_ori(target_ori)
 
