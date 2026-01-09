@@ -342,7 +342,7 @@ fslhd input.nii.gz
 ## ARA CREATOR
 [Matlab script](https://github.com/maswendt/AIDAmri/ARA) to generate a custom version of the Allen Mouse Brain Atlas.
 
-[<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
+[<h3><b>CONTACT</h3></b>]
 If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 or 
@@ -350,7 +350,7 @@ or
 join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Google Meet](https://img.shields.io/badge/Google%20Meet-00897B?style=for-the-badge&logo=google-meet&logoColor=white)](https://meet.google.com/hsk-bmpj-meg)
 
 
-For all other inquiries: Markus Aswendt (markus.aswendt@uk-koeln.de)
+For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)
 
 <h3><b>LICENSE/CITATION</h3></b>
 GNU General Public License v3.0
