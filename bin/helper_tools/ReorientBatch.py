@@ -9,6 +9,7 @@ import argparse
 import numpy as np
 import nibabel as nib
 from nibabel import orientations as nio
+from typing import Optional
 
 
 """
@@ -26,14 +27,26 @@ Usage:
   header information is preserved where possible.
 """
 
-# Log file name in destination root
-LOG_FILENAME = "reorient_log.txt"
+def strip_nii_ext(p: str) -> str:
+    if p.endswith(".nii.gz"):
+        return p[:-7]
+    if p.endswith(".nii"):
+        return p[:-4]
+    return p
 
-def reorient_bvecs_fsl(src_bvec, dst_bvec, ornt_trans):
+
+def reorient_bvecs_fsl(src_bvec: str, dst_bvec: str, ornt_trans: np.ndarray):
     """
     Reorient FSL-style bvecs (3xN) using nibabel orientation transform.
+
+    ornt_trans is expected to map from NEW (target) axes to OLD (current) axes,
+    i.e. the inverse transform relative to the data reorientation.
     """
     bvec = np.loadtxt(src_bvec)
+
+    # Allow both 3xN (FSL) and Nx3
+    if bvec.ndim != 2:
+        raise ValueError(f"Unexpected bvec ndim: {bvec.ndim}")
 
     if bvec.shape[0] != 3:
         if bvec.shape[1] == 3:
@@ -50,17 +63,51 @@ def reorient_bvecs_fsl(src_bvec, dst_bvec, ornt_trans):
 
     np.savetxt(dst_bvec, new, fmt="%.16f")
 
-def ask_target_orientation_with_default() -> str:
-    """
-    Ask the user whether to reorient to the AIDAmri orientation (LIP).
-    If not, ask for a custom 3-letter target orientation.
 
-    Returns
-    -------
-    ori : str
-        Valid orientation string of length 3 consisting of letters
-        from {L, R, A, P, S, I}, e.g. 'LIP', 'RAS', 'LPI'.
+def copy_sidecars_if_present(src_base: str, dst_base: str, *, reorient: bool, ornt_trans=None, log=None):
     """
+    Copy bval and (optionally reorient) bvec sidecars from src_base to dst_base.
+    """
+    src_bval = src_base + ".bval"
+    src_bvec = src_base + ".bvec"
+    dst_bval = dst_base + ".bval"
+    dst_bvec = dst_base + ".bvec"
+
+    has_bval = os.path.exists(src_bval)
+    has_bvec = os.path.exists(src_bvec)
+
+    if not (has_bval or has_bvec):
+        return
+
+    os.makedirs(os.path.dirname(dst_base), exist_ok=True)
+
+    if has_bval:
+        shutil.copy2(src_bval, dst_bval)
+        if log:
+            log("  Sidecar: copied .bval")
+
+    if has_bvec:
+        if reorient:
+            if ornt_trans is None:
+                raise ValueError("ornt_trans is required to reorient bvecs")
+            reorient_bvecs_fsl(src_bvec, dst_bvec, ornt_trans)
+            if log:
+                log("  Sidecar: reoriented .bvec")
+        else:
+            shutil.copy2(src_bvec, dst_bvec)
+            if log:
+                log("  Sidecar: copied .bvec (no reorientation)")
+
+def ask_target_orientation_with_default(non_interactive: bool, target_cli: Optional[str]) -> str:
+    if non_interactive:
+        if not target_cli:
+            raise ValueError("--non-interactive was set but --target is missing.")
+        return target_cli.upper()
+
+    # if target_cli set, dont ask
+    if target_cli:
+        return target_cli.upper()
+
     while True:
         ans = input(
             "\nDo you want to reorient all images to the AIDAmri default orientation LIP "
@@ -74,206 +121,146 @@ def ask_target_orientation_with_default() -> str:
         else:
             print("Please answer 'y' (yes) or 'n' (no).")
 
-    # Custom target orientation
     while True:
         ori = input(
-            "Please enter the target orientation for all images "
-            "(three letters from {L, R, A, P, S, I}, e.g. 'RAS', 'LPI', 'LIP'): "
+            "Please enter the target orientation "
+            "(three letters from {L, R, A, P, S, I}): "
         ).strip().upper()
 
-        if len(ori) != 3:
-            print("Target orientation must consist of exactly 3 letters.")
-            continue
-
-        if not set(ori).issubset(set("LRAPSI")):
-            print("Only letters from {L, R, A, P, S, I} are allowed.")
-            continue
-
-        # Check that each spatial axis (x, y, z) is represented exactly once
-        axes = set()
-        for c in ori:
-            if c in "LR":
-                axes.add("x")
-            elif c in "AP":
-                axes.add("y")
-            elif c in "SI":
-                axes.add("z")
-
-        if axes != {"x", "y", "z"}:
-            print(
-                "Invalid combination: each of the axis pairs must appear exactly once:\n"
-                "  - L or R for the x-axis\n"
-                "  - A or P for the y-axis\n"
-                "  - S or I for the z-axis"
-            )
+        if len(ori) != 3 or not set(ori).issubset(set("LRAPSI")):
+            print("Invalid orientation.")
             continue
 
         return ori
 
 
-def get_orientation_from_fsl(path: str, log) -> str:
+
+def get_current_orientation(img: nib.Nifti1Image):
     """
-    Retrieve the image orientation using FSL (fslorient -getsform)
-    and convert it into orientation codes (L/R, A/P, S/I).
+    Determine current orientation from the 'active' transform:
+    prefer sform if sform_code > 0, else qform if qform_code > 0,
+    else fall back to img.affine.
 
-    If fslorient does not return a valid 4x4 sform matrix, fall back to
-    nibabel's affine.
+    Returns (ori_str, src_label, affine_used)
     """
-    cmd = ["fslorient", "-getsform", path]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+    hdr = img.header
+    s_code = int(hdr["sform_code"])
+    q_code = int(hdr["qform_code"])
 
-    txt = res.stdout.strip()
+    if s_code > 0:
+        A = img.get_sform()
+        src = f"sform (code={s_code})"
+    elif q_code > 0:
+        A = img.get_qform()
+        src = f"qform (code={q_code})"
+    else:
+        A = img.affine
+        src = "img.affine (fallback)"
 
-    # If FSL failed or returned nothing, fall back to nibabel
-    if res.returncode != 0 or not txt:
-        log("  Warning: Could not retrieve SForm using fslorient. Falling back to nibabel affine.")
-        img = nib.load(path)
-        return "".join(nio.aff2axcodes(img.affine))
+    ori = "".join(nio.aff2axcodes(A))
+    return ori, src, A
 
-    # Parse lines containing numeric values
-    lines = [ln.strip() for ln in txt.splitlines() if ln.strip()]
-    rows = []
-    for ln in lines:
-        parts = ln.split()
-        nums = []
-        for p in parts:
-            try:
-                nums.append(float(p))
-            except ValueError:
-                # Ignore non-numeric tokens, if any
-                continue
-        if len(nums) >= 4:
-            rows.append(nums[:4])
 
-    # If we did not get any numeric rows, fall back
-    if len(rows) == 0:
-        log("  Warning: fslorient output could not be parsed as a matrix. Falling back to nibabel affine.")
-        img = nib.load(path)
-        return "".join(nio.aff2axcodes(img.affine))
+def reorient_image(img: nib.Nifti1Image, target_ori: str, current_ori: str, base_affine: np.ndarray, log=None):
+    """
+    Returns: (img_new, did_reorient: bool, ornt_trans_for_bvecs_or_None)
+    """
+    data = img.get_fdata(dtype=np.float32)
+    data = np.ascontiguousarray(data, dtype=np.float32)
 
-    sform = np.array(rows, dtype=float)
+    if log:
+        log(f"  Target orientation: {target_ori}")
 
-    # Try to reshape to 4x4; if that fails, fall back
-    if sform.size != 16:
-        log("  Warning: fslorient did not return a 4x4 sform matrix. Falling back to nibabel affine.")
-        img = nib.load(path)
-        return "".join(nio.aff2axcodes(img.affine))
+    if current_ori == target_ori:
+        if log:
+            log("  Current orientation already matches target. No reorientation is applied.")
 
-    sform = sform.reshape(4, 4)
+        hdr_copy = img.header.copy()
+        img_copy = nib.Nifti1Image(data, base_affine, header=hdr_copy)
 
-    # Convert matrix -> axis codes
-    axcodes = nio.aff2axcodes(sform)
-    return "".join(axcodes)
+        s_code = int(img.header["sform_code"])
+        q_code = int(img.header["qform_code"])
+        img_copy.set_sform(base_affine, code=(s_code if s_code > 0 else 1))
+        img_copy.set_qform(base_affine, code=(q_code if q_code > 0 else 1))
+
+        return img_copy, False, None
+
+    curr_ornt = nio.axcodes2ornt(tuple(current_ori))
+    target_ornt = nio.axcodes2ornt(tuple(target_ori))
+
+    # data transform: current -> target
+    ornt_trans = nio.ornt_transform(curr_ornt, target_ornt)
+
+    # bvec transform: target -> current (inverse), as in your single-file script
+    ornt_trans_bvec = nio.ornt_transform(target_ornt, curr_ornt)
+
+    if log:
+        log("  Applying orientation transform to image data...")
+
+    data_reoriented = nio.apply_orientation(data, ornt_trans)
+
+    if log:
+        log("  Updating affine for new orientation...")
+
+    inv_aff = nio.inv_ornt_aff(ornt_trans, img.shape[:3])
+    new_affine = base_affine @ inv_aff
+
+    hdr = img.header.copy()
+    hdr.set_data_dtype(np.float32)
+
+    # robustness after permutation/flip:
+    hdr.set_data_shape(data_reoriented.shape)
+
+    # optional but recommended: reset freq/phase/slice info (can become wrong after permutation)
+    try:
+        hdr["dim_info"] = 0
+    except Exception:
+        pass
+
+    img_new = nib.Nifti1Image(data_reoriented, new_affine, header=hdr)
+    img_new.set_sform(new_affine, code=1)
+    img_new.set_qform(new_affine, code=1)
+
+    if log:
+        new_str = "".join(nio.aff2axcodes(new_affine))
+        log(f"  New orientation (from affine): {new_str}")
+
+    return img_new, True, ornt_trans_bvec
 
 
 def reorient_single_image(src_path: str, dst_path: str, target_ori: str, log):
-    """
-    Load a single NIfTI image, reorient it to the target orientation,
-    and save it to dst_path, preserving header information where possible.
-    All messages go to the log function.
-    """
     log("")
     log("Processing file:")
     log(f"  Source:      {src_path}")
     log(f"  Destination: {dst_path}")
 
     img = nib.load(src_path)
-    data = img.get_fdata(dtype=np.float32)
-    data = np.ascontiguousarray(data, dtype=np.float32)
 
-    # Determine current orientation
-    curr_str = get_orientation_from_fsl(src_path, log)
-    log(f"  Current orientation: {curr_str}")
-    log(f"  Target orientation:  {target_ori}")
+    current_ori, ori_src, A_used = get_current_orientation(img)
+    log(f"  Current orientation (from {ori_src}): {current_ori}")
+    log(f"  Target orientation:                {target_ori}")
 
-    # If the current orientation is already the target, just copy to dst
-    if curr_str == target_ori:
-        log("  Current orientation already matches target. Copying image with unchanged affine.")
+    img_out, did_reorient, bvec_ornt = reorient_image(
+        img, target_ori, current_ori, A_used, log=log
+    )
 
-        # copy image
-        hdr_copy = img.header.copy()
-        img_copy = nib.Nifti1Image(data, img.affine, header=hdr_copy)
-        img_copy.set_sform(img.affine, code=img.get_sform(coded=True)[1])
-        img_copy.set_qform(img.affine, code=img.get_qform(coded=True)[1])
-        nib.save(img_copy, dst_path)
+    nib.save(img_out, dst_path)
+    log("  Saved NIfTI.")
 
-        # ALSO copy sidecars if present (no change needed)
-        def strip_nii_ext(p):
-            if p.endswith(".nii.gz"): return p[:-7]
-            if p.endswith(".nii"):    return p[:-4]
-            return p
-
-        src_base = strip_nii_ext(src_path)
-        dst_base = strip_nii_ext(dst_path)
-
-        for ext in (".bval", ".bvec"):
-            src_sc = src_base + ext
-            dst_sc = dst_base + ext
-            if os.path.exists(src_sc):
-                shutil.copy2(src_sc, dst_sc)
-        return
-
-    # Build orientation arrays
-    curr_axcodes = tuple(curr_str)
-    curr_ornt = nio.axcodes2ornt(curr_axcodes)
-    target_axcodes = tuple(target_ori)
-    target_ornt = nio.axcodes2ornt(target_axcodes)
-
-    # Transformation from current orientation to target orientation
-    ornt_trans = nio.ornt_transform(curr_ornt, target_ornt)
-
-    # --- Handle DWI sidecars (bval/bvec) ---
-    def strip_nii_ext(p):
-        if p.endswith(".nii.gz"):
-            return p[:-7]
-        if p.endswith(".nii"):
-            return p[:-4]
-        return p
-
+    # Sidecars (.bval/.bvec) handled here
     src_base = strip_nii_ext(src_path)
     dst_base = strip_nii_ext(dst_path)
 
-    src_bval = src_base + ".bval"
-    src_bvec = src_base + ".bvec"
-    dst_bval = dst_base + ".bval"
-    dst_bvec = dst_base + ".bvec"
-
-    if os.path.exists(src_bval):
-        shutil.copy2(src_bval, dst_bval)  # bval bleibt identisch
-
-    if os.path.exists(src_bvec):
-        reorient_bvecs_fsl(src_bvec, dst_bvec, ornt_trans)
-        log("  Reoriented bvec file accordingly.")
-
-    # Reorient data
-    log("  Applying orientation transform to image data...")
-    data_reoriented = nio.apply_orientation(data, ornt_trans)
-
-    # Compute new affine consistent with the reoriented data
-    log("  Updating affine for new orientation...")
-    inv_aff = nio.inv_ornt_aff(ornt_trans, img.shape[:3])
-    new_affine = img.affine @ inv_aff
-
-    # Build new image, preserving header except for affine/sform/qform
-    hdr = img.header.copy()
-    hdr.set_data_dtype(np.float32)
-
-    img_new = nib.Nifti1Image(data_reoriented, new_affine, header=hdr)
-    img_new.set_sform(new_affine, code=1)
-    img_new.set_qform(new_affine, code=1)
-
-    # Report new orientation
-    new_axcodes = nio.aff2axcodes(new_affine)
-    new_str = "".join(new_axcodes)
-    log(f"  New orientation (from affine): {new_str}")
-
-    nib.save(img_new, dst_path)
+    copy_sidecars_if_present(
+        src_base,
+        dst_base,
+        reorient=did_reorient,
+        ornt_trans=bvec_ornt,
+        log=log,
+    )
 
 
 def copy_non_nifti(src_path: str, dst_path: str, log):
-    """
-    Copy a non-NIfTI file unchanged to the destination path.
-    """
     log("")
     log("Copying non-NIfTI file:")
     log(f"  Source:      {src_path}")
@@ -281,11 +268,64 @@ def copy_non_nifti(src_path: str, dst_path: str, log):
     shutil.copy2(src_path, dst_path)
 
 
-def batch_reorient(src_root: str, dst_root: str):
-    """
-    Batch-process all files under src_root and mirror them under dst_root.
-    """
-    # --- Sanity checks for root folders ---
+
+def validate_target_ori(ori: str) -> str:
+    ori = ori.strip().upper()
+    if len(ori) != 3 or not set(ori).issubset(set("LRAPSI")):
+        raise ValueError(f"Invalid orientation: {ori}")
+    axes = set()
+    for c in ori:
+        if c in "LR": axes.add("x")
+        elif c in "AP": axes.add("y")
+        elif c in "SI": axes.add("z")
+    if axes != {"x", "y", "z"}:
+        raise ValueError(f"Invalid axis combination in orientation: {ori}")
+    return ori
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Batch reorientation of NIfTI files using nibabel (AIDAmri compatible)."
+    )
+
+    parser.add_argument(
+        "--src-root",
+        required=True,
+        help="Source root directory (BIDS-like proc_data)"
+    )
+
+    parser.add_argument(
+        "--dst-root",
+        required=True,
+        help="Destination root directory for reoriented data"
+    )
+
+    parser.add_argument(
+        "--target",
+        default=None,
+        help="Target orientation"
+    )
+
+    parser.add_argument(
+        "--log",
+        default="reorient_log.txt",
+        help="Log filename (written into dst-root)"
+    )
+
+    parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Do not ask questions, use --target directly"
+    )
+
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+
+    src_root = args.src_root
+    dst_root = args.dst_root
+    LOG_FILENAME = args.log
+
     if not os.path.isdir(src_root):
         print(f"Source root folder not found:\n{src_root}")
         sys.exit(1)
@@ -293,8 +333,11 @@ def batch_reorient(src_root: str, dst_root: str):
     os.makedirs(dst_root, exist_ok=True)
     log_path = os.path.join(dst_root, LOG_FILENAME)
 
-    # --- Ask once for target orientation (default option: LIP) ---
-    target_ori = ask_target_orientation_with_default()
+    target_ori = ask_target_orientation_with_default(
+        non_interactive=args.non_interactive,
+        target_cli=args.target
+    )
+    target_ori = validate_target_ori(target_ori)
 
     # --- Count total files for progress bar ---
     total_files = 0
@@ -322,17 +365,14 @@ def batch_reorient(src_root: str, dst_root: str):
         log(f"Destination root: {dst_root}")
         log(f"Total files (NIfTI + non-NIfTI): {total_files}")
 
-        # --- Walk through src_root and process all files ---
         for root, dirs, files in os.walk(src_root):
             for fname in files:
                 src_path = os.path.join(root, fname)
                 rel_path = os.path.relpath(src_path, src_root)
                 dst_path = os.path.join(dst_root, rel_path)
 
-                # Ensure target directory exists
                 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
-                # NIfTI or not?
                 is_nifti = fname.endswith(".nii") or fname.endswith(".nii.gz")
                 is_sidecar = fname.endswith(".bvec") or fname.endswith(".bval")
 
@@ -342,16 +382,14 @@ def batch_reorient(src_root: str, dst_root: str):
                         reorient_single_image(src_path, dst_path, target_ori, log)
                         n_processed_nifti += 1
                     elif is_sidecar:
-                        # skip: handled together with the .nii/.nii.gz
-                        continue
+                        # skip: handled with the image
+                        pass
                     else:
                         copy_non_nifti(src_path, dst_path, log)
                         n_copied_non_nifti += 1
                 except Exception as e:
                     any_errors = True
-                    # Short message for terminal:
                     print(f"\nError processing file: {rel_path}: {e.__class__.__name__}: {e}", file=sys.stderr)
-                    # Detailed message for logfile:
                     log("")
                     log("ERROR during processing file:")
                     log(f"  Source: {src_path}")
@@ -360,22 +398,17 @@ def batch_reorient(src_root: str, dst_root: str):
                     log("  Traceback:")
                     log(traceback.format_exc())
                 finally:
-                    # Update progress bar
                     processed_files += 1
                     progress = processed_files / total_files
                     filled = int(bar_width * progress)
                     bar = "#" * filled + "-" * (bar_width - filled)
                     print(
-                        f"\rProgress: [{bar}] {progress * 100:6.2f}% "
-                        f"({processed_files}/{total_files})",
+                        f"\rProgress: [{bar}] {progress * 100:6.2f}% ({processed_files}/{total_files})",
                         end="",
                         flush=True,
                     )
 
-    # Zeile nach dem Fortschrittsbalken beenden
     print()
-
-    # --- Final summary to terminal only ---
     print("\nBatch processing completed.")
     print(f"Total NIfTI files found:     {n_total_nifti}")
     print(f"Total NIfTI files processed: {n_processed_nifti}")
@@ -386,45 +419,5 @@ def batch_reorient(src_root: str, dst_root: str):
     if any_errors:
         print("One or more errors occurred. See the log file for details.")
 
-
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Batch reorient NIfTI files in a BIDS-like directory tree."
-    )
-    parser.add_argument(
-        "-i", "--input_root",
-        help="Input root directory (e.g. proc_data).",
-    )
-    parser.add_argument(
-        "-o", "--output_root",
-        help="Output root directory for reoriented data.",
-    )
-
-    # also allow positional arguments for backward compatibility
-    parser.add_argument(
-        "positional_input",
-        nargs="?",
-        help="Positional input directory (optional)."
-    )
-    parser.add_argument(
-        "positional_output",
-        nargs="?",
-        help="Positional output directory (optional)."
-    )
-
-    args = parser.parse_args()
-
-    input_root = args.input_root or args.positional_input
-    output_root = args.output_root or args.positional_output
-
-    if not input_root or not output_root:
-        parser.error("Must specify input and output directories via -i/-o or as positional arguments.")
-
-    return input_root, output_root
-
-
-
 if __name__ == "__main__":
-    input_root, output_root = parse_args()
-    batch_reorient(input_root, output_root)
-
+    main()
