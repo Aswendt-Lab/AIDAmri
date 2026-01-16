@@ -48,7 +48,8 @@ def reset_orientation(input_file):
     subprocess.run(forceradiological_command, shell=True)
 
 
-def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=False, species='mouse', verbose=True):
+def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
+             use_bet4animal=False, species='mouse', verbose=True):
     """Apply BET"""
     if use_bet4animal == True:
         # Use BET for animal brains - this does not work very well with some mouse diffusion data
@@ -95,12 +96,12 @@ def applyBET(input_file,frac=0.40,radius=6,vertical_gradient=0.0,use_bet4animal=
         data = nii.load(input_file)
         imgTemp = data.get_fdata()
         if verbose is True:
-            print("Image dimensions before scaling:", imgTemp.header.get_zooms())
+            print("Image dimensions before scaling:", data.header.get_zooms())
         scale = np.eye(4) * 10
         scale[3][3] = 1
         imgTemp = np.flip(imgTemp, 2)
         if verbose is True:
-            print("Image dimensions after scaling:", imgTemp.header.get_zooms())
+            print("Image dimensions after scaling:", (data.affine * scale)[:3,:3])
 
         scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
         if verbose is True:
@@ -266,7 +267,6 @@ if __name__ == "__main__":
         '-f',
         '--frac',
         help='Fractional intensity threshold - default=0.4, smaller values give larger brain outline estimates',
-        nargs='?',
         type=float,
         default=0.4,
     )
@@ -274,7 +274,6 @@ if __name__ == "__main__":
         '-r',
         '--radius',
         help='Head radius (mm not voxels) - default=45',
-        nargs='?',
         type=int,
         default=45,
     )
@@ -282,7 +281,6 @@ if __name__ == "__main__":
         '-g',
         '--vertical_gradient',
         help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top',
-        nargs='?',
         type=float,
         default=0.0,
     )
@@ -306,33 +304,24 @@ if __name__ == "__main__":
         '-bet4animal',
         '--use_bet4animal',
         help='Set value to True to use BET for animal brains',
-        nargs='?',
-        type=bool,
-        default=False,
+        action = 'store_true'
     )
     parser.add_argument(
-        '-deoblique',
-        '--deoblique_input_file',
-        help='Set value to True to deoblique the input file using AFNI 3dWarp -deoblique',
-        nargs='?',
-        type=bool,
-        default=False,
+        '--deoblique',
+        help='Deoblique input using AFNI 3dWarp -deoblique',
+        action='store_true'
     )
     parser.add_argument(
         '-averageb0',
         '--average_b0',
         help='Set value to True to average the b0 volumes',
-        nargs='?',
-        type=bool,
-        default=False,
+        action='store_true'
     )
     parser.add_argument(
         '-skip_min',
         '--skip_min',
         help='Set value to True to skip the minimum filter before smoothing',
-        nargs='?',
-        type=bool,
-        default=False,
+        action='store_true'
     )
     args = parser.parse_args()
 
@@ -401,7 +390,13 @@ if __name__ == "__main__":
             raise
 
     # get rid of your skull         
-    outputBET = applyBET(input_file = output_biascorr, frac = frac, radius = radius, use_bet4animal=args.use_bet4animal)
+    outputBET = applyBET(
+        input_file=output_biascorr,
+        frac=frac,
+        radius=radius,
+        vertical_gradient=vertical_gradient,
+        use_bet4animal=args.use_bet4animal
+    )
     print("Brain extraction was successful")
 
 
