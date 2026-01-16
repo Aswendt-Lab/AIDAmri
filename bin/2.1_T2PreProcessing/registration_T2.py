@@ -254,7 +254,7 @@ if __name__ == "__main__":
         os.makedirs(outfile)
 
     stroke_mask = find_mask(inputVolume)
-    if len(stroke_mask) is 0:
+    if len(stroke_mask) == 0:
         stroke_mask = []
         print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
     else:
