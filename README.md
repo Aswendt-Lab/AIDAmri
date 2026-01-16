@@ -347,7 +347,7 @@ If you encounter problems, report directly in [![Gitter](https://badges.gitter.i
 
 or 
 
-join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
+join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
 
 
 For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)
