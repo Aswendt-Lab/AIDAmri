@@ -137,7 +137,12 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python preProcessing_T2.py -i {currentFile[0]} --bias_method {args.biasfieldcorr} --use_bet4animal {args.bet4animal}'
+                    command = f'python preProcessing_T2.py -i {currentFile[0]}'
+                    if args.biasfieldcorr:
+                        command += f' --bias_method {args.biasfieldcorr}'
+                    if args.bet4animal is True or str(args.bet4animal).lower() == "true":
+                        command += ' --use_bet4animal'
+
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
@@ -267,9 +272,28 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
             if step == "preprocess":
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
-                if len(currentFile)>0:
-                    command = (f'python preProcessing_DTI.py -i {currentFile[0]} -f 0.5 -b {args.biasfieldcorr} --denoiser {args.denoiser} --use_bet4animal {args.bet4animal} --average_b0 {args.average_b0} --skip_min {args.skip_min}')
-                    result = run_subprocess(command,dataFormat,step)
+                if len(currentFile) > 0:
+                    command = f'python preProcessing_DTI.py -i {currentFile[0]} -f 0.5'
+
+                    # Biasfield correction
+                    if args.biasfieldcorr:
+                        command += f' -b {args.biasfieldcorr}'
+
+                    # Denoiser
+                    if args.denoiser:
+                        command += f' --denoiser {args.denoiser}'
+
+                    # Flags (store_true → nur anhängen, wenn True)
+                    if args.bet4animal is True or str(args.bet4animal).lower() == "true":
+                        command += ' --use_bet4animal'
+
+                    if args.average_b0 is True or str(args.average_b0).lower() == "true":
+                        command += ' --average_b0'
+
+                    if args.skip_min is True or str(args.skip_min).lower() == "true":
+                        command += ' --skip_min'
+
+                    result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
                 else:
@@ -355,7 +379,7 @@ if __name__ == "__main__":
     optionalNamed.add_argument('-v', '--vivo', required=False, default='in_vivo', help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
     optionalNamed.add_argument('-m', '--make_isotropic', required=False, default=0, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
     optionalNamed.add_argument('-f', '--flip_image_y', required=False, default=False, help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.')
-    optionalNamed.add_argument('-template', '--template', required=False, default=1, help='Specify the template to use for the reconstruction step T2 in DSI Studio. Default is 1 (mouse). Other options are "Rat" (5) or "Mouse" (1).')
+    optionalNamed.add_argument('-template', '--template', required=False, default='mouse', help='Specify the template to use for the reconstruction step T2 in DSI Studio. Default is 6 (mouse). Other options are "Rat" (5) or "Mouse" (6).')
     optionalNamed.add_argument('-track_param', '--track_param', required=False, default='default', help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
     optionalNamed.add_argument('-l', '--legacy', required=False, default=False, help='Support for legacy file types in DSI-Studio. Default is False. Set to True to use with ".fib.gz" and ".src.gz" files.')
     
@@ -440,6 +464,8 @@ if __name__ == "__main__":
         flip_image_y = False
     elif str(args.flip_image_y).lower() == 'true':
         flip_image_y = True
+
+    template_arg = str(args.template).lower()
 
     template = 6 # new default for mouse
     if args.template.lower() == 'rat':
