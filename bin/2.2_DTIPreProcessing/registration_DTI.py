@@ -302,21 +302,24 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         for p in missing:
             print("  -", p)
 
-    # --- Mask export (optional) ---
-    if os.path.exists(bet_mask_path):
-        outputBrainMaskScaled = os.path.join(outfileDSI, f"{base}Mask_scaled.nii")
-        dataMask = nii.load(bet_mask_path)
-        imgMask = dataMask.get_fdata()
+    # --- Mask export ---
+    if not os.path.exists(bet_mask_path):
+        raise RuntimeError(
+            f"Required BET brain mask is missing:\n  {bet_mask_path}\n"
+            "BET mask is mandatory for DSI Studio export."
+        )
 
-        imgMask = np.flip(imgMask, 2)
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
+    outputBrainMaskScaled = os.path.join(outfileDSI, f"{base}Mask_scaled.nii")
+    dataMask = nii.load(bet_mask_path)
+    imgMask = dataMask.get_fdata()
 
-        unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine * scale)
-        unscaledNiiDataMask.header.set_xyzt_units('mm')
-        nii.save(unscaledNiiDataMask, outputBrainMaskScaled)
-    else:
-        print(f"Notice: No mask found ({bet_mask_path}) -> skipping Mask_scaled export")
+    imgMask = np.flip(imgMask, 2)
+    scale = np.eye(4) * 10
+    scale[3][3] = 1
+
+    unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine * scale)
+    unscaledNiiDataMask.header.set_xyzt_units('mm')
+    nii.save(unscaledNiiDataMask, outputBrainMaskScaled)
 
     # --- Anno/Template export (optional, but independent of mask) ---
     missing_core = [p for p in [anno_path, annop_path, templ_path] if not os.path.exists(p)]
