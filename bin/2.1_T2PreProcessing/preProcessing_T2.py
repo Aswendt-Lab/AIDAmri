@@ -53,6 +53,28 @@ def n4biasfieldcorr(input_file):
     print("Biasfield correction completed")
     return output_file
 
+def copy_xform(ref_file, dst_file):
+    ref = nii.load(ref_file)
+    dst = nii.load(dst_file)
+
+    data = dst.get_fdata(dtype=np.float32)
+
+    new = nii.Nifti1Image(data, ref.affine, header=dst.header)
+
+    # qform aus Referenz übernehmen (Code beibehalten)
+    qaff, qcode = ref.get_qform(coded=True)
+    if qaff is not None:
+        new.set_qform(qaff, int(qcode))
+
+    # sform explizit setzen → Code = 2 (aligned anatomical)
+    saff, _ = ref.get_sform(coded=True)
+    if saff is None:
+        saff = ref.affine
+
+    new.set_sform(saff, code=2)
+
+    nii.save(new, dst_file)
+
 
 def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, species='mouse'):
     """Apply BET"""
@@ -153,13 +175,10 @@ if __name__ == "__main__":
         default="mico",
         )
     parser.add_argument(
-        '-bet4animal',
         '--use_bet4animal',
-        help='Set value to True to use BET for animal brains',
-        nargs='?',
-        type=bool,
-        default=False,
-        )
+        help='Use BET for animal brains',
+        action='store_true'
+    )
 
     args = parser.parse_args()
 
@@ -194,6 +213,7 @@ if __name__ == "__main__":
         elif bias_method == "ants":
             try:
                 outputBiasCorr = n4biasfieldcorr(input_file=input_file)
+                copy_xform(input_file, outputBiasCorr)
                 print("Biasfield correction was successful")
             except Exception as e:
                 print(f'Error in bias field correction\nError message: {str(e)}')
