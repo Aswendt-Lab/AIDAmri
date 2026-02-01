@@ -30,77 +30,91 @@ import shlex
 import time
 
 
-def findData(projectPath, sessions, dataTypes):
+def findData(projectPath, sessions, data_types):
+    if not data_types:
+        data_types = ["anat", "dwi", "func", "t2map"]
     # This function screens all existing paths. Within these paths, this function collects all subject
     # folders, which are all folders that are not named 'Physio'.
     full_path_list = os.listdir(projectPath)
     all_wanted_paths, anat_files, dwi_files, func_files, t2map_files = [], [], [], [], []
 
-    for path in full_path_list:  
-        if "sub" in path and not ".DS_Store" in path:
-            wanted_paths = os.listdir(os.path.join(projectPath, path))
-            wanted_paths = [os.path.join(projectPath, path, wanted_path) for wanted_path in wanted_paths if "ses" in wanted_path]
+    # collect ses paths
+    for path in full_path_list:
+        if path.startswith("sub-"):
+            sub_root = os.path.join(projectPath, path)
+            wanted_paths = os.listdir(sub_root)
+            wanted_paths = [
+                os.path.join(sub_root, wp)
+                for wp in wanted_paths
+                if wp.startswith("ses-")
+            ]
             all_wanted_paths.extend(wanted_paths)
-            
+
+    # filter sessions (exact match on path components)
     if sessions:
-        ses_path = []
+        wanted = {f"ses-{s}" for s in sessions}
         matching_paths = []
-        for ses in sessions:
-            ses_path.append("ses-" + ses)
-        for path in all_wanted_paths:
-            if any(ses in path for ses in ses_path):
-                matching_paths.append(path)
-        
+        for p in all_wanted_paths:
+            parts = os.path.normpath(p).split(os.sep)
+            if any(part in wanted for part in parts):
+                matching_paths.append(p)
         all_wanted_paths = matching_paths
 
+    # collect datatype folders
     for path in all_wanted_paths:
         for sub_dir in os.listdir(path):
-            if sub_dir == "anat" and "anat" in dataTypes:
+            if sub_dir == "anat" and "anat" in data_types:
                 anat_files.append(os.path.join(path, sub_dir))
 
-            elif sub_dir == "dwi" and "dwi" in dataTypes:
+            elif sub_dir == "dwi" and "dwi" in data_types:
                 dwi_files.append(os.path.join(path, sub_dir))
 
-            elif sub_dir == "func" and "func" in dataTypes:
+            elif sub_dir == "func" and "func" in data_types:
                 func_files.append(os.path.join(path, sub_dir))
 
-            elif sub_dir == "t2map" and "t2map" in dataTypes:
+            elif sub_dir == "t2map" and "t2map" in data_types:
                 t2map_files.append(os.path.join(path, sub_dir))
 
-    all_files = {}
-    all_files["anat"] = anat_files
-    all_files["dwi"] = dwi_files
-    all_files["func"] = func_files
-    all_files["t2map"] = t2map_files
-        
+    return {"anat": anat_files, "dwi": dwi_files, "func": func_files, "t2map": t2map_files}
 
-    return all_files
-    
-def run_subprocess(command,datatype,step,anat_process=False):
-    timeout = 3600 # set maximum time in seconds after which the subprocess will be terminated
+def _get_arg_after(flags, argv):
+    for f in flags:
+        if f in argv:
+            i = argv.index(f)
+            if i + 1 < len(argv):
+                return argv[i + 1]
+    return None
+
+def _log_base_from_input(input_path: str) -> str:
+    # If input is a dir -> log in that dir
+    # If input is a file -> log in its parent dir
+    return input_path if os.path.isdir(input_path) else os.path.dirname(input_path)
+
+def run_subprocess(command, datatype, step, anat_process=False):
+    timeout = 3600
     command_args = shlex.split(command)
-    file = command_args[-1]
-    if datatype == "func" and step == "process":
-        file = command_args[-3]
-    elif datatype == "dwi" and step == "process":
-        file = command_args[3]
-        # print(file) # debug
-    elif datatype == "dwi" and step == "preprocess":
-        file = command_args[3]
-    elif datatype == "anat" and step == "preprocess":
-        file = command_args[3]
-    log_file = os.path.join(os.path.dirname(file), step + ".log")
-    if datatype == "anat" and step == "process":
-        log_file = os.path.join(os.path.dirname(file), datatype, step + ".log")
-        if anat_process == False:
-            log_file = os.path.join(os.path.dirname(file), datatype, step + "_par" + ".log")
 
-    # find current sub name
-    normalized_path = os.path.normpath(file)
+    inp = _get_arg_after(["-i", "--input", "--input_file"], command_args)
+    if inp is None:
+        inp = next((a for a in reversed(command_args)
+                    if a.endswith(".nii") or a.endswith(".nii.gz")), command_args[-1])
+
+    base = _log_base_from_input(inp)
+
+    # default location
+    log_file = os.path.join(base, f"{step}.log")
+
+    # special case: anat/process wants different filenames
+    if datatype == "anat" and step == "process":
+        log_name = f"{step}.log" if anat_process else f"{step}_par.log"
+        log_file = os.path.join(base, log_name)
+
+    #Determine sub / ses
+    normalized_path = os.path.normpath(inp)
     directories = normalized_path.split(os.path.sep)
-    sub = [directory for directory in directories if "sub-" in directory][0]
-    ses = [directory for directory in directories if "ses-" in directory][0]
-    
+    sub = next((d for d in directories if d.startswith("sub-")), "sub-UNKNOWN")
+    ses = next((d for d in directories if d.startswith("ses-")), "ses-UNKNOWN")
+
     try:
         logging.info(f"Running command: {command}.\nCheck {log_file} for further information.")
         if os.path.exists(log_file):
@@ -120,7 +134,7 @@ def run_subprocess(command,datatype,step,anat_process=False):
         raise
     
 
-def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
+def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
@@ -138,9 +152,30 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python preProcessing_T2.py -i {currentFile[0]}'
-                    if args.biasfieldcorr:
-                        command += f' --bias_method {args.biasfieldcorr}'
-                    if args.bet4animal is True or str(args.bet4animal).lower() == "true":
+                    # Bias: skip + method (T2 has both)
+                    if cfg.get("t2_bias_skip") is not None:
+                        command += f' -b {cfg["t2_bias_skip"]}'
+
+                    # Only set method if specified
+                    if cfg.get("t2_bias_method"):
+                        command += f' --bias_method {cfg["t2_bias_method"]}'
+                    # fallback to old biasfieldcorr
+                    elif cfg.get("biasfieldcorr"):
+                        command += f' --bias_method {cfg["biasfieldcorr"]}'
+
+                    # BET-Parameter
+                    if cfg.get("t2_frac") is not None:
+                        command += f' -f {cfg["t2_frac"]}'
+                    if cfg.get("t2_radius") is not None:
+                        command += f' -r {cfg["t2_radius"]}'
+                    if cfg.get("t2_vertical_gradient") is not None:
+                        command += f' -g {cfg["t2_vertical_gradient"]}'
+                    if cfg.get("t2_center") is not None:
+                        cx, cy, cz = cfg["t2_center"]
+                        command += f' -c {cx} {cy} {cz}'
+
+                    # bet4animal
+                    if cfg.get("bet4animal"):
                         command += ' --use_bet4animal'
 
                     result = run_subprocess(command, dataFormat, step)
@@ -157,11 +192,13 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python registration_T2.py -i {currentFile[0]}'
-                    result = run_subprocess(command, dataFormat, step)
+                    r1 = run_subprocess(f'python registration_T2.py -i {currentFile[0]}', dataFormat, step)
+                    if r1 != 0:
+                        errorList.append(r1)
                     command = f'python t2_value_extraction.py -i {currentFile[0]}'
-                    result = run_subprocess(command, dataFormat, step)
-                    if result != 0:
-                        errorList.append(result)
+                    r2 = run_subprocess(f'python t2_value_extraction.py -i {currentFile[0]}', dataFormat, step)
+                    if r2 != 0:
+                        errorList.append(r2)
                 else:
                     message = f'Could not find *Bet.nii.gz in {str(currentPath_wData)}'
                     logging.error(message)
@@ -179,19 +216,20 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 command = f'python getIncidenceSize_par.py -i {str(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step)
                 if isinstance(result, tuple) and len(result) == 4:
-                    os.chdir(cwd + '/3.1_T2Processing')
-                    command = f'python getIncidenceSize_par.py -i {currentPath_wData}'
-                    result = run_subprocess(command,dataFormat,step)
-                if result != 0:
-                    errorList.append(result)
-                    command = f'python getIncidenceSize.py -i {str(currentPath_wData)}'
-                    result = run_subprocess(command, dataFormat, step, anat_process=True)
-                if isinstance(result, tuple) and len(result) == 4:
-                    command = f'python getIncidenceSize.py -i {currentPath_wData}'
-                    result = run_subprocess(command,dataFormat,step,anat_process=True)
-                if result != 0:
-                    errorList.append(result)
-                os.chdir(cwd)
+                    os.chdir(os.path.join(cwd, '3.1_T2Processing'))
+
+                    r_par = run_subprocess(f'python getIncidenceSize_par.py -i {str(currentPath_wData)}',
+                                           dataFormat, step)
+
+                    if r_par != 0:
+                        errorList.append(r_par)
+                        r_ser = run_subprocess(f'python getIncidenceSize.py -i {str(currentPath_wData)}',
+                                               dataFormat, step, anat_process=True)
+                        if r_ser != 0:
+                            errorList.append(r_ser)
+
+                    os.chdir(cwd)
+
 
         elif dataFormat == 'func':
             if step == "preprocess":
@@ -273,25 +311,37 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python preProcessing_DTI.py -i {currentFile[0]} -f 0.5'
+                    command = f'python preProcessing_DTI.py -i {currentFile[0]}'
 
-                    # Biasfield correction
-                    if args.biasfieldcorr:
-                        command += f' -b {args.biasfieldcorr}'
+                    # DWI BET parameter (only append if set, otherwise use script defaults)
+                    if cfg.get("dwi_frac") is not None:
+                        command += f' -f {cfg["dwi_frac"]}'
+                    if cfg.get("dwi_radius") is not None:
+                        command += f' -r {cfg["dwi_radius"]}'
+                    if cfg.get("dwi_vertical_gradient") is not None:
+                        command += f' -g {cfg["dwi_vertical_gradient"]}'
+
+                    # Bias field (DWI: none/micro/ANTS)
+                    # dwi_bias_method with choices [“none”,‘mico’,“ants”], default="none"
+                    if cfg.get("dwi_bias_method", "none") != "none":
+                        command += f' -b {cfg["dwi_bias_method"]}'
 
                     # Denoiser
-                    if args.denoiser:
-                        command += f' --denoiser {args.denoiser}'
+                    if cfg.get("dwi_denoiser"):
+                        command += f' --denoiser {cfg["dwi_denoiser"]}'
 
-                    # Flags (store_true → nur anhängen, wenn True)
-                    if args.bet4animal is True or str(args.bet4animal).lower() == "true":
+                    # Flags
+                    if cfg.get("bet4animal"):
                         command += ' --use_bet4animal'
 
-                    if args.average_b0 is True or str(args.average_b0).lower() == "true":
+                    if cfg.get("dwi_average_b0"):
                         command += ' --average_b0'
 
-                    if args.skip_min is True or str(args.skip_min).lower() == "true":
+                    if cfg.get("dwi_skip_min"):
                         command += ' --skip_min'
+
+                    if cfg.get("dwi_deoblique"):
+                        command += " --deoblique"
 
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
@@ -316,11 +366,31 @@ def executeScripts(currentPath_wData, dataFormat, step, stc=False, *optargs):
                 os.chdir(cwd)
             elif step == "process":
                 currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
-                if args.denoiser == 'patch2self':
+                if cfg.get("dwi_denoiser") == "patch2self" or cfg.get("denoiser") == "patch2self":
                     currentFile = list(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
-                    cli_str = f'dsi_main.py -i {currentFile[0]} -t {track_param} -r {recon_method} -v {vivo} -m {make_isotropic} -y {flip_image_y} -template {template} -thread_count {num_processes} -l {legacy} -nomcf {no_mcf}'
+                    # Pull values from cfg (with defaults)
+                    track_param = cfg.get("dsi_track_param", cfg.get("track_param", "default"))
+                    recon_method = cfg.get("dsi_recon_method", cfg.get("recon_method", "dti"))
+                    vivo = cfg.get("dsi_vivo", cfg.get("vivo", "in_vivo"))
+                    make_iso = cfg.get("dsi_make_isotropic", cfg.get("make_isotropic", 0))
+                    flip_y = 1 if cfg.get("dsi_flip_image_y", cfg.get("flip_image_y", False)) else 0
+                    template_val = str(cfg.get("dsi_template", cfg.get("template", "mouse")))
+                    thread_count = cfg.get("num_processes", 1)
+                    legacy = bool(cfg.get("dsi_legacy", cfg.get("legacy", False)))
+                    no_mcf = bool(cfg.get("dsi_no_mcf", cfg.get("no_mcf", False)))
+
+                    cli_str = (
+                        f'dsi_main.py -i {currentFile[0]} '
+                        f'-t {track_param} -r {recon_method} -v {vivo} -m {make_iso} '
+                        f'-y {flip_y} -template {template_val} -thread_count {thread_count}'
+                    )
+                    if legacy:
+                        cli_str += ' -l'
+                    if no_mcf:
+                        cli_str += ' -nomcf'
+
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
                     result = run_subprocess(command,dataFormat,step)
@@ -354,52 +424,227 @@ def find(pattern, path):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description='Batch processing of all data. This script runs every needed script for all registration and processing steps. The data needs to be ordered like after Bruker2NIfTI conversion: project_folder/days/groups/subjects/. For the script to work, it needs to be placed within the /bin folder of AIDAmri. Example: python batchProc.py -f /Volumes/Desktop/MRI/proc_data -g Treatment_C3a Treatment_PBS -d Baseline P7 P14 P28 P42 P56 -t T2w fMRI DTI')
-    requiredNamed = parser.add_argument_group('required arguments')
-    requiredNamed.add_argument('-i', '--input', required=True,
-                        help='Path to the parent project folder of the dataset, e.g. proc_data')
 
+    parser = argparse.ArgumentParser(
+        description=(
+            "Batch processing of all data (AIDAmri). "
+            "Runs preprocessing, registration and processing steps for T2, DWI, fMRI and T2map.\n\n"
+            "Example:\n"
+            "python batchProc.py -i /path/to/proc_data -t anat dwi "
+            "--t2-frac 0.15 --t2-bias-method mico "
+            "--dwi-denoiser patch2self "
+            "--dsi-template mouse"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter
+    )
 
-    optionalNamed = parser.add_argument_group('optional arguments')
-    optionalNamed.add_argument('-s', '--sessions', required=False,
-                        help='Select which sessions of your data should be processed, if no days are given all data will be used.', nargs='+')
-    optionalNamed.add_argument('-stc', '--slicetimecorrection', default = "False", type=str,
-                               help='Set True or False if a slice time correction should be performed. Only set true if you converted raw bruker data with conv2nifti.py from aidamri beforehand. Otherwise choose False')
-    optionalNamed.add_argument('-t', '--dataTypes', required=False, nargs='+', help='Data types to be processed e.g. anat, dwi and/or func. Multiple specifications are possible.')
-    optionalNamed.add_argument('-ds', '--debug_steps', required=False, nargs='+', help='Define which steps of the processing should be done. Default = [preprocess, registration, process]')
-    optionalNamed.add_argument('-cpu', '--cpu_cores', required=False, default = "Half", help='Define how many parallel processes should be use to process your data. CAUTION: Too many processes will slow down your computer noticeably. Select between: ["Min", "Half", "Max"]')
-    optionalNamed.add_argument('-e_cpu', '--expert_cpu', required=False, help='Define precisely how many parallel processes should be used. Enter a number.')
-    optionalNamed.add_argument('-denoise', '--denoiser', required=False, default=None, help='Specify the denoising method to use. Options: "patch2self" for Patch2Self denoising.')
-    optionalNamed.add_argument('-bet4animal', '--bet4animal', required=False, default=False, help='Use FSL BET tuned for animal data. Default is False. Set to True to use FSL BET tuned for animal data.')
-    optionalNamed.add_argument('-average_b0', '--average_b0', required=False, default=False, help='Average b0 volumes in DTI data. Default is False. Set to True to average b0 volumes.')
-    optionalNamed.add_argument('-skip_min', '--skip_min', required=False, default=False, help='Skip the minimum intensity projection step in DTI preprocessing. Default is False. Set to True to skip this step.')
-    optionalNamed.add_argument('-b', '--biasfieldcorr', help='Biasfield correction method - default=None, other options are "mico" or "ants"', nargs='?', type=str,default=None)
-    optionalNamed.add_argument('-no_mcf', '--no_mcf', required=False, default=False, help='Skip the slice-wise MCFLIRT motion and correction step in DTI processing. Default is False. Set to True to skip this step.')
-    optionalNamed.add_argument('-r', '--recon_method', required=False, default='dti', help='Specify diffusion reconstruction for DSI Studio (Default="dti", "gqi").')
-    optionalNamed.add_argument('-v', '--vivo', required=False, default='in_vivo', help='Specify in vivo or ex vivo data for diffusion sampling length param0 for DSI Studio (Default="in_vivo" : param0=1.25, "ex_vivo" : param0=0.60).')
-    optionalNamed.add_argument('-m', '--make_isotropic', required=False, default=0, help='Provide voxel size (mm) for isotropic resampling of diffusion data in DSI Studio (Default=0 : no resampling, "auto" uses the NIFTI header to find the voxel size for resampling).')
-    optionalNamed.add_argument('-f', '--flip_image_y', required=False, default=False, help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.')
-    optionalNamed.add_argument('-template', '--template', required=False, default='mouse', help='Specify the template to use for the reconstruction step T2 in DSI Studio. Default is 6 (mouse). Other options are "Rat" (5) or "Mouse" (6).')
-    optionalNamed.add_argument('-track_param', '--track_param', required=False, default='default', help='Provide custom tracking parameter values for DSI Studio. Options: "default", "aida_optimized", "mouse", "rat", or a list of values for: --fiber_count --interpolation --step_size --turning_angle --check_ending --fa_threshold --smoothing --min_length --max_length')
-    optionalNamed.add_argument('-l', '--legacy', required=False, default=False, help='Support for legacy file types in DSI-Studio. Default is False. Set to True to use with ".fib.gz" and ".src.gz" files.')
-    
+    # ============================================================
+    # REQUIRED
+    # ============================================================
+    required = parser.add_argument_group("required arguments")
+    required.add_argument(
+        "-i", "--input",
+        required=True,
+        help="Path to the parent project folder (e.g. proc_data)"
+    )
+
+    # ============================================================
+    # GLOBAL / BATCH CONTROL
+    # ============================================================
+    batch = parser.add_argument_group("batch control")
+    batch.add_argument(
+        "-s", "--sessions",
+        nargs="+",
+        help="Process only selected sessions (e.g. Baseline P7 P14)"
+    )
+    batch.add_argument(
+        "-t", "--data-types",
+        nargs="+",
+        help="Data types to process (anat, dwi, func, t2map). Default: all"
+    )
+    batch.add_argument(
+        "-d", "--debug-steps",
+        dest="debug_steps",
+        nargs="+",
+        help="Processing steps to run (preprocess registration process). Default: all"
+    )
+    batch.add_argument(
+        "--slice-time-correction",
+        action="store_true",
+        help="Enable slice time correction for fMRI"
+    )
+
+    # ============================================================
+    # CPU / PARALLELIZATION
+    # ============================================================
+    cpu = parser.add_argument_group("cpu / parallelization")
+    cpu.add_argument(
+        "-c", "--cpu-cores",
+        default="Half",
+        choices=["Min", "Half", "Max"],
+        help="CPU usage preset (Min, Half, Max)"
+    )
+    cpu.add_argument(
+        "-e", "--expert-cpu",
+        type=int,
+        help="Explicit number of parallel processes"
+    )
+
+    # ============================================================
+    # T2 PREPROCESSING (preProcessing_T2.py)
+    # ============================================================
+    t2 = parser.add_argument_group("T2 preprocessing (preProcessing_T2.py)")
+    t2.add_argument(
+        "--t2-bias-method",
+        choices=["mico", "ants"],
+        help="Bias field correction method for T2 (mico or ants)"
+    )
+    t2.add_argument(
+        "--t2-bias-skip",
+        type=float,
+        help="Skip T2 bias field correction (1 = skip, 0 = apply)"
+    )
+    t2.add_argument(
+        "--t2-frac",
+        type=float,
+        help="BET fractional intensity threshold (default in script: 0.15)"
+    )
+    t2.add_argument(
+        "--t2-radius",
+        type=int,
+        help="BET head radius in mm (default in script: 45)"
+    )
+    t2.add_argument(
+        "--t2-vertical-gradient",
+        type=float,
+        help="BET vertical gradient (default in script: 0.0)"
+    )
+    t2.add_argument(
+        "--t2-center",
+        nargs=3,
+        type=int,
+        metavar=("X", "Y", "Z"),
+        help="BET center in voxel coordinates"
+    )
+
+    # ============================================================
+    # DWI PREPROCESSING (preProcessing_DTI.py)
+    # ============================================================
+    dwi = parser.add_argument_group("DWI preprocessing (preProcessing_DTI.py)")
+    dwi.add_argument(
+        "--dwi-denoiser",
+        choices=["patch2self"],
+        help="DWI denoising method"
+    )
+    dwi.add_argument(
+        "--dwi-average-b0",
+        action="store_true",
+        help="Average b0 volumes before DWI processing"
+    )
+    dwi.add_argument(
+        "--dwi-skip-min",
+        action="store_true",
+        help="Skip minimum intensity projection step"
+    )
+    dwi.add_argument(
+        "--dwi-frac",
+        type=float,
+        help="BET fractional intensity threshold for DWI"
+    )
+    dwi.add_argument(
+        "--dwi-radius",
+        type=int,
+        help="BET head radius (mm) for DWI"
+    )
+    dwi.add_argument(
+        "--dwi-vertical-gradient",
+        type=float,
+        help="BET vertical gradient for DWI"
+    )
+    dwi.add_argument(
+        "--dwi-bias-method",
+        choices=["none", "mico", "ants"],
+        default="none",
+        help="Bias field correction for DWI: none|mico|ants (maps to preProcessing_DTI.py --biasfieldcorr)"
+    )
+    dwi.add_argument(
+        '--dwi-deoblique',
+        help='Deoblique input using AFNI 3dWarp -deoblique',
+        action='store_true'
+    )
+    # ============================================================
+    # BET / ANIMAL-SPECIFIC
+    # ============================================================
+    bet = parser.add_argument_group("BET / animal settings")
+    bet.add_argument(
+        "--bet4animal",
+        action="store_true",
+        help="Use BET tuned for animal brains (bet4animal)"
+    )
+
+    # ============================================================
+    # DSI STUDIO / TRACTOGRAPHY (dsi_main.py)
+    # ============================================================
+    dsi = parser.add_argument_group("DSI Studio / tractography (dsi_main.py)")
+    dsi.add_argument(
+        "--dsi-recon-method",
+        default="dti",
+        choices=["dti", "gqi"],
+        help="DSI reconstruction method"
+    )
+    dsi.add_argument(
+        "--dsi-vivo",
+        default="in_vivo",
+        choices=["in_vivo", "ex_vivo"],
+        help="In vivo or ex vivo data (controls sampling length)"
+    )
+    dsi.add_argument(
+        "--dsi-make-isotropic",
+        type=float,
+        default=0.0,
+        help="Voxel size (mm) for isotropic resampling (0 = off, auto = header)"
+    )
+    dsi.add_argument(
+        "--dsi-flip-image-y",
+        action="store_true",
+        help="Flip image in Y direction before DSI processing"
+    )
+    dsi.add_argument(
+        "--dsi-template",
+        default="mouse",
+        help="DSI template (mouse, rat or numeric ID)"
+    )
+    dsi.add_argument(
+        "--dsi-track-param",
+        default="default",
+        help="Tracking parameter preset (default, mouse, rat, aida_optimized)"
+    )
+    dsi.add_argument(
+        "--dsi-no-mcf",
+        action="store_true",
+        help="Skip slice-wise MCFLIRT motion correction"
+    )
+    dsi.add_argument(
+        "--dsi-legacy",
+        action="store_true",
+        help="Enable legacy .fib.gz / .src.gz support"
+    )
 
     args = parser.parse_args()
+
     pathToData = args.input
     sessions = args.sessions
     
     #configurate the logging module
     log_file_path = os.path.join(pathToData, "batchproc_log.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', force =True)
 
-    if args.slicetimecorrection is None:
-        stc = False
+    stc = args.slice_time_correction
+
+    if args.data_types is None:
+        data_types = ["anat", "dwi", "func", "t2map"]
     else:
-        stc = args.slicetimecorrection
-    if args.dataTypes is None:
-        dataTypes = ["anat", "dwi", "func", "t2map"]
-    else:
-        dataTypes = args.dataTypes
+        data_types = args.data_types
 
     if args.debug_steps is None:
         steps = ["preprocess","registration","process"]
@@ -408,12 +653,12 @@ if __name__ == "__main__":
     
     print('Entered information:')
     print(pathToData)
-    print('dataTypes %s' % dataTypes)
+    print('data_types %s' % data_types)
     print('Slice time correction [%s]' % stc)
     print('Steps %s' % steps)
     print()
 
-    all_files = findData(pathToData, sessions, dataTypes)
+    all_files = findData(pathToData, sessions, data_types)
 
     num_processes = 1
 
@@ -425,73 +670,26 @@ if __name__ == "__main__":
         num_processes = multiprocessing.cpu_count()
 
     print(args)
-
-    no_mcf = False
-    if args.no_mcf is True or str(args.no_mcf).lower() == 'true':
-        no_mcf = True
-        print(f"Skipping slice-wise MCFLIRT motion and correction step.")
-        logging.info(f"Skipping slice-wise MCFLIRT motion and correction step.")
-
-    if args.recon_method:
-        recon_method = args.recon_method
-    else:
-        recon_method = 'dti'
-        
-    logging.info(f"Using DSI Studio option for reconstruction: {recon_method}")
-
-    if args.vivo:
-        vivo = args.vivo
-    else:
-        vivo = 'in_vivo'
-    
-    logging.info(f"Using DSI Studio option param0 = {recon_method}")
-
-
-    if args.make_isotropic != 0:
-        make_isotropic = args.make_isotropic
-        logging.info(f"Using DSI Studio option for reconstruction: isotropic voxel size resampling {make_isotropic}")
     
     if args.expert_cpu:
         num_processes = int(args.expert_cpu)
-
-    if args.track_param:
-        track_param = args.track_param
-    else:
-        track_param = 'default'
-    
-    flip_image_y = False
-    if args.flip_image_y is None:
-        flip_image_y = False
-    elif str(args.flip_image_y).lower() == 'true':
-        flip_image_y = True
-
-    template_arg = str(args.template).lower()
-
-    template = 6 # new default for mouse
-    if args.template.lower() == 'rat':
-        template = 5
-    elif args.template.lower() == 'mouse':
-        template = 6 # new default for mouse, pre-2024 DSI Studio used 1 for mouse template
-    else:
-        try:
-            template = int(args.template)
-        except ValueError:
-            print(f"Invalid template value: {args.template}. Using default template 6 (mouse).")
-            logging.info(f"Using template: {template}")
-            template = 6
-
-    legacy = False
-    if args.legacy is True:
-        legacy = True
-        print(f"Using legacy file types .fib.gz and .src.gz for DSI Studio")
-        logging.info(f"Using legacy file types .fib.gz and .src.gz for DSI Studio")
     
     print(f"Running with {num_processes} parallel processes!")
-
-    logging.info(f"Entered information:\n{pathToData}\n dataTypes {dataTypes}\n Slice time correction [{stc}]")
-    logging.info(f"Using DSI Studio options reconstruction: {recon_method} for {vivo} data")
     logging.info(f"Using {num_processes} CPUs for the parallelization")
     logging.info(f"Processing following datasets:\n{all_files}")
+    # turns argparse.Namespace into a dict
+    cfg = vars(args)
+    cfg["num_processes"] = num_processes
+    logging.info(
+        "DSI settings: recon=%s vivo=%s make_isotropic=%s flip_y=%s template=%s track_param=%s no_mcf=%s legacy=%s",
+        args.dsi_recon_method,
+        args.dsi_vivo,
+        args.dsi_make_isotropic,
+        args.dsi_flip_image_y,
+        args.dsi_template,
+        args.dsi_track_param,
+        args.dsi_no_mcf,
+        args.dsi_legacy)
 
     for key, value in all_files.items():
         if value:
@@ -505,41 +703,54 @@ if __name__ == "__main__":
                 error_list_step = []
                 progress_bar = tqdm(total=len(value), desc=f"{step} {key} data")
                 with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
-                    futures = [executor.submit(executeScripts, path, key, step, stc) for path in value]
+                    futures = [executor.submit(executeScripts, path, key, step, cfg, stc) for path in value]
+
+                    # --- collect errors robustly ---
+                    flat_errors_step = []
 
                     for future in concurrent.futures.as_completed(futures):
                         progress_bar.update(1)
-                     
-                        errorList = future.result()
-                        if errorList != 0:
-                            error_list_step.append(errorList)
-                        
+
+                        res = future.result()
+
+                        # normalize result into a flat list
+                        if res == 0 or res is None:
+                            continue
+
+                        if isinstance(res, list):
+                            flat_errors_step.extend(res)
+                        else:
+                            flat_errors_step.append(res)
+
                     concurrent.futures.wait(futures)
-                progress_bar.close()
-                error_list_all.extend(error_list_step)
-                if not error_list_step:
-                    print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
-                else:
-                    print(f"{key} {step}  \033[0;30;41m INCOMPLETE \33[0m")
-                logging.info(f"{key} {step} processing completed")
-                
-                
-            logging.error(f"Following errors were occuring {error_list_all}")   
+                    progress_bar.close()
+
+                    # keep a per-step and per-datatype summary
+                    if not flat_errors_step:
+                        print(f"{key} {step}  \033[0;30;42m COMPLETED \33[0m")
+                    else:
+                        print(f"{key} {step}  \033[0;30;41m INCOMPLETE \33[0m")
+                        error_list_all.extend(flat_errors_step)
+
+                    logging.info(f"{key} {step} processing completed")
+
+            logging.error(f"Following errors were occurring: {error_list_all}")
             logging.info(f"{key} processing completed")
+
             if not error_list_all:
                 print(f"\n{key} processing \033[0;30;42m COMPLETED \33[0m")
             else:
                 print(f"\n{key} processing \033[0;30;41m INCOMPLETE \33[0m")
-            if error_list_all:
-                    print()
-                    for error in error_list_all:
-                        error = error[0]
-                        print(f"Error in sub: {error[0]} in session: {error[1]} in datatype: {error[2]} and step: {error[3]}. Check logging file for further information")
-            
-                    print()
-                    for error in error_list_all:
-                        error = error[0]
-                        print(f"Error in sub: {error[0]} in session: {error[1]} in datatype: {error[2]} and step: {error[3]}. Check logging file for further information")
+                print()
+                for err in error_list_all:
+                    if isinstance(err, tuple) and len(err) == 4:
+                        sub, ses, dtype, stepname = err
+                        print(
+                            f"Error in sub: {sub} in session: {ses} in datatype: {dtype} and step: {stepname}. Check log.")
+                    else:
+                        # strings or unexpected types
+                        print(f"Error: {err}")
+
             
                 
 
