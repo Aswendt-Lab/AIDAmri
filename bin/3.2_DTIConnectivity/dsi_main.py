@@ -72,8 +72,8 @@ if __name__ == '__main__':
                        )
     parser.add_argument('-template',
                         '--template',
-                        default=1,
-                        help='Specify the template to use for the reconstruction. Default is 1 (mouse). Other options are "Rat" (5) or "Mouse" (1).',
+                        default='mouse',
+                        help='Specify the template to use for the reconstruction. Default is mouse. Other options are "rat" or "mouse".',
                         required=False
                        )
     parser.add_argument('-thread_count',
