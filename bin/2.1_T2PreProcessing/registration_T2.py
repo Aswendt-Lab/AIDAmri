@@ -148,13 +148,13 @@ def find_nearest(array,value):
 
 def clearAnno(araAnno,realBrain_anno,outfile):
     araData = nii.load(araAnno)
-    araVol = araData.get_data()
+    araVol = np.asanyarray(araData.dataobj)
     nullValues = araVol < 0.0
     araVol[nullValues] = 0.0
     araVol = np.memmap.round(araVol)
 
     realData = nii.load(realBrain_anno)
-    realVal = realData.get_data()
+    realVal = np.asanyarray(realData.dataobj)
     realVal = realVal.tolist()
     uniqueList = np.unique(realVal)
 
