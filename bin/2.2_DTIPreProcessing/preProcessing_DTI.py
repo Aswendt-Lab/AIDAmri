@@ -268,7 +268,7 @@ if __name__ == "__main__":
         '--frac',
         help='Fractional intensity threshold - default=0.4, smaller values give larger brain outline estimates',
         type=float,
-        default=0.4,
+        default=0.5,
     )
     parser.add_argument(
         '-r',
@@ -303,7 +303,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '-bet4animal',
         '--use_bet4animal',
-        help='Set value to True to use BET for animal brains',
+        help='Use BET for animal brains',
         action = 'store_true'
     )
     parser.add_argument(
@@ -314,13 +314,13 @@ if __name__ == "__main__":
     parser.add_argument(
         '-averageb0',
         '--average_b0',
-        help='Set value to True to average the b0 volumes',
+        help='Average the b0 volumes',
         action='store_true'
     )
     parser.add_argument(
         '-skip_min',
         '--skip_min',
-        help='Set value to True to skip the minimum filter before smoothing',
+        help='Skip the minimum filter before smoothing',
         action='store_true'
     )
     args = parser.parse_args()
