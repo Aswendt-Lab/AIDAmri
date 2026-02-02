@@ -473,7 +473,6 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable slice time correction for fMRI"
     )
-
     # ============================================================
     # CPU / PARALLELIZATION
     # ============================================================
