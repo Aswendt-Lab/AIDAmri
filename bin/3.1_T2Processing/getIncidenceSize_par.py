@@ -56,7 +56,6 @@ def thresholdingSlc(volumeMR,maskImg,thres):
 
 def thresholding(volumeMR,maskImg,thres,k):
     volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
-    volumeMR = volumeMR.copy()
     zvalues = volumeMR != 0
 
 
@@ -79,24 +78,23 @@ def thresholding(volumeMR,maskImg,thres,k):
 def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incidenceMask ,thres, outfile,labels):
 
     araDataTemplate  = nii.load(araDataTemplate)
-    realAraImg = np.asanyarray(araDataTemplate.dataobj)
-    coloredAraLabels = np.zeros(realAraImg.shape, dtype=realAraImg.dtype)
-
+    realAraImg = araDataTemplate.get_data()
+    coloredAraLabels = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
 
     matFile = sc.loadmat(labels)
     labMat = matFile['ABLAbelsIDsParental']
 
     maskData = nii.load(incidenceMask)
-    maskImg = np.asanyarray(maskData.dataobj).copy()
+    maskImg = maskData.get_data()
     oneValues = maskImg > 0.0
     maskImg[oneValues] = 1.0
     fileIndex = 0
 
     # get warped annos of the current mr
     dataAnno = nii.load(path_listAnno[fileIndex])
-    volumeAnno = np.round(np.asanyarray(dataAnno.dataobj))
+    volumeAnno = np.round(dataAnno.get_data())
     dataMR = nii.load(path_listInc[fileIndex])
-    volumeMR = np.asanyarray(dataMR.dataobj)
+    volumeMR = dataMR.get_data()
 
     strokeVolume = thresholding(volumeMR, maskImg, thres,1)
 
@@ -132,22 +130,15 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 
     # Stroke volume calculation
     betMask = nii.load(os.path.join(outfile,os.path.basename(path_listInc[fileIndex]).split('.')[0]+'_mask.nii.gz'))
-    betMaskImg = np.asanyarray(betMask.dataobj).copy()
+    betMaskImg = betMask.get_data()
     oneValues = betMaskImg > 0.0
     betMaskImg[oneValues] = 1.0
-    voxel_vol = abs(np.linalg.det(dataMR.affine[:3, :3]))
-    strokeVolumeInCubicMM = np.sum(strokeVolume > 0) * voxel_vol
-    brainVolumeInCubicMM = np.sum(betMaskImg > 0) * voxel_vol
-
-    strokePercent = (strokeVolumeInCubicMM / brainVolumeInCubicMM * 100.0) if brainVolumeInCubicMM > 0 else 0.0
+    strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
+    brainVolumeInCubicMM = np.sum(betMaskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
 
     lines =open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/annoVolume.nii.txt').readlines()
     o=open(os.path.join(outfile, 'affectedRegions_Parental.txt'), 'w')
-    o.write(
-        "Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n"
-        % (strokePercent, strokeVolumeInCubicMM)
-    )
-
+    o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n"  % (((strokeVolumeInCubicMM/brainVolumeInCubicMM)*100),strokeVolumeInCubicMM,))
     matIndex = 0
     labelNamesAffected = ["" for x in range(np.size(fValues_Anno))]
     labelNames = ["" for x in range(np.size(lines))]
@@ -165,7 +156,7 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     matFile['ABLAbelsIDsParental'] = labMat
     matFile['ABANamesPar'] = labelNamesAffected
     matFile['ABAlabels'] = labelNames
-    matFile['volumePer'] = strokePercent
+    matFile['volumePer'] = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
     matFile['volumeMM'] = strokeVolumeInCubicMM
     sc.savemat(os.path.join(outfile, 'labelCount_par.mat'), matFile)
 
@@ -260,4 +251,4 @@ if __name__ == "__main__":
     if not len(regANNO_list) == len(regMR_list):
         sys.exit("Error: For one or more annotations is no corresponding MR file defined in '%s'." % (inputFolder,))
 
-    incidenceMap(regInc_list,regMR_list,regANNO_list,araDataTemplate,incidenceMask,thres,outfile,labels)
+    incidenceMap(regMR_list,regInc_list,regANNO_list,araDataTemplate,incidenceMask,thres,outfile,labels)
