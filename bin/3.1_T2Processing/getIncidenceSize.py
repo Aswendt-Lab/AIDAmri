@@ -18,28 +18,19 @@ import scipy.ndimage as ndimage
 
 
 def thresholding(volumeMR,maskImg,thres,k):
-    # Gaussian smoothing to reduce noise and enhance stroke regions
     volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
-
-    # Bool-Array: True for non-zero voxels in volumeMR, False for zero voxels
     zvalues = volumeMR != 0
 
     if k==1:
-        # Apply mask to focus on relevant brain regions, setting non-brain areas to zero
         volumeMR = volumeMR * maskImg[:, :, :]#, 0]
 
     if thres == 0:
-        # Calculate threshold as mean + 2*std of non-zero voxels, to separate stroke from non-stroke areas
         thres = np.mean(volumeMR[zvalues]) + 2*np.std(volumeMR[zvalues])
 
-    # bvalues true for voxels below threshold, false for voxels above threshold
     bvalues = volumeMR < thres
-    # Set voxels below threshold to zero, effectively removing non-stroke areas
     volumeMR[bvalues] = 0
 
-    # fvalues true for voxels above threshold, false for voxels below threshold
     fvalues = volumeMR >= thres
-    # Set voxels above threshold to 1, creating a binary mask of stroke regions
     volumeMR[fvalues] = 1
 
 
@@ -59,100 +50,77 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
     maskImg = maskData.get_fdata()
     oneValues = maskImg > 0.0
     maskImg[oneValues] = 1.0
+    fileIndex = 0
 
-    for fileIndex in range(len(path_listInc)):
+    # get warped annos of the current mr
+    dataAnno = nii.load(path_listAnno[fileIndex])
+    volumeAnno = np.round(dataAnno.get_fdata())
+    dataMR = nii.load(path_listInc[fileIndex])
+    volumeMR = dataMR.get_fdata()
 
-        # get warped annos of the current mr
-        dataAnno = nii.load(path_listAnno[fileIndex])
-        volumeAnno = np.round(dataAnno.get_fdata())
-        dataMR = nii.load(path_listInc[fileIndex])
-        volumeMR = dataMR.get_fdata()
+    strokeVolume = thresholding(volumeMR, maskImg, thres,1)
 
-        strokeVolume = thresholding(volumeMR, maskImg, thres, 1)
-        fValues_Anno = volumeAnno * strokeVolume
+    fValues_Anno = volumeAnno*strokeVolume
 
-        # ---- make a tag so outputs don't overwrite each other
-        tag = os.path.basename(path_listMR[fileIndex]).split('.')[0]
+    scaledNiiData = nii.Nifti1Image(fValues_Anno, dataAnno.affine)
+    hdrIn = scaledNiiData.header
+    hdrIn.set_xyzt_units('mm')
+    output_file =  os.path.join(outfile,os.path.basename(path_listMR[fileIndex]).split('.')[0]+ 'Anno_mask.nii.gz')
+    nii.save(scaledNiiData, output_file)
 
-        scaledNiiData = nii.Nifti1Image(fValues_Anno, dataAnno.affine)
-        hdrIn = scaledNiiData.header
-        hdrIn.set_xyzt_units('mm')
-        output_file = os.path.join(outfile, tag + '_Anno_mask.nii.gz')
-        nii.save(scaledNiiData, output_file)
+    ref_Image = fValues_Anno
+    fValues_Anno = np.unique(fValues_Anno)
+    nullValues = np.argwhere(fValues_Anno<=0.0)
+    fValues_Anno = np.delete(fValues_Anno, nullValues)
 
-        ref_Image = fValues_Anno
-        fValues_Anno = np.unique(fValues_Anno)
-        nullValues = np.argwhere(fValues_Anno <= 0.0)
-        fValues_Anno = np.delete(fValues_Anno, nullValues)
+    regionAffectPercent = np.zeros(np.size(fValues_Anno))
+    for i in range(np.size(fValues_Anno)):
+        regionAffectPercent[i] = (np.sum(ref_Image == fValues_Anno[i]) / np.sum(volumeAnno == fValues_Anno[i])) * 100
 
-        regionAffectPercent = np.zeros(np.size(fValues_Anno))
-        for i in range(np.size(fValues_Anno)):
-            regionAffectPercent[i] = (
-                                             np.sum(ref_Image == fValues_Anno[i]) /
-                                             np.sum(volumeAnno == fValues_Anno[i])
-                                     ) * 100
+    labCounterList = np.isin(labMat[:, 0], fValues_Anno)
+    labMat = labMat[labCounterList,0]
+    labCounterColor = np.isin(realAraImg, fValues_Anno)
+    coloredAraLabels[labCounterColor] = realAraImg[labCounterColor]
+    xdim = np.size(coloredAraLabels, 0)
+    coloredAraLabels[int(xdim / 2):xdim, :, :] = coloredAraLabels[int(xdim / 2):xdim, :, :] + 2000
+    coloredAraLabels[coloredAraLabels == 2000] = 0
+    scaledNiiData = nii.Nifti1Image(coloredAraLabels, araDataTemplate.affine)
+    hdrIn = scaledNiiData.header
+    hdrIn.set_xyzt_units('mm')
+    output_file = os.path.join(outfile, 'affectedRegions.nii.gz')
+    nii.save(scaledNiiData, output_file)
 
-        # IMPORTANT: don't permanently shrink labMat for the next iteration
-        labMat_ids = matFile['ABALabelIDs'][:, 0]
-        labCounterList = np.isin(labMat_ids, fValues_Anno)
-        labMat = labMat_ids[labCounterList]
+    # Stroke volume calculation
+    betMask = nii.load(os.path.join(outfile,os.path.basename(path_listInc[fileIndex]).split('.')[0]+'_mask.nii.gz'))
+    betMaskImg = betMask.get_fdata()
+    oneValues = betMaskImg > 0.0
+    betMaskImg[oneValues] = 1.0
+    strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
+    brainVolumeInCubicMM = np.sum(betMaskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
 
-        labCounterColor = np.isin(realAraImg, fValues_Anno)
-        coloredAraLabels = np.zeros_like(realAraImg)
-        coloredAraLabels[labCounterColor] = realAraImg[labCounterColor]
+    lines = open(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+ '/lib/ARA_changedAnnotatiosn2DTI.txt').readlines()
+    o=open(os.path.join(outfile, 'affectedRegions.txt'), 'w')
+    o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n" % (
+    ((strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100), strokeVolumeInCubicMM,))
+    matIndex = 0
+    labelNamesAffected = ["" for x in range(np.size(fValues_Anno))]
+    labelNames = ["" for x in range(np.size(lines))]
+    for i in range(len(lines)):
+        labelNames[i] = lines[i].split('\t')[1]
+        if np.isin(int(lines[i].split('\t')[0]), labMat):
+            o.write(lines[i][:-1] + "\t %0.2f %%\n" % regionAffectPercent[matIndex])
+            labelNamesAffected[matIndex] = lines[i].split('\t')[1]
+            matIndex = matIndex + 1
 
-        xdim = np.size(coloredAraLabels, 0)
-        coloredAraLabels[int(xdim / 2):xdim, :, :] = coloredAraLabels[int(xdim / 2):xdim, :, :] + 2000
-        coloredAraLabels[coloredAraLabels == 2000] = 0
-
-        scaledNiiData = nii.Nifti1Image(coloredAraLabels, araDataTemplate.affine)
-        hdrIn = scaledNiiData.header
-        hdrIn.set_xyzt_units('mm')
-        output_file = os.path.join(outfile, f'affectedRegions_{tag}.nii.gz')
-        nii.save(scaledNiiData, output_file)
-
-        # Stroke volume calculation
-        betMask = nii.load(
-            os.path.join(outfile, os.path.basename(path_listInc[fileIndex]).split('.')[0] + '_mask.nii.gz'))
-        betMaskImg = betMask.get_fdata()
-        oneValues = betMaskImg > 0.0
-        betMaskImg[oneValues] = 1.0
-
-        # voxel volume robust (avoids negative/rotated affine issues)
-        voxelVol = abs(np.linalg.det(dataMR.affine[:3, :3]))
-        strokeVolumeInCubicMM = np.sum(maskImg * voxelVol)
-        brainVolumeInCubicMM = np.sum(betMaskImg * voxelVol)
-
-        lines = open(
-            os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/ARA_changedAnnotatiosn2DTI.txt'
-        ).readlines()
-
-        o = open(os.path.join(outfile, f'affectedRegions_{tag}.txt'), 'w')
-        o.write("Stroke: %0.2f %% - Stroke Volume: %0.2f mm^3\n" % (
-            ((strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100), strokeVolumeInCubicMM,
-        ))
-
-        matIndex = 0
-        labelNamesAffected = ["" for x in range(np.size(fValues_Anno))]
-        labelNames = ["" for x in range(np.size(lines))]
-
-        for i in range(len(lines)):
-            labelNames[i] = lines[i].split('\t')[1]
-            if np.isin(int(lines[i].split('\t')[0]), labMat):
-                o.write(lines[i][:-1] + "\t %0.2f %%\n" % regionAffectPercent[matIndex])
-                labelNamesAffected[matIndex] = lines[i].split('\t')[1]
-                matIndex = matIndex + 1
-
-        o.close()
-
-        labMat_out = np.stack((labMat, regionAffectPercent))
-        matFile['ABALabelIDs'] = labMat_out
-        matFile['ABANames'] = labelNamesAffected
-        matFile['ABAlabels'] = labelNames
-        matFile['volumePer'] = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
-        matFile['volumeMM'] = strokeVolumeInCubicMM
-
-        sc.savemat(os.path.join(outfile, f'labelCount_{tag}.mat'), matFile)
+            # o.write(str(int(lines[i].split('	')[0]) + 2000) + '	R_' + lines[i].split('	')[1])
+    o.close()
+    labMat = np.stack((labMat, regionAffectPercent))
+    matFile['ABALabelIDs'] = labMat
+    matFile['ABANames'] = labelNamesAffected
+    matFile['ABAlabels'] = labelNames
+    matFile['volumePer'] = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
+    matFile['volumeMM'] = strokeVolumeInCubicMM
+    sc.savemat(os.path.join(outfile, 'labelCount.mat'), matFile)
 
 def findIncData(path):
     regMR_list = []
