@@ -18,19 +18,28 @@ import scipy.ndimage as ndimage
 
 
 def thresholding(volumeMR,maskImg,thres,k):
+    # Gaussian smoothing to reduce noise and enhance stroke regions
     volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
+
+    # Bool-Array: True for non-zero voxels in volumeMR, False for zero voxels
     zvalues = volumeMR != 0
 
     if k==1:
+        # Apply mask to focus on relevant brain regions, setting non-brain areas to zero
         volumeMR = volumeMR * maskImg[:, :, :]#, 0]
 
     if thres == 0:
+        # Calculate threshold as mean + 2*std of non-zero voxels, to separate stroke from non-stroke areas
         thres = np.mean(volumeMR[zvalues]) + 2*np.std(volumeMR[zvalues])
 
+    # bvalues true for voxels below threshold, false for voxels above threshold
     bvalues = volumeMR < thres
+    # Set voxels below threshold to zero, effectively removing non-stroke areas
     volumeMR[bvalues] = 0
 
+    # fvalues true for voxels above threshold, false for voxels below threshold
     fvalues = volumeMR >= thres
+    # Set voxels above threshold to 1, creating a binary mask of stroke regions
     volumeMR[fvalues] = 1
 
 
