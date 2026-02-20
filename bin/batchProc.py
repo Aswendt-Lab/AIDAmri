@@ -153,8 +153,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 if len(currentFile) > 0:
                     command = f'python preProcessing_T2.py -i {currentFile[0]}'
                     # Bias: skip + method (T2 has both)
-                    if cfg.get("t2_bias_skip") is not None:
-                        command += f' -b {cfg["t2_bias_skip"]}'
+                    if cfg.get("t2_bias_skip"):
+                        command += " -b"
 
                     # Only set method if specified
                     if cfg.get("t2_bias_method"):
@@ -162,6 +162,9 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     # fallback to old biasfieldcorr
                     elif cfg.get("biasfieldcorr"):
                         command += f' --bias_method {cfg["biasfieldcorr"]}'
+
+                    if cfg.get("t2_bet_skip"):
+                        command += " --bet_skip"
 
                     # BET-Parameter
                     if cfg.get("t2_frac") is not None:
@@ -500,9 +503,15 @@ if __name__ == "__main__":
     )
     t2.add_argument(
         "--t2-bias-skip",
-        type=float,
-        help="Skip T2 bias field correction (1 = skip, 0 = apply)"
+        action="store_true",
+        help="Skip T2 bias field correction"
     )
+    t2.add_argument(
+        "--t2-bet-skip",
+        action="store_true",
+        help="Skip BET during T2 preprocessing"
+    )
+
     t2.add_argument(
         "--t2-frac",
         type=float,
