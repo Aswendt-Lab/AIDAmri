@@ -194,11 +194,16 @@ if __name__ == "__main__":
     parser.add_argument(
         '-b',
         '--bias_skip',
-        help='Set value to 1 to skip bias field correction',
-        nargs='?',
-        type=float, 
-        default=0.0,
-        )
+        help='Skip bias field correction',
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '--bet_skip',
+        help='Skip BET during T2 preprocessing (still creates *Bet.nii.gz as copy for pipeline compatibility). Note: AIDAmri needs a BET mask for registration', #Output will stil be named as '*Bet.nii.gz' but will be identical to bias-corrected (or original) image
+        action='store_true'
+    )
+
     parser.add_argument(
         '-bias_method',
         '--bias_method',
@@ -236,7 +241,7 @@ if __name__ == "__main__":
 
     #intensity correction using non parametric bias field correction algorithm
     print("Starting Biasfieldcorrection:")
-    if bias_skip == 0:
+    if not args.bias_skip:
         if bias_method == "mico":
             try:
                 outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
@@ -259,14 +264,37 @@ if __name__ == "__main__":
 
     use_bet4animal = args.use_bet4animal
 
-    # brain extraction
-    print("Starting brain extraction")
-    try:
-        outputBET = applyBET(input_file=outputBiasCorr,frac=frac,radius=radius,vertical_gradient=vertical_gradient,use_bet4animal=use_bet4animal, center=args.center)
-        print("Brain extraction was successful")
-    except Exception as e:
-        print(f'Error in brain extraction\nFehlermeldung: {str(e)}')
-        raise
+    if args.bet_skip:
+        print("Skipping BET")
+        outputBET = os.path.join(
+            os.path.dirname(outputBiasCorr),
+            os.path.basename(outputBiasCorr).split('.')[0] + 'Bet.nii.gz'
+        )
+        shutil.copyfile(outputBiasCorr, outputBET)
+        print(f"BET skipped -> copied to {outputBET}")  # downstream "output" is the bias-corrected (or original) image
+
+        # Dummy BET mask
+        bet_mask_path = outputBET.replace('.nii.gz', '_mask.nii.gz')
+
+        img = nib.load(outputBET)
+        data = img.get_fdata()
+
+        mask = np.zeros_like(data, dtype=np.uint8)
+        mask[data > 0] = 1
+
+        mask_img = nib.Nifti1Image(mask, img.affine, img.header)
+        nib.save(mask_img, bet_mask_path)
+
+        print(f"BET mask created at {bet_mask_path}")
+    else:
+        # brain extraction
+        print("Starting brain extraction")
+        try:
+            outputBET = applyBET(input_file=outputBiasCorr,frac=frac,radius=radius,vertical_gradient=vertical_gradient,use_bet4animal=use_bet4animal, center=args.center)
+            print("Brain extraction was successful")
+        except Exception as e:
+            print(f'Error in brain extraction\nFehlermeldung: {str(e)}')
+            raise
     
     print("Preprocessing completed")
  
