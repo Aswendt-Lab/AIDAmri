@@ -270,19 +270,24 @@ if __name__ == "__main__":
             os.path.dirname(outputBiasCorr),
             os.path.basename(outputBiasCorr).split('.')[0] + 'Bet.nii.gz'
         )
-        shutil.copyfile(outputBiasCorr, outputBET)
+        # --- reproduce BET pre-steps: flip axis 2 + closest canonical ---
+        src = nib.load(outputBiasCorr)
+        data = src.get_fdata()
+
+        data = np.flip(data, 2)  # match applyBET()
+        bet_like = nib.Nifti1Image(data, src.affine)
+        bet_like = nib.as_closest_canonical(bet_like)
+
+        nib.save(bet_like, outputBET)
         print(f"BET skipped -> copied to {outputBET}")  # downstream "output" is the bias-corrected (or original) image
 
         # Dummy BET mask
         bet_mask_path = outputBET.replace('.nii.gz', '_mask.nii.gz')
+        bet_data = bet_like.get_fdata()
 
-        img = nib.load(outputBET)
-        data = img.get_fdata()
-
-        mask = np.zeros_like(data, dtype=np.uint8)
-        mask[data > 0] = 1
-
-        mask_img = nib.Nifti1Image(mask, img.affine, img.header)
+        mask = (bet_data > 0).astype(np.uint8)
+        mask_img = nib.Nifti1Image(mask, bet_like.affine)
+        mask_img.set_data_dtype(np.uint8)
         nib.save(mask_img, bet_mask_path)
 
         print(f"BET mask created at {bet_mask_path}")
