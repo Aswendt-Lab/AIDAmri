@@ -200,7 +200,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         '--bet_skip',
-        help='Skip BET during T2 preprocessing (still creates *Bet.nii.gz as copy for pipeline compatibility). Note: AIDAmri needs a BET mask for registration', #Output will stil be named as '*Bet.nii.gz' but will be identical to bias-corrected (or original) image
+        help='Skip BET during T2 preprocessing (still creates *Bet.nii.gz as copy for pipeline compatibility)', #Output will stil be named as '*Bet.nii.gz' but will be identical to bias-corrected (or original) image
         action='store_true'
     )
 
