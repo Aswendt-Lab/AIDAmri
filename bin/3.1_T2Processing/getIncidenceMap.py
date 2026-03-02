@@ -42,7 +42,7 @@ def heatMap(incidenceMap, araVol, outputLocation):
     plt.close()
 
 
-def incidenceMap2(path_listInc, araTemplate, inputFile, outputLocation):
+def incidenceMap2(path_listInc, araTemplate, inputLocation, outputLocation):
     araDataTemplate = nii.load(araTemplate)
     realAraImg = np.asanyarray(araDataTemplate.dataobj)
     overlaidIncidences = np.zeros_like(realAraImg)
@@ -76,19 +76,23 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='Calculate an Incidence Map')
-    parser.add_argument('-i', '--inputFile', help='Directory: Brain extracted input data, e.g proc_data folder', required=True)
-    parser.add_argument('-o', '--outputLocation', help='Directory: Output location for the heat map', required=True)
+    parser.add_argument('-i', '--inputLocation', help='Directory: Brain extracted input data, e.g proc_data folder', required=True)
+    parser.add_argument('-o', '--outputLocation', help='Directory: Output location for the heat map', default=None)
     parser.add_argument('-a', '--allenBrainTemplate', help='File: Annotations of Allen Brain', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir, 'lib', 'average_template_50.nii.gz')))
 
     args = parser.parse_args()
 
-    inputFile = args.inputFile
+    inputLocation = args.inputLocation
     outputLocation = args.outputLocation
     allenBrainTemplate = args.allenBrainTemplate
 
-    if not os.path.exists(inputFile):
-        sys.exit("Error: '%s' is not an existing directory." % (inputFile,))
+    # If no output location is provided → use input directory
+    if outputLocation is None:
+        outputLocation = inputLocation
+
+    if not os.path.exists(inputLocation):
+        sys.exit("Error: '%s' is not an existing directory." % (inputLocation,))
 
     if not os.path.exists(outputLocation):
         sys.exit("Error: '%s' is not an existing directory." % (outputLocation,))
@@ -96,11 +100,11 @@ if __name__ == "__main__":
     if not os.path.exists(allenBrainTemplate):
         sys.exit("Error: '%s' is not an existing file." % (allenBrainTemplate,))
 
-    regInc_list = findIncData(inputFile)
+    regInc_list = findIncData(inputLocation)
 
     if len(regInc_list) < 1:
         sys.exit("Error: No masked strokes found in the provided directory.")
 
     print("'%i' folders are part of the incidence map." % (len(regInc_list),))
-    incidenceMap2(regInc_list, allenBrainTemplate, inputFile, outputLocation)
+    incidenceMap2(regInc_list, allenBrainTemplate, inputLocation, outputLocation)
     sys.exit(0)
