@@ -5,13 +5,38 @@ import glob
 import numpy as np
 import progressbar
 import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 # --- Fonts & Text Display ---
 matplotlib.rcParams['svg.fonttype'] = 'none'     #text remains editable in SVG
 matplotlib.rcParams['pdf.fonttype'] = 42         # Editable text in PDF (Type 42)
 
-def heatMap(incidenceMap, araVol, outputLocation):
+def build_output_prefix(inputLocation, prefix="heatmap_"):
+    """
+    Uses only the last two path elements of inputLocation.
+    Replaces slashes with underscores.
+    Example:
+      /aida/Data/Division/proc/Stroke/ses-PT3
+      -> heatmap_Stroke_ses-PT3
+    """
+    # Normalize path
+    input_abs = os.path.abspath(os.path.normpath(inputLocation))
+
+    # Split path into components
+    parts = input_abs.split(os.sep)
+
+    # Remove empty elements (important if path starts with /)
+    parts = [p for p in parts if p]
+
+    if len(parts) >= 2:
+        rel = "_".join(parts[-2:])
+    else:
+        rel = parts[-1]
+
+    return f"{prefix}{rel}"
+
+def heatMap(incidenceMap, araVol, outputLocation, prefix):
     maxV = int(np.max(incidenceMap))
     fig, axes = plt.subplots(nrows=3, ncols=4)
     t = 1
@@ -26,23 +51,23 @@ def heatMap(incidenceMap, araVol, outputLocation):
     bounds = np.linspace(0, maxV, maxV + 1)
     cbar = fig.colorbar(im, cax=cbar_ax, format='%1i', ticks=bounds)
     cbar.ax.tick_params(labelsize=14)
-    
+
     # Save the heatmap instead of showing
-    output_file = os.path.join(outputLocation, 'heatMap.png')
-    plt.savefig(output_file)
+    output_file = os.path.join(outputLocation, f"{prefix}.png")
+    fig.savefig(output_file, dpi=300, bbox_inches="tight")
 
     # Save heatmap as PDF
-    output_pdf = os.path.join(outputLocation, 'heatMap.pdf')
-    plt.savefig(output_pdf)
+    output_pdf = os.path.join(outputLocation, f"{prefix}.pdf")
+    fig.savefig(output_pdf, bbox_inches="tight")
 
     # Save heatmap as SVG (vector graphics)
-    output_svg = os.path.join(outputLocation, 'heatMap.svg')
-    plt.savefig(output_svg)
+    output_svg = os.path.join(outputLocation, f"{prefix}.svg")
+    fig.savefig(output_svg, bbox_inches="tight")
 
-    plt.close()
+    plt.close(fig)
 
 
-def incidenceMap2(path_listInc, araTemplate, inputLocation, outputLocation):
+def incidenceMap2(path_listInc, araTemplate, inputLocation, outputLocation, prefix):
     araDataTemplate = nii.load(araTemplate)
     realAraImg = np.asanyarray(araDataTemplate.dataobj)
     overlaidIncidences = np.zeros_like(realAraImg)
@@ -58,9 +83,12 @@ def incidenceMap2(path_listInc, araTemplate, inputLocation, outputLocation):
         overlaidIncidences += volumeMRI
 
     overlayNII = nii.Nifti1Image(overlaidIncidences, araDataTemplate.affine)
-    output_file = os.path.join(outputLocation, 'incMap.nii.gz')
+    # remove "heatmap_" from prefix
+    name_part = prefix.replace("heatmap_", "", 1)
+
+    output_file = os.path.join(outputLocation, f"incMap_{name_part}.nii.gz")
     nii.save(overlayNII, output_file)
-    heatMap(incidenceMap=overlaidIncidences, araVol=realAraImg, outputLocation=outputLocation)
+    heatMap(incidenceMap=overlaidIncidences, araVol=realAraImg, outputLocation=outputLocation, prefix=prefix)
     max_overlap = int(np.max(overlaidIncidences))
     print("Maximum number of subjects overlapping at any voxel in the incidence volume:", max_overlap)
 
@@ -91,11 +119,12 @@ if __name__ == "__main__":
     if outputLocation is None:
         outputLocation = inputLocation
 
+    prefix = build_output_prefix(inputLocation)
+
     if not os.path.exists(inputLocation):
         sys.exit("Error: '%s' is not an existing directory." % (inputLocation,))
 
-    if not os.path.exists(outputLocation):
-        sys.exit("Error: '%s' is not an existing directory." % (outputLocation,))
+    os.makedirs(outputLocation, exist_ok=True)
 
     if not os.path.exists(allenBrainTemplate):
         sys.exit("Error: '%s' is not an existing file." % (allenBrainTemplate,))
@@ -106,5 +135,5 @@ if __name__ == "__main__":
         sys.exit("Error: No masked strokes found in the provided directory.")
 
     print("'%i' folders are part of the incidence map." % (len(regInc_list),))
-    incidenceMap2(regInc_list, allenBrainTemplate, inputLocation, outputLocation)
+    incidenceMap2(regInc_list, allenBrainTemplate, inputLocation, outputLocation, prefix)
     sys.exit(0)
