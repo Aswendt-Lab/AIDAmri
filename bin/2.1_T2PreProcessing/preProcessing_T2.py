@@ -109,7 +109,7 @@ def estimate_center_intensity_based(nifti, percentile=60):
         ["fslstats", nifti, "-l", p, "-C"]
     ).decode().strip().split()
 
-    cx, cy, cz = [int(round(float(v))) for v in center]
+    cx, cy, cz = [float(v) for v in center]
     return [cx, cy, cz], float(p)
 
 
@@ -339,9 +339,30 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
 
         # set output file path
         output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-        # run BET with robust option and mask output
-        myBet = fsl.BET(in_file=fslPath, out_file=output_file, frac=frac, radius=radius,
-                        vertical_gradient=vertical_gradient, robust=True, mask=True)
+        if center is not None:
+            # nipype BET requires ints
+            center_int = [int(round(c)) for c in center]
+            print(f"Using user-defined center (rounded): {center_int}")
+            myBet = fsl.BET(
+                in_file=fslPath,
+                out_file=output_file,
+                frac=frac,
+                radius=radius,
+                vertical_gradient=vertical_gradient,
+                center=center_int,
+                mask=True
+            )
+        else:
+            print("Using robust center estimation (-R)")
+            myBet = fsl.BET(
+                in_file=fslPath,
+                out_file=output_file,
+                frac=frac,
+                radius=radius,
+                vertical_gradient=vertical_gradient,
+                robust=True,
+                mask=True
+            )
         myBet.run()
         os.remove(fslPath) # remove temporary scaled file
 
@@ -397,7 +418,7 @@ if __name__ == "__main__":
         '-c', '--center',
         help='Brain center in voxel coordinates: x y z',
         nargs=3,
-        type=int,
+        type=float,
         default=None
     )
 
@@ -415,7 +436,6 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        '-bias_method',
         '--bias_method',
         help='Biasfield correction method - default="mico", other options are "mico" or "ants"',
         nargs='?',
