@@ -368,14 +368,50 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
 
         # unscale result data by factor 10ˆ(-1)
         dataOut = nib.load(output_file)
-        imgOut = dataOut.get_fdata()
+        imgOut = dataOut.get_fdata(dtype=np.float32)
         scale = np.eye(4) / 10
         scale[3][3] = 1
         #create unscaled Nifti image with unscaled affine and flip
         unscaledNiiData = nib.Nifti1Image(imgOut, dataOut.affine * scale)
         hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
+        hdrOut.set_data_dtype(np.float32)
+        hdrOut.set_xyzt_units('mm', 'sec')
+        hdrOut["pixdim"][0] = 1
+        hdrOut["pixdim"][4:8] = 1
         nib.save(unscaledNiiData, output_file)
+
+        # also unscale BET mask
+        mask_file = output_file.replace('.nii.gz', '_mask.nii.gz')
+        if os.path.exists(mask_file):
+            mask_data = nib.load(mask_file)
+            mask_img = mask_data.get_fdata()
+            #unscale mask affine
+            scale = np.eye(4) / 10
+            scale[3][3] = 1
+            #make binary mask and apply unscaled affine
+            unscaledMask = nib.Nifti1Image(
+                (mask_img > 0.5).astype(np.uint8),
+                mask_data.affine * scale
+            )
+            hdrMask = unscaledMask.header
+            hdrMask.set_data_dtype(np.uint8)
+            hdrMask.set_xyzt_units('mm', 'sec')
+            hdrMask["pixdim"][0] = 1
+            hdrMask["pixdim"][4:8] = 1
+            #set offset to 0 (important for BET/mask overlay)
+            aff_mask = unscaledMask.affine.copy()
+            aff_mask[:3, 3] = 0
+
+            finalMask = nib.Nifti1Image(
+                (mask_img > 0.5).astype(np.uint8),
+                aff_mask,
+                header=hdrMask
+            )
+            #inline with Bet image
+            finalMask.set_qform(aff_mask, code=0)
+            finalMask.set_sform(aff_mask, code=2)
+
+            nib.save(finalMask, mask_file)
     print(f"Brain extraction completed, output saved to {output_file}")
     return output_file
 
