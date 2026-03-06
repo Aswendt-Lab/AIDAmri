@@ -506,8 +506,8 @@ if __name__ == "__main__":
     print("Orientation resetted to RAS")
 
     #intensity correction using non parametric bias field correction algorithm
-    print("Starting Biasfieldcorrection:")
     if not args.bias_skip:
+        print("Starting Biasfieldcorrection:")
         if bias_method == "mico":
             try:
                 outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
@@ -524,9 +524,10 @@ if __name__ == "__main__":
                 print(f'Error in bias field correction\nError message: {str(e)}')
                 raise
     else:
+        print("No bias field correction applied")
         outputBiasCorr = input_file
     
-    print(os.path.exists(outputBiasCorr))
+    #print(os.path.exists(outputBiasCorr))
 
     use_bet4animal = args.use_bet4animal
 
@@ -534,6 +535,7 @@ if __name__ == "__main__":
         print("Skipping BET")
         outputBET = os.path.join(
             os.path.dirname(outputBiasCorr),
+            print('No Brain Extraction applied but creating a NIFTI with *Bet.nii.gz suffix for pipeline compatibility'),
             os.path.basename(outputBiasCorr).split('.')[0] + 'Bet.nii.gz'
         )
         # --- reproduce BET pre-steps: flip axis 2 + closest canonical ---
