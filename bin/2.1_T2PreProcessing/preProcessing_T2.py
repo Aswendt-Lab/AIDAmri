@@ -42,26 +42,6 @@ def reset_orientation(input_file):
     forceradiological_command = f"fslorient -forceradiological {input_file}"
     subprocess.run(forceradiological_command, shell=True)
 
-def post_flip_and_canonicalize(in_path: str, out_path: str | None = None) -> str:
-    """
-    Apply the same processing convention as the FSL-BET branch:
-    flip axis 2 (z) and convert to closest canonical orientation.
-    If out_path is None, overwrite in_path.
-    Returns output path.
-    """
-    if out_path is None:
-        out_path = in_path
-
-    img = nib.load(in_path)
-    data = img.get_fdata()
-
-    data = np.flip(data, 2)
-    out_img = nib.Nifti1Image(data, img.affine, img.header)
-    out_img = nib.as_closest_canonical(out_img)
-
-    nib.save(out_img, out_path)
-    return out_path
-
 def n4biasfieldcorr(input_file):
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
     # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
