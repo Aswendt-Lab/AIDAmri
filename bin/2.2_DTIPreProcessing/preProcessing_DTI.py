@@ -21,7 +21,6 @@ import subprocess
 import shutil
 import averageb0
 import dipy.denoise.patch2self as patch2self
-import extracted_brain_output
 
 def reset_orientation(input_file):
 
@@ -401,7 +400,7 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     # Save the denoised image
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
     denoised_nii = nib.Nifti1Image(denoised_img, affine)
-    denoised_nib.header.set_xyzt_units('mm')
+    denoised_nii.header.set_xyzt_units('mm')
     if debug is True:
         print("Denoised image header:", denoised_nii.header)
         print("Denoised affine matrix:", denoised_nii.affine)
@@ -435,7 +434,7 @@ def dwibiasfieldcorr(input_file,outputPath):
 def smoothIMG(input_file, output_path,skip_min=False):
     """
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
-    If skip_min is True, the minimum filter is not applied, and the image is directly smoothed (No "DN" files are produced).
+    If skip_min is True, the median filter is not applied, and the image is directly smoothed (No "DN" files are produced).
     """
     data = nib.load(input_file)
     vol = data.get_fdata()
@@ -496,7 +495,7 @@ if __name__ == "__main__":
         '--frac',
         help='Fractional intensity threshold - default=0.4, smaller values give larger brain outline estimates',
         type=float,
-        default=0.5,
+        default=0.4,
     )
     parser.add_argument(
         '-r',
