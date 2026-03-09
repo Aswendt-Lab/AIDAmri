@@ -14,6 +14,7 @@ import os
 import glob
 import dsi_tools
 import shutil
+import gzip
 
 if __name__ == '__main__':
     # default dsi studio directory
@@ -66,8 +67,8 @@ if __name__ == '__main__':
                        )
     parser.add_argument('-y',
                         '--flip_image_y',
-                        default=False,
-                        help='Specify whether to flip the image in the y-direction. Default is None (no flip). Set to "true" to flip the image.',
+                        action = 'store_true',
+                        help='Specify whether to flip the image in the y-direction.',
                         required=False
                        )
     parser.add_argument('-template',
@@ -78,6 +79,7 @@ if __name__ == '__main__':
                        )
     parser.add_argument('-thread_count',
                         '--thread_count',
+                        type=int,
                         default=1,
                         help='Specify the number of threads to use for fiber tracking. Default is 1.',
                         required=False
@@ -90,7 +92,7 @@ if __name__ == '__main__':
                         )
     parser.add_argument('-nomcf',
                         '--no_motion_correction',
-                        default=False,
+                        action='store_true',
                         help='Specify whether to skip motion correction. Default is False (perform motion correction). Set to "true" to skip motion correction.',
                         required=False
                         )
@@ -102,7 +104,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
         
      # Determine the btable source based on the -b option
-    if args.b_table.lower() == 'auto':
+    if str(args.b_table).lower() == 'auto':
         # Use the merge_bval_bvec_to_btable function with folder_path as file_in
         b_table = dsi_tools.merge_bval_bvec_to_btable(os.path.dirname(args.file_in))
         if b_table is False:
@@ -121,14 +123,19 @@ if __name__ == '__main__':
             # check for mask without scaled in name
             dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz'))
             bet4animal = True
-            
+    if not dir_mask:
+        raise FileNotFoundError("No BET mask found in DSI_studio folder.")
+
     dir_mask = dir_mask[0]
 
     dir_out = args.file_in
 
     make_isotropic=0
-    if args.make_isotropic != 0:
-        make_isotropic=args.make_isotropic
+
+    if str(args.make_isotropic).lower() == 'auto':
+        make_isotropic = 'auto'
+    else:
+        make_isotropic = float(args.make_isotropic)
     
     flip_image_y = False
     if args.flip_image_y is None:
@@ -150,14 +157,15 @@ if __name__ == '__main__':
 
     # if it exists, find the denoised dwi data and use it as file_in
     if os.path.exists(file_cur):
-        file_in = glob.glob(os.path.join(file_cur, '*Denoised.nii*'))
-        if file_in:
-            file_in = file_in[0]
+        file_in = args.file_in
+        denoised = glob.glob(os.path.join(file_cur, '*Denoised.nii*'))
+        if denoised:
+            file_in = denoised[0]
 
     if os.path.exists(mcf_path):
         shutil.rmtree(mcf_path)
    
-    if args.no_motion_correction is True or str(args.no_motion_correction).lower() == 'true':
+    if args.no_motion_correction:
         print("Skipping motion correction")
     else:
         print("Performing slice-wise motion correction")
@@ -190,7 +198,9 @@ if __name__ == '__main__':
         dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y, args.legacy)
 
     # rename files to reduce path length
-    confiles = os.path.join(file_cur,dir_con)
+    confiles = os.path.join(file_cur, dir_con)
+    if not os.path.isdir(confiles):
+        raise FileNotFoundError(f"Connectivity folder not found: {confiles}")
     data_list = os.listdir(confiles)
     for filename in data_list:
         if args.recon_method == "dti":
@@ -226,11 +236,18 @@ if __name__ == '__main__':
                 os.rename(oldName, newName)
             
             # Due to changes in ROI annotations the corresponding files are saved as '.nii' files as opposed to '.nii.gz' files in earlier versions of DSI studio. With the 'nii_gz' flag toggled on, the '.nii' files are renamed to '.nii.gz'.
+            opts = [s.lower() for s in args.optional]
             if 'nii_gz' in args.optional and f.endswith('.nii'):
-                newName = f + '.gz'
-                newName = os.path.join(dsi_path, newName)
-                oldName = os.path.join(dsi_path, f)
-                if os.path.isfile(newName):
-                    os.remove(newName)
-                os.rename(oldName, newName)
+                if 'nii_gz' in opts and f.endswith('.nii'):
+                    oldName = os.path.join(dsi_path, f)
+                    newName = os.path.join(dsi_path, f + '.gz')
+
+                    if os.path.isfile(newName):
+                        os.remove(newName)
+
+                    with open(oldName, 'rb') as f_in:
+                        with gzip.open(newName, 'wb') as f_out:
+                            shutil.copyfileobj(f_in, f_out)
+
+                    os.remove(oldName)
 
