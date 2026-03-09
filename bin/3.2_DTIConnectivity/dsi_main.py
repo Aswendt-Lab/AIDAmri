@@ -86,7 +86,7 @@ if __name__ == '__main__':
                         '--legacy',
                         default=False,
                         help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient ".sz" and ".fz" file types)',
-                        required=False
+                        action = 'store_true'
                         )
     parser.add_argument('-nomcf',
                         '--no_motion_correction',
