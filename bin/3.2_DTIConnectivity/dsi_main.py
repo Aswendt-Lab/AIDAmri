@@ -55,7 +55,7 @@ if __name__ == '__main__':
                        )
     parser.add_argument('-m',
                         '--make_isotropic',
-                        default=0,
+                        default='0',
                         help='Specify an isotropic voxel size in mm for resampling. Default 0 = no resampling. "auto" uses nibabel to read the NIFTI header for the minimum voxel size',
                         required=False
                        )
@@ -136,12 +136,8 @@ if __name__ == '__main__':
         make_isotropic = 'auto'
     else:
         make_isotropic = float(args.make_isotropic)
-    
-    flip_image_y = False
-    if args.flip_image_y is None:
-        flip_image_y = False
-    elif str(args.flip_image_y).lower() == 'true':
-        flip_image_y = True
+
+    flip_image_y = args.flip_image_y
     
     template = 6
     if args.template.lower() == 'rat':
@@ -223,6 +219,8 @@ if __name__ == '__main__':
 
     # Including optional arguments regarding deprecated terminology
     if args.optional is not None:
+        opts = [s.lower() for s in args.optional]
+
         file_list = os.listdir(dsi_path)
         for f in file_list:
 
@@ -236,18 +234,16 @@ if __name__ == '__main__':
                 os.rename(oldName, newName)
             
             # Due to changes in ROI annotations the corresponding files are saved as '.nii' files as opposed to '.nii.gz' files in earlier versions of DSI studio. With the 'nii_gz' flag toggled on, the '.nii' files are renamed to '.nii.gz'.
-            opts = [s.lower() for s in args.optional]
-            if 'nii_gz' in args.optional and f.endswith('.nii'):
-                if 'nii_gz' in opts and f.endswith('.nii'):
-                    oldName = os.path.join(dsi_path, f)
-                    newName = os.path.join(dsi_path, f + '.gz')
+            if 'nii_gz' in opts and f.endswith('.nii'):
+                oldName = os.path.join(dsi_path, f)
+                newName = os.path.join(dsi_path, f + '.gz')
 
-                    if os.path.isfile(newName):
-                        os.remove(newName)
+                if os.path.isfile(newName):
+                    os.remove(newName)
 
-                    with open(oldName, 'rb') as f_in:
-                        with gzip.open(newName, 'wb') as f_out:
-                            shutil.copyfileobj(f_in, f_out)
+                with open(oldName, 'rb') as f_in:
+                    with gzip.open(newName, 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
 
-                    os.remove(oldName)
+                os.remove(oldName)
 
