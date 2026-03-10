@@ -92,6 +92,78 @@ def estimate_center_intensity_based(nifti, percentile=60):
     cx, cy, cz = [float(v) for v in center]
     return [cx, cy, cz], float(p)
 
+def skip_bet_function(input_file):
+    """
+    Create BET-compatible outputs when BET is skipped.
+    Reproduces key geometry/orientation steps so that downstream
+    AIDAmri pipeline steps remain compatible.
+    """
+
+    print("Skipping BET")
+    print("Creating BET-compatible outputs for pipeline compatibility")
+
+    outputBET = os.path.join(
+        os.path.dirname(input_file),
+        os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz'
+    )
+
+    src = nib.load(input_file)
+    data = src.get_fdata(dtype=np.float32)
+
+    # --- reproduce main BET preprocessing steps ---
+    data = np.flip(data, 2)
+
+    bet_like = nib.Nifti1Image(data, src.affine)
+    bet_like = nib.as_closest_canonical(bet_like)
+
+    # --- normalize header / affine like real BET output ---
+    aff = bet_like.affine.copy()
+    aff[:3, 3] = 0
+
+    hdr = bet_like.header.copy()
+    hdr.set_data_dtype(np.float32)
+    hdr["pixdim"][0] = 1
+    hdr["pixdim"][4:8] = 1
+    hdr.set_xyzt_units('mm', 'sec')
+
+    final_img = nib.Nifti1Image(
+        np.ascontiguousarray(bet_like.get_fdata(dtype=np.float32), dtype=np.float32),
+        aff,
+        header=hdr
+    )
+
+    final_img.set_qform(aff, code=0)
+    final_img.set_sform(aff, code=2)
+
+    nib.save(final_img, outputBET)
+
+    print(f"BET skipped -> created compatibility image: {outputBET}")
+
+    # --- create dummy mask ---
+    bet_mask_path = outputBET.replace('.nii.gz', '_mask.nii.gz')
+
+    mask = (final_img.get_fdata(dtype=np.float32) > 0).astype(np.uint8)
+
+    mask_hdr = final_img.header.copy()
+    mask_hdr.set_data_dtype(np.uint8)
+    mask_hdr["pixdim"][0] = 1
+    mask_hdr["pixdim"][4:8] = 1
+    mask_hdr.set_xyzt_units('mm', 'sec')
+
+    mask_img = nib.Nifti1Image(
+        np.ascontiguousarray(mask, dtype=np.uint8),
+        aff,
+        header=mask_hdr
+    )
+
+    mask_img.set_qform(aff, code=0)
+    mask_img.set_sform(aff, code=2)
+
+    nib.save(mask_img, bet_mask_path)
+
+    print(f"BET mask created at {bet_mask_path}")
+
+    return outputBET
 
 def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, species='mouse', center= None):
     """Apply BET"""
@@ -513,33 +585,7 @@ if __name__ == "__main__":
     use_bet4animal = args.use_bet4animal
 
     if args.bet_skip:
-        print("Skipping BET")
-        outputBET = os.path.join(
-            os.path.dirname(outputBiasCorr),
-            print('No Brain Extraction applied but creating a NIFTI with *Bet.nii.gz suffix for pipeline compatibility'),
-            os.path.basename(outputBiasCorr).split('.')[0] + 'Bet.nii.gz'
-        )
-        # --- reproduce BET pre-steps: flip axis 2 + closest canonical ---
-        src = nib.load(outputBiasCorr)
-        data = src.get_fdata()
-
-        data = np.flip(data, 2)  # match applyBET()
-        bet_like = nib.Nifti1Image(data, src.affine)
-        bet_like = nib.as_closest_canonical(bet_like)
-
-        nib.save(bet_like, outputBET)
-        print(f"BET skipped -> copied to {outputBET}")  # downstream "output" is the bias-corrected (or original) image
-
-        # Dummy BET mask
-        bet_mask_path = outputBET.replace('.nii.gz', '_mask.nii.gz')
-        bet_data = bet_like.get_fdata()
-
-        mask = (bet_data > 0).astype(np.uint8)
-        mask_img = nib.Nifti1Image(mask, bet_like.affine)
-        mask_img.set_data_dtype(np.uint8)
-        nib.save(mask_img, bet_mask_path)
-
-        print(f"BET mask created at {bet_mask_path}")
+        outputBET = skip_bet_function(outputBiasCorr)
     else:
         # brain extraction
         print("Starting brain extraction")
