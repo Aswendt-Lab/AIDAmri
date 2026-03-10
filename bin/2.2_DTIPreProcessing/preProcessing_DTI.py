@@ -130,7 +130,7 @@ def skip_bet_function(input_file):
 def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
              use_bet4animal=False, species='mouse', verbose=True, center=None):
     """Apply BET"""
-    if use_bet4animal == True:
+    if use_bet4animal:
         # Use BET for animal brains
         print("Using BET for animal brains")
         print("Note: bet4animal requires that the AC-PC line of brain is parallel to Y-axis")
@@ -338,16 +338,16 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
         # scale Nifti data by factor 10
         data = nib.load(input_file)
         imgTemp = data.get_fdata()
-        if verbose is True:
+        if verbose:
             print("Image dimensions before scaling:", data.header.get_zooms())
         scale = np.eye(4) * 10
         scale[3][3] = 1
         imgTemp = np.flip(imgTemp, 2)
-        if verbose is True:
+        if verbose:
             print("Image dimensions after scaling:", (data.affine * scale)[:3,:3])
 
         scaledNiiData = nib.Nifti1Image(imgTemp, data.affine * scale)
-        if verbose is True:
+        if verbose:
             print("Image dimensions after flipping:", scaledNiiData.header.get_zooms())
         hdrIn = scaledNiiData.header
         hdrIn.set_xyzt_units('mm')
@@ -355,7 +355,7 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
 
         fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
         nib.save(scaledNiiData, fslPath)
-        if verbose is True:
+        if verbose:
             print("Saved scaled image to:", fslPath)
             print("Image dimensions:", scaledNiiData.header.get_zooms())
 
@@ -397,7 +397,7 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
         unscaledNiiData = nib.Nifti1Image(imgOut, dataOut.affine * scale)
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm', 'sec')
-        if verbose is True:
+        if verbose:
             print("Image dimensions after unscaling:", unscaledNiiData.header.get_zooms())
         nib.save(unscaledNiiData, output_file)
 
@@ -456,7 +456,7 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     img = data.get_fdata()
     affine = data.affine
     debug = True
-    if debug is True:
+    if debug:
         print("Debugging information:")
         print("Image header:", data.header)
         print("Affine matrix:", affine)
@@ -471,7 +471,7 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
     denoised_nii = nib.Nifti1Image(denoised_img, affine)
     denoised_nii.header.set_xyzt_units('mm')
-    if debug is True:
+    if debug:
         print("Denoised image header:", denoised_nii.header)
         print("Denoised affine matrix:", denoised_nii.affine)
         print("Denoised image sform:", denoised_nii.header.get_sform())
@@ -508,7 +508,7 @@ def smoothIMG(input_file, output_path,skip_min=False):
     """
     data = nib.load(input_file)
     vol = data.get_fdata()
-    if skip_min is False or str(skip_min).lower() == 'false':
+    if not skip_min:
         ImgSmooth = np.min(vol, 3)
         unscaledNiiData = nib.Nifti1Image(ImgSmooth, data.affine)
         hdrOut = unscaledNiiData.header
@@ -598,7 +598,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '-b',
-        'bias_method',
+        '--bias_method',
         help='Biasfield correction method - default=None, other options are "mico" or "ants"',
         choices = ["mico", "ants"],
         type=str.lower,
@@ -640,7 +640,6 @@ if __name__ == "__main__":
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
-    reset_orientation_needed = True
     if reset_orientation_needed:
         reset_orientation(input_file)
         print("Orientation reset to RAS")
@@ -652,7 +651,7 @@ if __name__ == "__main__":
         # reset_orientation(denoised_image)
         input_file = denoised_image
 
-    if args.average_b0 is True:
+    if args.average_b0:
         # Average b0 volumes
         b0image = averageb0.averageb0(input_file,b0_thresh)
         # # Copy header with fslcopygeom
@@ -668,10 +667,10 @@ if __name__ == "__main__":
         print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
         raise
     
-    if args.biasfieldcorr is None:
+    if args.bias_method is None:
         print("No bias field correction applied")
         output_biascorr = output_smooth
-    elif args.biasfieldcorr == "mico":
+    elif args.bias_method == "mico":
         # intensity correction using MICO
         try:
             output_biascorr = applyMICO.run_MICO(output_smooth, output_path)
@@ -679,7 +678,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
             raise
-    elif args.biasfieldcorr == "ants":
+    elif args.bias_method == "ants":
         # intensity correction using ANTs N4BiasFieldCorrection
         try:
             output_biascorr = dwibiasfieldcorr(input_file=output_smooth, outputPath=output_path)
