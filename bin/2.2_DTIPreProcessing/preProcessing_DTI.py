@@ -522,16 +522,18 @@ if __name__ == "__main__":
         '-d',
         '--denoiser',
         help='Denoising method - default=None, other option is "patch2self"',
+        choices = ["patch2self"],
+        type=str.lower,
         default=None,
         nargs='?',
-        type=str,
     )
     parser.add_argument(
         '-b',
         '--biasfieldcorr',
         help='Biasfield correction method - default=None, other options are "mico" or "ants"',
+        choices = ["mico", "ants"],
+        type=str.lower,
         nargs='?',
-        type=str,
         default=None,
     )
     parser.add_argument(
