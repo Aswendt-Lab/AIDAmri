@@ -594,16 +594,14 @@ if __name__ == "__main__":
         help='Denoising method - default=None, other option is "patch2self"',
         choices = ["patch2self"],
         type=str.lower,
-        default=None,
-        nargs='?',
+        default=None
     )
     parser.add_argument(
         '-b',
-        '--biasfieldcorr',
+        'bias_method',
         help='Biasfield correction method - default=None, other options are "mico" or "ants"',
         choices = ["mico", "ants"],
         type=str.lower,
-        nargs='?',
         default=None,
     )
     parser.add_argument(
@@ -614,11 +612,6 @@ if __name__ == "__main__":
     parser.add_argument(
         '--bet_skip',
         help='Skip BET during DTI preprocessing (still creates *Bet.nii.gz and *_mask.nii.gz for pipeline compatibility)',
-        action='store_true'
-    )
-    parser.add_argument(
-        '--deoblique',
-        help='Deoblique input using AFNI 3dWarp -deoblique',
         action='store_true'
     )
     parser.add_argument(
@@ -634,12 +627,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # set parameters
-    input_file = None
-    if args.input is not None and args.input is not None:
-        input_file = args.input
+    input_file = args.input
 
     if not os.path.exists(input_file):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
+        sys.exit(f"Error: input file does not exist: {input_file}")
         
     frac = args.frac
     radius = args.radius
