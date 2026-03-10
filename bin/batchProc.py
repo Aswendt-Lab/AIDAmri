@@ -35,14 +35,14 @@ def findData(projectPath, sessions, data_types):
         data_types = ["anat", "dwi", "func", "t2map"]
     # This function screens all existing paths. Within these paths, this function collects all subject
     # folders, which are all folders that are not named 'Physio'.
-    full_path_list = os.listdir(projectPath)
+    full_path_list = sorted(os.listdir(projectPath))
     all_wanted_paths, anat_files, dwi_files, func_files, t2map_files = [], [], [], [], []
 
     # collect ses paths
     for path in full_path_list:
         if path.startswith("sub-"):
             sub_root = os.path.join(projectPath, path)
-            wanted_paths = os.listdir(sub_root)
+            wanted_paths = sorted(os.listdir(sub_root))
             wanted_paths = [
                 os.path.join(sub_root, wp)
                 for wp in wanted_paths
@@ -62,7 +62,7 @@ def findData(projectPath, sessions, data_types):
 
     # collect datatype folders
     for path in all_wanted_paths:
-        for sub_dir in os.listdir(path):
+        for sub_dir in sorted(os.listdir(path)):
             if sub_dir == "anat" and "anat" in data_types:
                 anat_files.append(os.path.join(path, sub_dir))
 
@@ -149,19 +149,13 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
         if dataFormat == 'anat':
             if step == "preprocess":
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
-                currentFile = list(currentPath_wData.glob("*T2w.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python preProcessing_T2.py -i {currentFile[0]}'
-                    # Bias: skip + method (T2 has both)
-                    if cfg.get("t2_bias_skip"):
-                        command += " -b"
 
-                    # Only set method if specified
+                    # Bias field correction for T2: none | mico | ants
                     if cfg.get("t2_bias_method"):
-                        command += f' --bias_method {cfg["t2_bias_method"]}'
-                    # fallback to old biasfieldcorr
-                    elif cfg.get("biasfieldcorr"):
-                        command += f' --bias_method {cfg["biasfieldcorr"]}'
+                        command += f' -b {cfg["t2_bias_method"]}'
 
                     if cfg.get("t2_bet_skip"):
                         command += " --bet_skip"
@@ -192,7 +186,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
 
             elif step == "registration":
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
-                currentFile = list(currentPath_wData.glob("*Bet.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python registration_T2.py -i {currentFile[0]}'
                     r1 = run_subprocess(f'python registration_T2.py -i {currentFile[0]}', dataFormat, step)
@@ -237,7 +231,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
         elif dataFormat == 'func':
             if step == "preprocess":
                 os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_fMRI.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
@@ -250,7 +244,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(cwd)
             elif step == "registration":
                 os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*SmoothBet.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*SmoothBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_rsfMRI.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
@@ -262,7 +256,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "process":
-                currentFile = list(currentPath_wData.glob("*EPI.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
                     command = f'python process_fMRI.py -i {currentFile[0]} -stc {stc}'
@@ -273,7 +267,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
         elif dataFormat == 't2map':
             if step == "preprocess":
                 os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*MEMS.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*MEMS.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_T2MAP.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
@@ -286,7 +280,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(cwd)
             elif step == "registration":
                 os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_T2MAP.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
@@ -298,7 +292,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "process":
-                currentFile = list(currentPath_wData.glob("*T2w_MAP.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*T2w_MAP.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python t2map_data_extract.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
@@ -312,7 +306,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
         elif dataFormat == 'dwi':
             if step == "preprocess":
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile) > 0:
                     command = f'python preProcessing_DTI.py -i {currentFile[0]}'
 
@@ -324,8 +318,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     if cfg.get("dwi_vertical_gradient") is not None:
                         command += f' -g {cfg["dwi_vertical_gradient"]}'
 
-                    # Bias field (DWI: none/micro/ANTS)
-                    # dwi_bias_method with choices ["mico",“ants”], default="none"
+                    # Bias field
+                    # dwi_bias_method with choices ["mico",“ants”], default=None
                     if cfg.get("dwi_bias_method") is not None:
                         command += f' -b {cfg["dwi_bias_method"]}'
 
@@ -359,7 +353,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(cwd)
             elif step == "registration":
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
-                currentFile = list(currentPath_wData.glob("*Smooth*Bet.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*Smooth*Bet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_DTI.py -i {currentFile[0]}'
                     result = run_subprocess(command,dataFormat,step)
@@ -371,27 +365,28 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "process":
-                currentFile = list(currentPath_wData.glob("*dwi.nii.gz"))
-                if cfg.get("dwi_denoiser") == "patch2self" or cfg.get("denoiser") == "patch2self":
-                    currentFile = list(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
+                currentFile = sorted(currentPath_wData.glob("*dwi.nii.gz"))
+                if cfg.get("dwi_denoiser") == "patch2self":
+                    currentFile = sorted(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
                     # Pull values from cfg (with defaults)
-                    track_param = cfg.get("dsi_track_param", cfg.get("track_param", "default"))
-                    recon_method = cfg.get("dsi_recon_method", cfg.get("recon_method", "dti"))
-                    vivo = cfg.get("dsi_vivo", cfg.get("vivo", "in_vivo"))
-                    make_iso = cfg.get("dsi_make_isotropic", cfg.get("make_isotropic", 0))
-                    flip_y = 1 if cfg.get("dsi_flip_image_y", cfg.get("flip_image_y", False)) else 0
-                    template_val = str(cfg.get("dsi_template", cfg.get("template", "mouse")))
+                    track_param = cfg.get("dsi_track_param", "default")
+                    recon_method = cfg.get("dsi_recon_method", "dti")
+                    vivo = cfg.get("dsi_vivo", "in_vivo")
+                    make_iso = cfg.get("dsi_make_isotropic", "0")
+                    template_val = str(cfg.get("dsi_template", "mouse"))
                     thread_count = cfg.get("num_processes", 1)
-                    legacy = bool(cfg.get("dsi_legacy", cfg.get("legacy", False)))
-                    no_mcf = bool(cfg.get("dsi_no_mcf", cfg.get("no_mcf", False)))
+                    legacy = bool(cfg.get("dsi_legacy", False))
+                    no_mcf = bool(cfg.get("dsi_no_mcf", False))
 
                     cli_str = (
                         f'dsi_main.py -i {currentFile[0]} '
                         f'-t {track_param} -r {recon_method} -v {vivo} -m {make_iso} '
-                        f'-y {flip_y} -template {template_val} -thread_count {thread_count}'
+                        f'-template {template_val} -thread_count {thread_count}'
                     )
+                    if cfg.get("dsi_flip_image_y", cfg.get("flip_image_y", False)):
+                        cli_str += ' -y'
                     if legacy:
                         cli_str += ' -l'
                     if no_mcf:
@@ -466,12 +461,14 @@ if __name__ == "__main__":
     batch.add_argument(
         "-t", "--data-types",
         nargs="+",
+        choices=["anat", "dwi", "func", "t2map"],
         help="Data types to process (anat, dwi, func, t2map). Default: all"
     )
     batch.add_argument(
         "-d", "--debug-steps",
         dest="debug_steps",
         nargs="+",
+        choices=["preprocess", "registration", "process"],
         help="Processing steps to run (preprocess registration process). Default: all"
     )
     batch.add_argument(
@@ -485,10 +482,10 @@ if __name__ == "__main__":
     cpu = parser.add_argument_group("cpu / parallelization")
     cpu.add_argument(
         "-c", "--cpu-cores",
-        default="Half",
+        default="half",
         type=str.lower,
-        choices=["Min", "Half", "Max"],
-        help="CPU usage preset (Min, Half, Max)"
+        choices=["min", "half", "max"],
+        help="CPU usage preset (min, half, max)"
     )
     cpu.add_argument(
         "-e", "--expert-cpu",
@@ -502,14 +499,10 @@ if __name__ == "__main__":
     t2 = parser.add_argument_group("T2 preprocessing (preProcessing_T2.py)")
     t2.add_argument(
         "--t2-bias-method",
-        choices=["mico", "ants"],
+        choices=["none", "mico", "ants"],
         type=str.lower,
-        help="Bias field correction method for T2 (mico or ants)"
-    )
-    t2.add_argument(
-        "--t2-bias-skip",
-        action="store_true",
-        help="Skip T2 bias field correction"
+        default = "mico",
+        help="Bias field correction method for T2 (none, mico or ants)"
     )
     t2.add_argument(
         "--t2-bet-skip",
@@ -585,7 +578,7 @@ if __name__ == "__main__":
         choices=["mico", "ants"],
         type=str.lower,
         default=None,
-        help="Bias field correction for DWI: none|mico|ants (maps to preProcessing_DTI.py --biasfieldcorr)"
+        help="Bias field correction for DWI: MICO or ANTs (default: None)"
     )
     dwi.add_argument(
         '--dwi-deoblique',
@@ -622,7 +615,6 @@ if __name__ == "__main__":
     )
     dsi.add_argument(
         "--dsi-make-isotropic",
-        type=float,
         default='0',
         help="Voxel size (mm) for isotropic resampling (0 = off, auto = header)"
     )
