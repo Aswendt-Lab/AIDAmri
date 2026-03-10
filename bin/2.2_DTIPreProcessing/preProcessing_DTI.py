@@ -57,6 +57,76 @@ def estimate_center_intensity_based(nifti, percentile=60):
     cx, cy, cz = [float(v) for v in center]
     return [cx, cy, cz], float(p)
 
+def skip_bet_function(input_file):
+    """
+    Create BET-like output and full-brain dummy mask for pipeline compatibility
+    when BET is skipped.
+    Reproduces the key geometry/orientation steps of applyBET(..., use_bet4animal=False).
+    """
+    output_file = os.path.join(
+        os.path.dirname(input_file),
+        os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz'
+    )
+
+    src = nib.load(input_file)
+    data = src.get_fdata(dtype=np.float32)
+
+    # Reproduce main pre-BET manipulations from applyBET() non-bet4animal branch
+    data = np.flip(data, 2)
+
+    bet_like = nib.Nifti1Image(data, src.affine)
+    bet_like.header.set_data_dtype(np.float32)
+    bet_like.header.set_xyzt_units('mm', 'sec')
+
+    bet_like = nib.as_closest_canonical(bet_like)
+
+    # Match downstream expectations a bit more closely
+    aff = bet_like.affine.copy()
+    aff[:3, 3] = 0
+
+    hdr = bet_like.header.copy()
+    hdr.set_data_dtype(np.float32)
+    hdr["pixdim"][0] = 1
+    hdr["pixdim"][4:8] = 1
+    hdr.set_xyzt_units('mm', 'sec')
+
+    final_img = nib.Nifti1Image(
+        np.ascontiguousarray(bet_like.get_fdata(dtype=np.float32), dtype=np.float32),
+        aff,
+        header=hdr
+    )
+    final_img.set_qform(aff, code=0)
+    final_img.set_sform(aff, code=2)
+
+    nib.save(final_img, output_file)
+
+    # Create full mask for pipeline compatibility
+    bet_mask_path = output_file.replace('.nii.gz', '_mask.nii.gz')
+    img_data = final_img.get_fdata(dtype=np.float32)
+
+    mask = (img_data > 0).astype(np.uint8)
+
+    mask_hdr = final_img.header.copy()
+    mask_hdr.set_data_dtype(np.uint8)
+    mask_hdr["pixdim"][0] = 1
+    mask_hdr["pixdim"][4:8] = 1
+    mask_hdr.set_xyzt_units('mm', 'sec')
+
+    mask_img = nib.Nifti1Image(
+        np.ascontiguousarray(mask, dtype=np.uint8),
+        aff,
+        header=mask_hdr
+    )
+    mask_img.set_qform(aff, code=0)
+    mask_img.set_sform(aff, code=2)
+
+    nib.save(mask_img, bet_mask_path)
+
+    print(f"BET skipped -> created compatibility image: {output_file}")
+    print(f"BET skipped -> created compatibility mask: {bet_mask_path}")
+
+    return output_file
+
 def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
              use_bet4animal=False, species='mouse', verbose=True, center=None):
     """Apply BET"""
@@ -542,6 +612,11 @@ if __name__ == "__main__":
         action = 'store_true'
     )
     parser.add_argument(
+        '--bet_skip',
+        help='Skip BET during DTI preprocessing (still creates *Bet.nii.gz and *_mask.nii.gz for pipeline compatibility)',
+        action='store_true'
+    )
+    parser.add_argument(
         '--deoblique',
         help='Deoblique input using AFNI 3dWarp -deoblique',
         action='store_true'
@@ -622,13 +697,16 @@ if __name__ == "__main__":
             print(f'Error in bias field correction\nError message: {str(e)}')
             raise
 
-    # get rid of your skull         
-    outputBET = applyBET(
-        input_file=output_biascorr,
-        frac=frac,
-        radius=radius,
-        vertical_gradient=vertical_gradient,
-        use_bet4animal=args.use_bet4animal,
-        center = args.center
-    )
-    print("Brain extraction was successful")
+    if args.bet_skip:
+        print("Skipping brain extraction.")
+        outputBET = skip_bet_function(output_biascorr)
+    else:
+        outputBET = applyBET(
+            input_file=output_biascorr,
+            frac=frac,
+            radius=radius,
+            vertical_gradient=vertical_gradient,
+            use_bet4animal=args.use_bet4animal,
+            center=args.center
+        )
+        print("Brain extraction was successful")
