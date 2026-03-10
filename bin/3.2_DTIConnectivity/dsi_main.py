@@ -44,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('-r',
                         '--recon_method',
                         default='dti',
+                        choices=['dti', 'gqi'],
                         help='Specify diffusion reconstruction method ("gqi" or default "dti").',
                         required=False
                        )
@@ -86,7 +87,6 @@ if __name__ == '__main__':
                         )
     parser.add_argument('-l',
                         '--legacy',
-                        default=False,
                         help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient ".sz" and ".fz" file types)',
                         action = 'store_true'
                         )
@@ -116,12 +116,12 @@ if __name__ == '__main__':
     file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
-    dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii'))
+    dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii')))
     if not dir_mask:
-        dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz')) # check for ending (either .nii or .nii.gz)
+        dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz'))) # check for ending (either .nii or .nii.gz)
         if not dir_mask:
             # check for mask without scaled in name
-            dir_mask = glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz'))
+            dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz')))
             bet4animal = True
     if not dir_mask:
         raise FileNotFoundError("No BET mask found in DSI_studio folder.")
@@ -129,8 +129,6 @@ if __name__ == '__main__':
     dir_mask = dir_mask[0]
 
     dir_out = args.file_in
-
-    make_isotropic=0
 
     if str(args.make_isotropic).lower() == 'auto':
         make_isotropic = 'auto'
@@ -152,9 +150,9 @@ if __name__ == '__main__':
             template = 6
 
     # if it exists, find the denoised dwi data and use it as file_in
+    file_in = args.file_in
     if os.path.exists(file_cur):
-        file_in = args.file_in
-        denoised = glob.glob(os.path.join(file_cur, '*Denoised.nii*'))
+        denoised = sorted(glob.glob(os.path.join(file_cur, '*Denoised.nii*')))
         if denoised:
             file_in = denoised[0]
 
@@ -169,7 +167,7 @@ if __name__ == '__main__':
         # Use FSL's SeparateSliceMoCo to perform motion correction
         if not os.path.exists(dsi_path):
             os.makedirs(dsi_path)
-        file_in = dsi_tools.fsl_SeparateSliceMoCo(args.file_in, mcf_path)
+        file_in = dsi_tools.fsl_SeparateSliceMoCo(file_in, mcf_path)
 
     voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y, template, args.legacy)
     file_in = os.path.join(file_cur,'fib_map')
@@ -185,9 +183,9 @@ if __name__ == '__main__':
     # if bet4animal is True:
     #     suffixes = ['*StrokeMask.nii', '*parental_Mask.nii', '*Anno.nii', '*AnnoSplit_parental.nii']
     for f in suffixes:
-        dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f))
+        dir_seeds = sorted(glob.glob(os.path.join(file_cur, 'DSI_studio', f)))
         if not dir_seeds:
-            dir_seeds = glob.glob(os.path.join(file_cur, 'DSI_studio', f + '.gz')) # check for ending (either .nii or .nii.gz)
+            dir_seeds = sorted(glob.glob(os.path.join(file_cur, 'DSI_studio', f + '.gz'))) # check for ending (either .nii or .nii.gz)
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
@@ -225,7 +223,7 @@ if __name__ == '__main__':
         for f in file_list:
 
             # fa0 was a former term used in earlier DSI-studio versions; the '0' in fa0 referred to the first fiber track. However, DTI can only result in one track, therefore only one fractional anisotropy value per voxel is given, thus the collective values are referred to as fa. With the 'fa0' flag toggled on, the 'fa' data file is renamed to the former naming convention (fa0).
-            if 'fa0' in [s.lower() for s in args.optional] and f.endswith('fa.nii.gz'):
+            if 'fa0' in opts and f.endswith('fa.nii.gz'):
                 newName = f.split('fa.nii.gz')[0] + 'fa0.nii.gz'
                 newName = os.path.join(dsi_path, newName)
                 oldName = os.path.join(dsi_path, f)
