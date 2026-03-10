@@ -79,6 +79,7 @@ if __name__ == '__main__':
                         '--template',
                         default='mouse',
                         choices = ['mouse', 'rat'],
+                        type=str.lower,
                         help='Specify the template to use for the reconstruction. Default is mouse. Other options is "rat"',
                         required=False
                        )
