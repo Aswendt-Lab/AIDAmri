@@ -340,9 +340,6 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     if cfg.get("dwi_skip_min"):
                         command += ' --skip_min'
 
-                    if cfg.get("dwi_deoblique"):
-                        command += " --deoblique"
-
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
                         errorList.append(result)
@@ -579,11 +576,6 @@ if __name__ == "__main__":
         type=str.lower,
         default=None,
         help="Bias field correction for DWI: MICO or ANTs (default: None)"
-    )
-    dwi.add_argument(
-        '--dwi-deoblique',
-        help='Deoblique input using AFNI 3dWarp -deoblique',
-        action='store_true'
     )
     # ============================================================
     # BET / ANIMAL-SPECIFIC
