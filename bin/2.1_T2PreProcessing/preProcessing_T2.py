@@ -174,7 +174,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
         w_value = 2 #smooth the surface (lissencephalic weighting)
         species_id = 6 if species == 'mouse' else 5
         output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-        #----- Reorient-----#
+        #----- Reorient data to match bet4animal orientation (RAS)-----#
         world_swaps = [(1, 2)]
         world_flips = [1, 2]
         # -----------------------------------------------
@@ -220,7 +220,6 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
         # print("tmp_hdr axcodes:", nib.aff2axcodes(nib.load(tmp_hdr).affine))
         # print("tmp_std axcodes:", nib.aff2axcodes(nib.load(tmp_std).affine))
 
-        # ab jetzt tmp_std als Input für bet4animal verwenden:
         bet_in = tmp_std
 
         #print("Header-only reorientation saved:", tmp_hdr)
@@ -246,6 +245,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
 
 
         # ===== AFTER bet4animal =====
+        #Nifti has to be reoriented and manipulated to match the expected orientation and geometry of the AIDAmri pipeline (similar to real BET output) so that downstream steps remain compatible
 
         # ---------- (1) Reorient to LIP ----------
         target_axcodes = ('L', 'I', 'P')
@@ -288,6 +288,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
         img_final = nib.as_closest_canonical(img_flip)
 
         # ---------- (5) Set affine offset to 0 ----------
+        #To match FSL BET output
         aff_final = img_final.affine.copy()
         aff_final[:3, 3] = 0
 
@@ -302,7 +303,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
             aff_final,
             header=hdr_final
         )
-
+        # To match FSL BET output
         img_final2.set_qform(aff_final, code=0)
         img_final2.set_sform(aff_final, code=2)
 
@@ -346,6 +347,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
             m_img_final = nib.as_closest_canonical(m_img_flip)
 
             # (5) Set affine offset to 0
+            # To match FSL BET output
             m_aff_final = m_img_final.affine.copy()
             m_aff_final[:3, 3] = 0
 
@@ -363,6 +365,7 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
                 m_aff_final,
                 header=m_hdr_final
             )
+            # To match FSL BET output
             m_out.set_qform(m_aff_final, code=0)
             m_out.set_sform(m_aff_final, code=2)
 
@@ -529,9 +532,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # set Parameters
-    input_file = None
-    if args.input_file is not None and args.input_file is not None:
-        input_file = args.input_file
+    input_file = args.input_file
     if not os.path.exists(input_file):
         sys.exit(f"Error: input file does not exist: {input_file}")
 
