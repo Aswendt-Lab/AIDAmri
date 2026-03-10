@@ -454,8 +454,9 @@ if __name__ == "__main__":
     parser.add_argument(
         '--bias_method',
         help='Biasfield correction method - default="mico", other options are "mico" or "ants"',
+        choices = ["mico", "ants"],
+        type=str.lower,
         nargs='?',
-        type=str,
         default="mico",
         )
     parser.add_argument(
