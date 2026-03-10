@@ -325,8 +325,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                         command += f' -g {cfg["dwi_vertical_gradient"]}'
 
                     # Bias field (DWI: none/micro/ANTS)
-                    # dwi_bias_method with choices [“none”,‘mico’,“ants”], default="none"
-                    if cfg.get("dwi_bias_method", "none") != "none":
+                    # dwi_bias_method with choices ["mico",“ants”], default="none"
+                    if cfg.get("dwi_bias_method") is not None:
                         command += f' -b {cfg["dwi_bias_method"]}'
 
                     # Denoiser
@@ -336,6 +336,9 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     # Flags
                     if cfg.get("bet4animal"):
                         command += ' --use_bet4animal'
+
+                    if cfg.get("dwi_bet_skip"):
+                        command += ' --bet_skip'
 
                     if cfg.get("dwi_average_b0"):
                         command += ' --average_b0'
@@ -483,6 +486,7 @@ if __name__ == "__main__":
     cpu.add_argument(
         "-c", "--cpu-cores",
         default="Half",
+        type=str.lower,
         choices=["Min", "Half", "Max"],
         help="CPU usage preset (Min, Half, Max)"
     )
@@ -499,6 +503,7 @@ if __name__ == "__main__":
     t2.add_argument(
         "--t2-bias-method",
         choices=["mico", "ants"],
+        type=str.lower,
         help="Bias field correction method for T2 (mico or ants)"
     )
     t2.add_argument(
@@ -542,12 +547,18 @@ if __name__ == "__main__":
     dwi.add_argument(
         "--dwi-denoiser",
         choices=["patch2self"],
+        type=str.lower,
         help="DWI denoising method"
     )
     dwi.add_argument(
         "--dwi-average-b0",
         action="store_true",
         help="Average b0 volumes before DWI processing"
+    )
+    dwi.add_argument(
+        "--dwi-bet-skip",
+        action="store_true",
+        help="Skip BET during DWI preprocessing"
     )
     dwi.add_argument(
         "--dwi-skip-min",
@@ -571,8 +582,9 @@ if __name__ == "__main__":
     )
     dwi.add_argument(
         "--dwi-bias-method",
-        choices=["none", "mico", "ants"],
-        default="none",
+        choices=["mico", "ants"],
+        type=str.lower,
+        default=None,
         help="Bias field correction for DWI: none|mico|ants (maps to preProcessing_DTI.py --biasfieldcorr)"
     )
     dwi.add_argument(
@@ -597,19 +609,21 @@ if __name__ == "__main__":
     dsi.add_argument(
         "--dsi-recon-method",
         default="dti",
+        type=str.lower,
         choices=["dti", "gqi"],
         help="DSI reconstruction method"
     )
     dsi.add_argument(
         "--dsi-vivo",
         default="in_vivo",
+        type=str.lower,
         choices=["in_vivo", "ex_vivo"],
         help="In vivo or ex vivo data (controls sampling length)"
     )
     dsi.add_argument(
         "--dsi-make-isotropic",
         type=float,
-        default=0.0,
+        default='0',
         help="Voxel size (mm) for isotropic resampling (0 = off, auto = header)"
     )
     dsi.add_argument(
@@ -619,8 +633,10 @@ if __name__ == "__main__":
     )
     dsi.add_argument(
         "--dsi-template",
+        choices = ["mouse", "rat"],
+        type=str.lower,
         default="mouse",
-        help="DSI template (mouse, rat or numeric ID)"
+        help="DSI template (mouse or rat)"
     )
     dsi.add_argument(
         "--dsi-track-param",
