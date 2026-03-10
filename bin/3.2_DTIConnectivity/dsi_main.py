@@ -44,6 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('-r',
                         '--recon_method',
                         default='dti',
+                        type=str.lower,
                         choices=['dti', 'gqi'],
                         help='Specify diffusion reconstruction method ("gqi" or default "dti").',
                         required=False
@@ -51,6 +52,8 @@ if __name__ == '__main__':
     parser.add_argument('-v',
                         '--vivo',
                         default='in_vivo',
+                        type=str.lower,
+                        choices=['in_vivo', 'ex_vivo'],
                         help='Specify in vivo or ex vivo data to adjust sampling length ratio (param0). "in_vivo" param0=1.25 (default), "ex_vivo" param0=0.60.',
                         required=False
                        )
@@ -75,7 +78,8 @@ if __name__ == '__main__':
     parser.add_argument('-template',
                         '--template',
                         default='mouse',
-                        help='Specify the template to use for the reconstruction. Default is mouse. Other options are "rat" or "mouse".',
+                        choices = ['mouse', 'rat'],
+                        help='Specify the template to use for the reconstruction. Default is mouse. Other options is "rat"',
                         required=False
                        )
     parser.add_argument('-thread_count',
