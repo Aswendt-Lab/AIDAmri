@@ -482,7 +482,6 @@ if __name__ == "__main__":
         '-f',
         '--frac',
         help='Fractional intensity threshold - default=0.15  smaller values give larger brain outline estimates',
-        nargs='?',
         type=float,
         default=0.15,
         )
@@ -490,7 +489,6 @@ if __name__ == "__main__":
         '-r', 
         '--radius',
         help='Head radius (mm not voxels) - default=45',
-        nargs='?',
         type=int,
         default=45,
         )
@@ -498,7 +496,6 @@ if __name__ == "__main__":
         '-g',
         '--vertical_gradient',
         help='Vertical gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top',
-        nargs='?',
         type=float,
         default=0.0,
         )
@@ -509,14 +506,6 @@ if __name__ == "__main__":
         type=float,
         default=None
     )
-
-    parser.add_argument(
-        '-b',
-        '--bias_skip',
-        help='Skip bias field correction',
-        action='store_true'
-    )
-
     parser.add_argument(
         '--bet_skip',
         help='Skip BET during T2 preprocessing (still creates *Bet.nii.gz as copy for pipeline compatibility)', #Output will stil be named as '*Bet.nii.gz' but will be identical to bias-corrected (or original) image
@@ -524,11 +513,11 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        '-b',
         '--bias_method',
-        help='Biasfield correction method - default="mico", other options are "mico" or "ants"',
-        choices = ["mico", "ants"],
+        help='Biasfield correction method - default="mico", other options are "ants" or "none"',
+        choices = ["none", "mico", "ants"],
         type=str.lower,
-        nargs='?',
         default="mico",
         )
     parser.add_argument(
@@ -550,7 +539,6 @@ if __name__ == "__main__":
     frac = args.frac
     radius = args.radius
     vertical_gradient = args.vertical_gradient
-    bias_skip = args.bias_skip
     bias_method = args.bias_method
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
@@ -559,26 +547,26 @@ if __name__ == "__main__":
     print("Orientation resetted to RAS")
 
     #intensity correction using non parametric bias field correction algorithm
-    if not args.bias_skip:
-        print("Starting Biasfieldcorrection:")
-        if bias_method == "mico":
-            try:
-                outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
-                print("Biasfield correction was successful")
-            except Exception as e:
-                print(f'Error in bias field correction\nError message: {str(e)}')
-                raise
-        elif bias_method == "ants":
-            try:
-                outputBiasCorr = n4biasfieldcorr(input_file=input_file)
-                copy_xform(input_file, outputBiasCorr)
-                print("Biasfield correction was successful")
-            except Exception as e:
-                print(f'Error in bias field correction\nError message: {str(e)}')
-                raise
-    else:
+    if bias_method == "none":
         print("No bias field correction applied")
         outputBiasCorr = input_file
+    elif bias_method == "mico":
+        print("Starting Biasfieldcorrection with MICO:")
+        try:
+            outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
+            print("Biasfield correction was successful")
+        except Exception as e:
+            print(f'Error in bias field correction\nError message: {str(e)}')
+            raise
+    elif bias_method == "ants":
+        print("Starting Biasfieldcorrection with ANTS:")
+        try:
+            outputBiasCorr = n4biasfieldcorr(input_file=input_file)
+            copy_xform(input_file, outputBiasCorr)
+            print("Biasfield correction was successful")
+        except Exception as e:
+            print(f'Error in bias field correction\nError message: {str(e)}')
+            raise
     
     #print(os.path.exists(outputBiasCorr))
 
