@@ -640,9 +640,8 @@ if __name__ == "__main__":
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
-    if reset_orientation_needed:
-        reset_orientation(input_file)
-        print("Orientation reset to RAS")
+    reset_orientation(input_file)
+    print("Orientation reset to RAS")
     
     if args.denoiser == "patch2self":
         # Denoising using Patch2Self
