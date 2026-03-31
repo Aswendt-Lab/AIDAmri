@@ -18,7 +18,7 @@ import subprocess
 import shutil
 import nipype.interfaces.ants as ants
 
-def reset_orientation(input_file):
+def creat_brkraw_backup(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
     if os.path.exists(brkraw_dir):
@@ -35,12 +35,14 @@ def reset_orientation(input_file):
     raw_nii = nib.Nifti1Image(raw_img, data.affine)
     nib.save(raw_nii, input_file)
 
-    delete_orient_command = f"fslorient -deleteorient {input_file}"
-    subprocess.run(delete_orient_command, shell=True)
+def header_check(input_file):
+    img = nib.load(input_file)
 
-    # Befehl zum Festlegen der radiologischen Orientierung
-    forceradiological_command = f"fslorient -forceradiological {input_file}"
-    subprocess.run(forceradiological_command, shell=True)
+    img.set_qform(ras_affine, code=1)
+    img.set_sform(ras_affine, code=1)
+    nib.save(ras_img, input_file)
+
+    return input_file
 
 def n4biasfieldcorr(input_file):
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
@@ -544,8 +546,8 @@ if __name__ == "__main__":
 
     print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
 
-    reset_orientation(input_file)
-    print("Orientation resetted to RAS")
+    creat_brkraw_backup(input_file)
+    header_check(input_file)
 
     #intensity correction using non parametric bias field correction algorithm
     if bias_method == "none":
