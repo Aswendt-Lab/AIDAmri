@@ -42,14 +42,22 @@ def header_check(input_file):
     axcodes = nib.aff2axcodes(img.affine)
 
     if axcodes != ("L", "I", "P"):
-        sys.exit(
-            f"{FATAL_LIP_HEADER_EXIT_CODE}: expected LIP orientation, found {axcodes} in {input_file}"
+        print(
+            f"Fatal header check failure: expected LIP orientation, found {axcodes} in {input_file}",
+            file=sys.stderr,
         )
+        sys.exit(FATAL_LIP_HEADER_EXIT_CODE)
 
-    img.set_qform(ras_affine, code=1)
-    img.set_sform(ras_affine, code=1)
-    nib.save(ras_img, input_file)
+    data = img.get_fdata(dtype=np.float32)
 
+    out = nib.Nifti1Image(data, img.affine, header=img.header.copy())
+    out.set_qform(img.affine, code=1)
+    out.set_sform(img.affine, code=1)
+
+    hdr = out.header
+    hdr.set_data_dtype(np.float32)
+
+    nib.save(out, input_file)
     return input_file
 
 def n4biasfieldcorr(input_file):
@@ -61,6 +69,13 @@ def n4biasfieldcorr(input_file):
     myAnts.run()
     print("Biasfield correction completed")
     return output_file
+
+def set_xform_codes_to_one(input_file):
+    img = nib.load(input_file)
+    img.set_qform(img.affine, code=1)
+    img.set_sform(img.affine, code=1)
+    nib.save(img, input_file)
+    return input_file
 
 def copy_xform(ref_file, dst_file):
     ref = nib.load(ref_file)
@@ -120,11 +135,7 @@ def skip_bet_function(input_file):
     src = nib.load(input_file)
     data = src.get_fdata(dtype=np.float32)
 
-    # --- reproduce main BET preprocessing steps ---
-    data = np.flip(data, 2)
-
     bet_like = nib.Nifti1Image(data, src.affine)
-    bet_like = nib.as_closest_canonical(bet_like)
 
     # --- normalize header / affine like real BET output ---
     aff = bet_like.affine.copy()
@@ -387,17 +398,17 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
     else:
         data = nib.load(input_file)
         imgTemp = data.get_fdata()
-        # create 4x4 scaling matrix
-        scale = np.eye(4) * 10
-        #Set last element to 1 (important for affine matrix)
-        scale[3][3] = 1
-        imgTemp = np.flip(imgTemp, 2)
+        # create 4x4 scaling matrix and scale by 10
+        scale = np.eye(4)
+        scale[0, 0] = 10
+        scale[1, 1] = 10
+        scale[2, 2] = 10
 
-        #Create new Nifti image with flipped data and scaled affine
-        scaledNiiData = nib.Nifti1Image(imgTemp, data.affine * scale)
+        #Create new Nifti image with scaled affine
+        scaled_affine = data.affine @ scale
+        scaledNiiData = nib.Nifti1Image(imgTemp, scaled_affine)
         hdrIn = scaledNiiData.header
         hdrIn.set_xyzt_units('mm')
-        scaledNiiData = nib.as_closest_canonical(scaledNiiData)
 
         fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
         nib.save(scaledNiiData, fslPath)
@@ -434,47 +445,35 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
         # unscale result data by factor 10ˆ(-1)
         dataOut = nib.load(output_file)
         imgOut = dataOut.get_fdata(dtype=np.float32)
-        scale = np.eye(4) / 10
-        scale[3][3] = 1
-        #create unscaled Nifti image with unscaled affine and flip
-        unscaledNiiData = nib.Nifti1Image(imgOut, dataOut.affine * scale)
+        #rescale nifti
+        inv_scale = np.eye(4)
+        inv_scale[0, 0] = 0.1
+        inv_scale[1, 1] = 0.1
+        inv_scale[2, 2] = 0.1
+
+        unscaled_affine = dataOut.affine @ inv_scale
+        unscaledNiiData = nib.Nifti1Image(imgOut, unscaled_affine)
+        unscaledNiiData.set_qform(unscaled_affine, code=1)
+        unscaledNiiData.set_sform(unscaled_affine, code=1)
         hdrOut = unscaledNiiData.header
-        hdrOut.set_data_dtype(np.float32)
         hdrOut.set_xyzt_units('mm', 'sec')
-        hdrOut["pixdim"][0] = 1
-        hdrOut["pixdim"][4:8] = 1
         nib.save(unscaledNiiData, output_file)
 
         # also unscale BET mask
         mask_file = output_file.replace('.nii.gz', '_mask.nii.gz')
         if os.path.exists(mask_file):
             mask_data = nib.load(mask_file)
-            mask_img = mask_data.get_fdata()
-            #unscale mask affine
-            scale = np.eye(4) / 10
-            scale[3][3] = 1
-            #make binary mask and apply unscaled affine
-            unscaledMask = nib.Nifti1Image(
-                (mask_img > 0.5).astype(np.uint8),
-                mask_data.affine * scale
-            )
-            hdrMask = unscaledMask.header
+            bet_ref = nib.load(output_file)
+            #make binary mask and apply affine of BET NIFTI
+            mask_img = (mask_data.get_fdata() > 0.5).astype(np.uint8)
+
+            finalMask = nib.Nifti1Image(mask_img, bet_ref.affine)
+            finalMask.set_qform(bet_ref.affine, code=1)
+            finalMask.set_sform(bet_ref.affine, code=1)
+
+            hdrMask = finalMask.header
             hdrMask.set_data_dtype(np.uint8)
             hdrMask.set_xyzt_units('mm', 'sec')
-            hdrMask["pixdim"][0] = 1
-            hdrMask["pixdim"][4:8] = 1
-            #set offset to 0 (important for BET/mask overlay)
-            aff_mask = unscaledMask.affine.copy()
-            aff_mask[:3, 3] = 0
-
-            finalMask = nib.Nifti1Image(
-                (mask_img > 0.5).astype(np.uint8),
-                aff_mask,
-                header=hdrMask
-            )
-            #inline with Bet image
-            finalMask.set_qform(aff_mask, code=0)
-            finalMask.set_sform(aff_mask, code=2)
 
             nib.save(finalMask, mask_file)
     print(f"Brain extraction completed, output saved to {output_file}")
@@ -565,6 +564,7 @@ if __name__ == "__main__":
         print("Starting Biasfieldcorrection with MICO:")
         try:
             outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
+            set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
@@ -574,6 +574,7 @@ if __name__ == "__main__":
         try:
             outputBiasCorr = n4biasfieldcorr(input_file=input_file)
             copy_xform(input_file, outputBiasCorr)
+            set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
@@ -597,7 +598,6 @@ if __name__ == "__main__":
     
     print("Preprocessing completed")
  
-
 
 
 
