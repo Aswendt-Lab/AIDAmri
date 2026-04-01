@@ -18,6 +18,8 @@ import subprocess
 import shutil
 import nipype.interfaces.ants as ants
 
+FATAL_LIP_HEADER_EXIT_CODE = 86
+
 def creat_brkraw_backup(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
@@ -37,6 +39,12 @@ def creat_brkraw_backup(input_file):
 
 def header_check(input_file):
     img = nib.load(input_file)
+    axcodes = nib.aff2axcodes(img.affine)
+
+    if axcodes != ("L", "I", "P"):
+        sys.exit(
+            f"{FATAL_LIP_HEADER_EXIT_CODE}: expected LIP orientation, found {axcodes} in {input_file}"
+        )
 
     img.set_qform(ras_affine, code=1)
     img.set_sform(ras_affine, code=1)
