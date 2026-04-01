@@ -22,6 +22,8 @@ import shutil
 import averageb0
 import dipy.denoise.patch2self as patch2self
 
+FATAL_LIP_HEADER_EXIT_CODE = 86
+
 def reset_orientation(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
@@ -45,6 +47,19 @@ def reset_orientation(input_file):
     # Befehl zum Festlegen der radiologischen Orientierung
     forceradiological_command = f"fslorient -forceradiological {input_file}"
     subprocess.run(forceradiological_command, shell=True)
+
+def header_check(input_file):
+    img = nib.load(input_file)
+    axcodes = nib.aff2axcodes(img.affine)
+
+    if axcodes != ("L", "I", "P"):
+        print(
+            f"Fatal header check failure: expected LIP orientation, found {axcodes} in {input_file}",
+            file=sys.stderr,
+        )
+        sys.exit(FATAL_LIP_HEADER_EXIT_CODE)
+
+    return input_file
 
 def estimate_center_intensity_based(nifti, percentile=60):
     """
@@ -642,6 +657,7 @@ if __name__ == "__main__":
 
     reset_orientation(input_file)
     print("Orientation reset to RAS")
+    header_check(input_file)
     
     if args.denoiser == "patch2self":
         # Denoising using Patch2Self
