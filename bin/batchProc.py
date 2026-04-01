@@ -175,8 +175,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                         command += f' -f {cfg["t2_frac"]}'
                     if cfg.get("t2_radius") is not None:
                         command += f' -r {cfg["t2_radius"]}'
-                    if cfg.get("t2_vertical_gradient") is not None:
-                        command += f' -g {cfg["t2_vertical_gradient"]}'
+                    if cfg.get("t2_horizontal_gradient") is not None:
+                        command += f' -g {cfg["t2_horizontal_gradient"]}'
                     if cfg.get("t2_center") is not None:
                         cx, cy, cz = cfg["t2_center"]
                         command += f' -c {cx} {cy} {cz}'
@@ -325,8 +325,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                         command += f' -f {cfg["dwi_frac"]}'
                     if cfg.get("dwi_radius") is not None:
                         command += f' -r {cfg["dwi_radius"]}'
-                    if cfg.get("dwi_vertical_gradient") is not None:
-                        command += f' -g {cfg["dwi_vertical_gradient"]}'
+                    if cfg.get("dwi_horizontal_gradient") is not None:
+                        command += f' -g {cfg["dwi_horizontal_gradient"]}'
 
                     # Bias field
                     # dwi_bias_method with choices ["mico",“ants”], default=None
@@ -528,9 +528,9 @@ if __name__ == "__main__":
         help="BET head radius in mm (default in script: 45)"
     )
     t2.add_argument(
-        "--t2-vertical-gradient",
+        "--t2-horizontal-gradient",
         type=float,
-        help="BET vertical gradient (default in script: 0.0)"
+        help="BET horizontal gradient (default in script: 0.0)"
     )
     t2.add_argument(
         "--t2-center",
@@ -576,9 +576,9 @@ if __name__ == "__main__":
         help="BET head radius (mm) for DWI"
     )
     dwi.add_argument(
-        "--dwi-vertical-gradient",
+        "--dwi-horizontal-gradient",
         type=float,
-        help="BET vertical gradient for DWI"
+        help="BET horizontal gradient for DWI"
     )
     dwi.add_argument(
         "--dwi-bias-method",
