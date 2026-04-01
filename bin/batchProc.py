@@ -29,6 +29,8 @@ import logging
 import shlex
 import time
 
+FATAL_LIP_HEADER_EXIT_CODE = 86
+
 
 def findData(projectPath, sessions, data_types):
     if not data_types:
@@ -123,6 +125,14 @@ def run_subprocess(command, datatype, step, anat_process=False):
             time.sleep(2) # make sure logging file is created before starting the subprocess
             result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
             if result.returncode != 0:
+                if (
+                    result.returncode == FATAL_LIP_HEADER_EXIT_CODE
+                    and datatype in {"anat", "dwi"}
+                    and step == "preprocess"
+                ):
+                    raise RuntimeError(
+                        f"Fatal header check failure in {inp}. Expected LIP orientation."
+                    )
                 return sub,ses,datatype,step
             else:
                 return 0
