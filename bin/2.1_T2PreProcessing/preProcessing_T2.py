@@ -186,7 +186,38 @@ def skip_bet_function(input_file):
 
     return outputBET
 
-def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, species='mouse', center= None):
+FSL_BET_WORLD_SWAPS = [(1, 2)]
+
+def apply_world_ops(mat, swaps=(), flips=()):
+    out = mat.copy()
+
+    # swaps first
+    for a, b in swaps:
+        out[[a, b], :] = out[[b, a], :]
+
+    return out
+
+def save_header_only_reoriented_copy(src_path, dst_path, swaps=()):
+    img = nib.load(src_path)
+    data = img.get_fdata(dtype=np.float32)
+    aff = img.affine.copy()
+
+    # header-only world-axis operation
+    aff[:3, :] = apply_world_ops(aff[:3, :], swaps=swaps)
+
+    hdr = img.header.copy()
+    hdr["pixdim"][0] = 1
+    hdr.set_data_dtype(np.float32)
+
+    out = nib.Nifti1Image(np.ascontiguousarray(data, np.float32), aff, header=hdr)
+    out.set_qform(aff, code=1)
+    out.set_sform(aff, code=1)
+    nib.save(out, dst_path)
+
+    return dst_path
+
+
+def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, species='mouse', center= None):
     """Apply BET"""
     if use_bet4animal == True:
         # Use BET for animal brains
@@ -413,34 +444,70 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
         fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
         nib.save(scaledNiiData, fslPath)
 
-        # set output file path
-        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+        # temporary BET input with header-only LIP -> LPI world swap
+        #This insures that the vertical gradient works in horizontally (so snout to cerebellum). This is needed bc this is a issue in BET used for mice
+        #Any questions regarding this ask Julian and hope he still knows
+        bet_input_tmp = os.path.join(os.path.dirname(input_file), 'fslScaleTemp_LPIhdr.nii.gz')
+        save_header_only_reoriented_copy(
+            fslPath,
+            bet_input_tmp,
+            swaps=FSL_BET_WORLD_SWAPS,
+        )
+
+        # final output path
+        output_file = os.path.join(
+            os.path.dirname(input_file),
+            os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz'
+        )
+
+        # temporary BET output in LPI-header space
+        bet_output_tmp = os.path.join(
+            os.path.dirname(input_file),
+            os.path.basename(input_file).split('.')[0] + 'Bet_LPIhdr_tmp.nii.gz'
+        )
         if center is not None:
             # nipype BET requires ints
             center_int = [int(round(c)) for c in center]
             print(f"Using user-defined center (rounded): {center_int}")
             myBet = fsl.BET(
-                in_file=fslPath,
-                out_file=output_file,
+                in_file=bet_input_tmp,
+                out_file=bet_output_tmp,
                 frac=frac,
                 radius=radius,
-                vertical_gradient=vertical_gradient,
+                vertical_gradient=horizontal_gradient,
                 center=center_int,
                 mask=True
             )
         else:
             print("Using robust center estimation (-R)")
             myBet = fsl.BET(
-                in_file=fslPath,
-                out_file=output_file,
+                in_file=bet_input_tmp,
+                out_file=bet_output_tmp,
                 frac=frac,
                 radius=radius,
-                vertical_gradient=vertical_gradient,
+                vertical_gradient=horizontal_gradient,
                 robust=True,
                 mask=True
             )
         myBet.run()
-        os.remove(fslPath) # remove temporary scaled file
+
+        # backswap BET image: LPI -> LIP (same swap again, because swap is its own inverse)
+        save_header_only_reoriented_copy(
+            bet_output_tmp,
+            output_file,
+            swaps=FSL_BET_WORLD_SWAPS,
+        )
+
+        # backswap BET mask: LPI -> LIP
+        mask_tmp_file = bet_output_tmp.replace('.nii.gz', '_mask.nii.gz')
+        mask_file = output_file.replace('.nii.gz', '_mask.nii.gz')
+
+        if os.path.exists(mask_tmp_file):
+            save_header_only_reoriented_copy(
+                mask_tmp_file,
+                mask_file,
+                swaps=FSL_BET_WORLD_SWAPS,
+            )
 
         # unscale result data by factor 10ˆ(-1)
         dataOut = nib.load(output_file)
@@ -476,7 +543,12 @@ def applyBET(input_file,frac,radius,vertical_gradient,use_bet4animal=False, spec
             hdrMask.set_xyzt_units('mm', 'sec')
 
             nib.save(finalMask, mask_file)
+        # delete temporary files
+        for tmp_file in [fslPath, bet_input_tmp, bet_output_tmp, mask_tmp_file]:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
     print(f"Brain extraction completed, output saved to {output_file}")
+
     return output_file
 
 #%% Program
@@ -506,8 +578,8 @@ if __name__ == "__main__":
         )
     parser.add_argument(
         '-g',
-        '--vertical_gradient',
-        help='Vertical gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        '--horizontal_gradient',
+        help='Horizontal gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top',
         type=float,
         default=0.0,
         )
@@ -548,10 +620,10 @@ if __name__ == "__main__":
 
     frac = args.frac
     radius = args.radius
-    vertical_gradient = args.vertical_gradient
+    horizontal_gradient = args.horizontal_gradient
     bias_method = args.bias_method
 
-    print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
+    print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
 
     creat_brkraw_backup(input_file)
     header_check(input_file)
@@ -590,7 +662,7 @@ if __name__ == "__main__":
         # brain extraction
         print("Starting brain extraction")
         try:
-            outputBET = applyBET(input_file=outputBiasCorr,frac=frac,radius=radius,vertical_gradient=vertical_gradient,use_bet4animal=use_bet4animal, center=args.center)
+            outputBET = applyBET(input_file=outputBiasCorr,frac=frac,radius=radius,horizontal_gradient=horizontal_gradient,use_bet4animal=use_bet4animal, center=args.center)
             print("Brain extraction was successful")
         except Exception as e:
             print(f'Error in brain extraction\nError messsage: {str(e)}')
