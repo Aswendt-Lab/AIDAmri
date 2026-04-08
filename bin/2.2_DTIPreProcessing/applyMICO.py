@@ -165,8 +165,9 @@ def run_MICO(IMGdata,outputPath):
 
     progressbar.close()
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol.astype(np.float32), data.affine)
     hdrOut = unscaledNiiData.header
+    hdrOut.set_data_dtype(np.float32)
     hdrOut.set_xyzt_units('mm')
 
 
