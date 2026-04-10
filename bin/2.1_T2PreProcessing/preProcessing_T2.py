@@ -225,41 +225,11 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
         w_value = 2 #smooth the surface (lissencephalic weighting)
         species_id = 6 if species == 'mouse' else 5
         output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-        #----- Reorient data to match bet4animal orientation (RAS)-----#
-        world_swaps = [(1, 2)]
-        world_flips = [1, 2]
-        # -----------------------------------------------
 
         tmp_hdr = os.path.join(os.path.dirname(input_file), "bet4animal_hdrtmp.nii.gz")
 
         img = nib.load(input_file)
-
-        # keep data unchanged (header-only operation)
-        try:
-            data = img.dataobj.get_unscaled()
-            data = np.asanyarray(data)
-        except Exception:
-            data = img.get_fdata(dtype=np.float32)
-
-        aff = img.affine.copy()
-
-        # swaps first
-        for a, b in world_swaps:
-            aff[[a, b], :] = aff[[b, a], :]
-
-        # flips after
-        for ax in world_flips:
-            aff[ax, :] *= -1
-
-        hdr = img.header.copy()
-        hdr["pixdim"][0] = 1
-        hdr["pixdim"][4:8] = 1
-        hdr.set_data_dtype(np.float32)
-
-        tmp_img = nib.Nifti1Image(np.ascontiguousarray(data, dtype=np.float32), aff, header=hdr)
-        tmp_img.set_qform(aff, code=1)
-        tmp_img.set_sform(aff, code=1)
-        nib.save(tmp_img, tmp_hdr)
+        nib.save(img, tmp_hdr)
 
         # ----- fslreorient2std -----
         tmp_std = os.path.join(os.path.dirname(input_file), "bet4animal_reorient2std.nii.gz")
@@ -281,8 +251,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
 
         command = (
             f"/aida/bin/bet4animal {bet_in} {output_file} "
-            f"-f {frac} -m -w {w_value} -z {species_id} -c {cx} {cy} {cz}"
-        )  # m = binary mask output
+            f"-f {frac} -m -w {w_value} -z {species_id} -c {cx} {cy} {cz}")  # m = binary mask output
         subprocess.run(command, shell=True, check=True)
 
         # remove temp
