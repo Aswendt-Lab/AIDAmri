@@ -139,7 +139,6 @@ def skip_bet_function(input_file):
 
     # --- normalize header / affine like real BET output ---
     aff = bet_like.affine.copy()
-    aff[:3, 3] = 0
 
     hdr = bet_like.header.copy()
     hdr.set_data_dtype(np.float32)
@@ -153,8 +152,8 @@ def skip_bet_function(input_file):
         header=hdr
     )
 
-    final_img.set_qform(aff, code=0)
-    final_img.set_sform(aff, code=2)
+    final_img.set_qform(aff, code=1)
+    final_img.set_sform(aff, code=1)
 
     nib.save(final_img, outputBET)
 
@@ -177,8 +176,8 @@ def skip_bet_function(input_file):
         header=mask_hdr
     )
 
-    mask_img.set_qform(aff, code=0)
-    mask_img.set_sform(aff, code=2)
+    mask_img.set_qform(aff, code=1)
+    mask_img.set_sform(aff, code=1)
 
     nib.save(mask_img, bet_mask_path)
 
@@ -188,7 +187,7 @@ def skip_bet_function(input_file):
 
 FSL_BET_WORLD_SWAPS = [(1, 2)]
 
-def apply_world_ops(mat, swaps=(), flips=()):
+def apply_world_ops(mat, swaps=()):
     out = mat.copy()
 
     # swaps first
