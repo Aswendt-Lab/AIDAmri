@@ -226,15 +226,14 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
         species_id = 6 if species == 'mouse' else 5
         output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
 
-        tmp_hdr = os.path.join(os.path.dirname(input_file), "bet4animal_hdrtmp.nii.gz")
-
-        img = nib.load(input_file)
-        nib.save(img, tmp_hdr)
+        tmp_bet = os.path.join(os.path.dirname(input_file), "bet4animal_tmp_out.nii.gz")
+        tmp_mask = tmp_bet.replace(".nii.gz", "_mask.nii.gz")
+        final_mask = output_file.replace(".nii.gz", "_mask.nii.gz")
 
         # ----- fslreorient2std -----
         tmp_std = os.path.join(os.path.dirname(input_file), "bet4animal_reorient2std.nii.gz")
 
-        cmd = ["fslreorient2std", tmp_hdr, tmp_std]
+        cmd = ["fslreorient2std", input_file, tmp_std]
         subprocess.run(cmd, check=True)
 
         # OPTIONAL: sanity prints
@@ -249,28 +248,27 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
             center, p = estimate_center_intensity_based(bet_in)
         cx, cy, cz = center
 
-        command = (
-            f"/aida/bin/bet4animal {bet_in} {output_file} "
-            f"-f {frac} -m -w {w_value} -z {species_id} -c {cx} {cy} {cz}")  # m = binary mask output
-        subprocess.run(command, shell=True, check=True)
-
-        # remove temp
-
-        try:
-            os.remove(tmp_hdr)
-            os.remove(tmp_std)
-        except Exception:
-            pass
-        
-
+        cmd = [
+            "/aida/bin/bet4animal",
+            bet_in,
+            tmp_bet,
+            "-f", str(frac),
+            "-m", #mask
+            "-w", str(w_value),
+            "-z", str(species_id),
+            "-c", str(cx), str(cy), str(cz),
+        ]
+        subprocess.run(cmd, check=True)
 
         # ===== AFTER bet4animal =====
-        #Nifti has to be reoriented and manipulated to match the expected orientation and geometry of the AIDAmri pipeline (similar to real BET output) so that downstream steps remain compatible
+        #Nifti has to be reoriented to match the expected orientation and geometry of the AIDAmri pipeline (similar to real BET output) so that downstream steps remain compatible
 
         # ---------- (1) Reorient to LIP ----------
-        target_axcodes = ('L', 'I', 'P')
+        input_img = nib.load(input_file)
+        target_axcodes = nib.aff2axcodes(input_img.affine)
+        print(target_axcodes)
 
-        img = nib.load(output_file)
+        img = nib.load(tmp_bet)
         data = img.get_fdata(dtype=np.float32)
         aff = img.affine
 
@@ -281,119 +279,71 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
         data_lip = nib.orientations.apply_orientation(data, transform)
         aff_lip = aff @ nib.orientations.inv_ornt_aff(transform, img.shape)
 
-        # ---------- (2) Header-only swaps/flips ----------
-        world_swaps = [(1, 2)]
-        world_flips = [1, 2]
-
-        aff2 = aff_lip.copy()
-
-        # swaps (safe)
-        for a, b in world_swaps:
-            tmp = aff2[[a, b], :].copy()
-            aff2[[a, b], :] = tmp[::-1, :]
-
-        # flips
-        for ax in world_flips:
-            aff2[ax, :] *= -1
-
-        # ---------- (3) Flip data axis 2 ----------
-        data_flip = np.flip(data_lip, 2)
-
-        img_flip = nib.Nifti1Image(
-            np.ascontiguousarray(data_flip, dtype=np.float32),
-            aff2
-        )
-
-        # ---------- (4) Closest canonical ----------
-        img_final = nib.as_closest_canonical(img_flip)
-
-        # ---------- (5) Set affine offset to 0 ----------
-        #To match FSL BET output
-        aff_final = img_final.affine.copy()
-        aff_final[:3, 3] = 0
-
-        hdr_final = img_final.header.copy()
+        # ---------- (2) Set affine ----------
+        hdr_final = img.header.copy()
         hdr_final.set_data_dtype(np.float32)
         hdr_final["pixdim"][0] = 1
         hdr_final["pixdim"][4:8] = 1
         hdr_final.set_xyzt_units('mm', 'sec')
 
-        img_final2 = nib.Nifti1Image(
-            np.ascontiguousarray(img_final.get_fdata(dtype=np.float32), dtype=np.float32),
-            aff_final,
+        img_final = nib.Nifti1Image(
+            np.ascontiguousarray(data_lip, dtype=np.float32),
+            aff_lip,
             header=hdr_final
         )
         # To match FSL BET output
-        img_final2.set_qform(aff_final, code=0)
-        img_final2.set_sform(aff_final, code=2)
+        img_final.set_qform(aff_lip, code=1)
+        img_final.set_sform(aff_lip, code=1)
 
-        nib.save(img_final2, output_file)
+        nib.save(img_final, output_file)
 
         #print("Final orientation:", nib.aff2axcodes(aff_final))
         #print("Final offset:", aff_final[:3, 3])
 
         # ===== APPLY SAME POST-PROCESSING TO BET MASK =====
-        bet_mask_path = output_file.replace(".nii.gz", "_mask.nii.gz")
-        if os.path.exists(bet_mask_path):
+        if os.path.exists(tmp_mask):
             # (1) Reorient to LIP
-            m_img = nib.load(bet_mask_path)
+            m_img = nib.load(tmp_mask)
             m_data = m_img.get_fdata(dtype=np.float32)
             m_aff = m_img.affine
 
             m_ornt_cur = nib.orientations.io_orientation(m_aff)
-            m_ornt_tgt = nib.orientations.axcodes2ornt(target_axcodes)  # ('L','I','P')
-            m_transform = nib.orientations.ornt_transform(m_ornt_cur, m_ornt_tgt)
+            m_transform = nib.orientations.ornt_transform(m_ornt_cur, ornt_tgt)
 
             m_data_lip = nib.orientations.apply_orientation(m_data, m_transform)
             m_aff_lip = m_aff @ nib.orientations.inv_ornt_aff(m_transform, m_img.shape)
 
-            # (2) Header-only swaps/flips
-            m_aff2 = m_aff_lip.copy()
-            for a, b in world_swaps:
-                tmp = m_aff2[[a, b], :].copy()
-                m_aff2[[a, b], :] = tmp[::-1, :]
-            for ax in world_flips:
-                m_aff2[ax, :] *= -1
-
-            # (3) Flip data axis 2
-            m_data_flip = np.flip(m_data_lip, 2)
-
-            m_img_flip = nib.Nifti1Image(
-                np.ascontiguousarray(m_data_flip, dtype=np.float32),
-                m_aff2
-            )
-
-            # (4) Closest canonical
-            m_img_final = nib.as_closest_canonical(m_img_flip)
-
-            # (5) Set affine offset to 0
-            # To match FSL BET output
-            m_aff_final = m_img_final.affine.copy()
-            m_aff_final[:3, 3] = 0
-
             # Binarize mask + uint8
-            m_bin = (m_img_final.get_fdata(dtype=np.float32) > 0.5).astype(np.uint8)
+            m_bin = (m_data_lip > 0.5).astype(np.uint8)
 
-            m_hdr_final = m_img_final.header.copy()
-            m_hdr_final.set_data_dtype(np.uint8)
-            m_hdr_final["pixdim"][0] = 1
-            m_hdr_final["pixdim"][4:8] = 1
-            m_hdr_final.set_xyzt_units('mm', 'sec')
+            m_hdr_lip = m_img.header.copy()
+            m_hdr_lip.set_data_dtype(np.uint8)
+            m_hdr_lip["pixdim"][0] = 1
+            m_hdr_lip["pixdim"][4:8] = 1
+            m_hdr_lip.set_xyzt_units('mm', 'sec')
 
             m_out = nib.Nifti1Image(
                 np.ascontiguousarray(m_bin, dtype=np.uint8),
-                m_aff_final,
-                header=m_hdr_final
+                m_aff_lip,
+                header=m_hdr_lip
             )
             # To match FSL BET output
-            m_out.set_qform(m_aff_final, code=0)
-            m_out.set_sform(m_aff_final, code=2)
+            m_out.set_qform(m_aff_lip, code=1)
+            m_out.set_sform(m_aff_lip, code=1)
 
-            nib.save(m_out, bet_mask_path)
+            nib.save(m_out, final_mask)
             #print("Mask processed:", bet_mask_path)
         else:
             print("Warning: BET mask not found:", bet_mask_path)
 
+        # remove temp
+        try:
+            for tmp_file in [tmp_std, tmp_bet, tmp_mask]:
+                if os.path.exists(tmp_file):
+                    os.remove(tmp_file)
+        except Exception:
+            pass
+    #FSL BET (human modified version)
     else:
         data = nib.load(input_file)
         imgTemp = data.get_fdata()
