@@ -21,10 +21,14 @@ import subprocess
 import shutil
 import averageb0
 import dipy.denoise.patch2self as patch2self
+import itertools
+import sys
+import threading
+import time
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 
-def reset_orientation(input_file):
+def creat_brkraw_backup(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
     if os.path.exists(brkraw_dir):
@@ -41,13 +45,6 @@ def reset_orientation(input_file):
     raw_nii = nib.Nifti1Image(raw_img, data.affine)
     nib.save(raw_nii, input_file)
 
-    delete_orient_command = f"fslorient -deleteorient {input_file}"
-    subprocess.run(delete_orient_command, shell=True)
-
-    # Befehl zum Festlegen der radiologischen Orientierung
-    forceradiological_command = f"fslorient -forceradiological {input_file}"
-    subprocess.run(forceradiological_command, shell=True)
-
 def header_check(input_file):
     img = nib.load(input_file)
     axcodes = nib.aff2axcodes(img.affine)
@@ -59,26 +56,79 @@ def header_check(input_file):
         )
         sys.exit(FATAL_LIP_HEADER_EXIT_CODE)
 
+    data = img.get_fdata(dtype=np.float32)
+
+    out = nib.Nifti1Image(data, img.affine, header=img.header.copy())
+    out.set_qform(img.affine, code=1)
+    out.set_sform(img.affine, code=1)
+
+    hdr = out.header
+    hdr.set_data_dtype(np.float32)
+
+    nib.save(out, input_file)
+    return input_file
+
+def n4biasfieldcorr(input_file):
+    output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AntsBias.nii.gz')
+    # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
+    myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,
+                                        shrink_factor=4,bspline_fitting_distance=20,
+                                        bspline_order=3,n_iterations=[1000,0],dimension=3)
+    myAnts.run()
+    print("Biasfield correction completed")
+    return output_file
+
+def spinner(stop_event, message="Working"):
+    """
+    Displays a simple terminal spinner while a long-running processing step is active.
+    Does not report the actual progress of external tools such as FSL BET or ANTs.
+    """
+    for ch in itertools.cycle("|/-\\"):
+        if stop_event.is_set():
+            break
+        sys.stdout.write(f"\r{message}... {ch}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write(f"\r{message}... done\n")
+    sys.stdout.flush()
+
+
+def set_xform_codes_to_one(input_file):
+    img = nib.load(input_file)
+    img.set_qform(img.affine, code=1)
+    img.set_sform(img.affine, code=1)
+    nib.save(img, input_file)
     return input_file
 
 def estimate_center_intensity_based(nifti, percentile=60):
     """
     Estimate BET center (-c) using intensity-weighted center-of-gravity (fslstats -C),
-    excluding low-intensity voxels using a data-adaptive threshold (-l = P{percentile}).
-    Returns center as floats (voxel coordinates).
+    but excluding low-intensity voxels using a data-adaptive threshold (-l = P{percentile}).
     """
-    p = subprocess.check_output(["fslstats", nifti, "-P", str(percentile)]).decode().strip()
-    center = subprocess.check_output(["fslstats", nifti, "-l", p, "-C"]).decode().strip().split()
+    # 1) Get intensity percentile
+    p = subprocess.check_output(
+        ["fslstats", nifti, "-P", str(percentile)]
+    ).decode().strip()
+
+    # 2) Compute center-of-gravity using only voxels > P{percentile}
+    center = subprocess.check_output(
+        ["fslstats", nifti, "-l", p, "-C"]
+    ).decode().strip().split()
+
     cx, cy, cz = [float(v) for v in center]
     return [cx, cy, cz], float(p)
 
 def skip_bet_function(input_file):
     """
-    Create BET-like output and full-brain dummy mask for pipeline compatibility
-    when BET is skipped.
-    Reproduces the key geometry/orientation steps of applyBET(..., use_bet4animal=False).
+    Create BET-compatible outputs when BET is skipped.
+    Reproduces key geometry/orientation steps so that downstream
+    AIDAmri pipeline steps remain compatible.
     """
-    output_file = os.path.join(
+
+    print("Skipping BET")
+    print("Creating BET-compatible outputs for pipeline compatibility")
+
+    outputBET = os.path.join(
         os.path.dirname(input_file),
         os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz'
     )
@@ -86,18 +136,10 @@ def skip_bet_function(input_file):
     src = nib.load(input_file)
     data = src.get_fdata(dtype=np.float32)
 
-    # Reproduce main pre-BET manipulations from applyBET() non-bet4animal branch
-    data = np.flip(data, 2)
-
     bet_like = nib.Nifti1Image(data, src.affine)
-    bet_like.header.set_data_dtype(np.float32)
-    bet_like.header.set_xyzt_units('mm', 'sec')
 
-    bet_like = nib.as_closest_canonical(bet_like)
-
-    # Match downstream expectations a bit more closely
+    # --- normalize header / affine like real BET output ---
     aff = bet_like.affine.copy()
-    aff[:3, 3] = 0
 
     hdr = bet_like.header.copy()
     hdr.set_data_dtype(np.float32)
@@ -110,16 +152,18 @@ def skip_bet_function(input_file):
         aff,
         header=hdr
     )
-    final_img.set_qform(aff, code=0)
-    final_img.set_sform(aff, code=2)
 
-    nib.save(final_img, output_file)
+    final_img.set_qform(aff, code=1)
+    final_img.set_sform(aff, code=1)
 
-    # Create full mask for pipeline compatibility
-    bet_mask_path = output_file.replace('.nii.gz', '_mask.nii.gz')
-    img_data = final_img.get_fdata(dtype=np.float32)
+    nib.save(final_img, outputBET)
 
-    mask = (img_data > 0).astype(np.uint8)
+    print(f"BET skipped -> created compatibility image: {outputBET}")
+
+    # --- create dummy mask ---
+    bet_mask_path = outputBET.replace('.nii.gz', '_mask.nii.gz')
+
+    mask = (final_img.get_fdata(dtype=np.float32) > 0).astype(np.uint8)
 
     mask_hdr = final_img.header.copy()
     mask_hdr.set_data_dtype(np.uint8)
@@ -132,73 +176,71 @@ def skip_bet_function(input_file):
         aff,
         header=mask_hdr
     )
-    mask_img.set_qform(aff, code=0)
-    mask_img.set_sform(aff, code=2)
+
+    mask_img.set_qform(aff, code=1)
+    mask_img.set_sform(aff, code=1)
 
     nib.save(mask_img, bet_mask_path)
 
-    print(f"BET skipped -> created compatibility image: {output_file}")
-    print(f"BET skipped -> created compatibility mask: {bet_mask_path}")
+    print(f"BET mask created at {bet_mask_path}")
 
-    return output_file
+    return outputBET
 
-def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
+FSL_BET_WORLD_SWAPS = [(1, 2)]
+
+def apply_world_ops(mat, swaps=()):
+    out = mat.copy()
+
+    # swaps first
+    for a, b in swaps:
+        out[[a, b], :] = out[[b, a], :]
+
+    return out
+
+def save_header_only_reoriented_copy(src_path, dst_path, swaps=()):
+    img = nib.load(src_path)
+    data = img.get_fdata(dtype=np.float32)
+    aff = img.affine.copy()
+
+    # header-only world-axis operation
+    aff[:3, :] = apply_world_ops(aff[:3, :], swaps=swaps)
+
+    hdr = img.header.copy()
+    hdr["pixdim"][0] = 1
+    hdr.set_data_dtype(np.float32)
+
+    out = nib.Nifti1Image(np.ascontiguousarray(data, np.float32), aff, header=hdr)
+    out.set_qform(aff, code=1)
+    out.set_sform(aff, code=1)
+    nib.save(out, dst_path)
+
+    return dst_path
+
+def applyBET(input_file, frac, radius, horizontal_gradient,
              use_bet4animal=False, species='mouse', verbose=True, center=None):
     """Apply BET"""
-    if use_bet4animal:
+    if use_bet4animal == True:
         # Use BET for animal brains
         print("Using BET for animal brains")
         print("Note: bet4animal requires that the AC-PC line of brain is parallel to Y-axis")
         w_value = 2 #smooth the surface (lissencephalic weighting)
         species_id = 6 if species == 'mouse' else 5
-        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-        #----- Reorient-----#
-        world_swaps = [(1, 2)]
-        world_flips = [1, 2]
-        # -----------------------------------------------
+        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AnimalBet.nii.gz')
 
-        tmp_hdr = os.path.join(os.path.dirname(input_file), "bet4animal_hdrtmp.nii.gz")
-
-        img = nib.load(input_file)
-
-        # keep data unchanged (header-only operation)
-        try:
-            data = img.dataobj.get_unscaled()
-            data = np.asanyarray(data)
-        except Exception:
-            data = img.get_fdata(dtype=np.float32)
-
-        aff = img.affine.copy()
-
-        # swaps first
-        for a, b in world_swaps:
-            aff[[a, b], :] = aff[[b, a], :]
-
-        # flips after
-        for ax in world_flips:
-            aff[ax, :] *= -1
-
-        hdr = img.header.copy()
-        hdr["pixdim"][0] = 1
-        hdr["pixdim"][4:8] = 1
-        hdr.set_data_dtype(np.float32)
-
-        tmp_img = nib.Nifti1Image(np.ascontiguousarray(data, dtype=np.float32), aff, header=hdr)
-        tmp_img.set_qform(aff, code=1)
-        tmp_img.set_sform(aff, code=1)
-        nib.save(tmp_img, tmp_hdr)
+        tmp_bet = os.path.join(os.path.dirname(input_file), "bet4animal_tmp_out.nii.gz")
+        tmp_mask = tmp_bet.replace(".nii.gz", "_mask.nii.gz")
+        final_mask = output_file.replace(".nii.gz", "_mask.nii.gz")
 
         # ----- fslreorient2std -----
         tmp_std = os.path.join(os.path.dirname(input_file), "bet4animal_reorient2std.nii.gz")
 
-        cmd = ["fslreorient2std", tmp_hdr, tmp_std]
+        cmd = ["fslreorient2std", input_file, tmp_std]
         subprocess.run(cmd, check=True)
 
         # OPTIONAL: sanity prints
         # print("tmp_hdr axcodes:", nib.aff2axcodes(nib.load(tmp_hdr).affine))
         # print("tmp_std axcodes:", nib.aff2axcodes(nib.load(tmp_std).affine))
 
-        # ab jetzt tmp_std als Input für bet4animal verwenden:
         bet_in = tmp_std
 
         #print("Header-only reorientation saved:", tmp_hdr)
@@ -207,28 +249,26 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
             center, p = estimate_center_intensity_based(bet_in)
         cx, cy, cz = center
 
-        command = (
-            f"/aida/bin/bet4animal {bet_in} {output_file} "
-            f"-f {frac} -m -w {w_value} -z {species_id} -c {cx} {cy} {cz}"
-        )  # m = binary mask output
-        subprocess.run(command, shell=True, check=True)
-
-        # remove temp
-
-        try:
-            os.remove(tmp_hdr)
-            os.remove(tmp_std)
-        except Exception:
-            pass
-
-
+        cmd = [
+            "/aida/bin/bet4animal",
+            bet_in,
+            tmp_bet,
+            "-f", str(frac),
+            "-m", #mask
+            "-w", str(w_value),
+            "-z", str(species_id),
+            "-c", str(cx), str(cy), str(cz),
+        ]
+        subprocess.run(cmd, check=True)
 
         # ===== AFTER bet4animal =====
+        #Nifti has to be reoriented to match the expected orientation and geometry of the AIDAmri pipeline (similar to real BET output) so that downstream steps remain compatible
 
-        # ---------- (1) Reorient to LIP ----------
-        target_axcodes = ('L', 'I', 'P')
+        # ---------- (1) Reorient to original ----------
+        input_img = nib.load(input_file)
+        target_axcodes = nib.aff2axcodes(input_img.affine)
 
-        img = nib.load(output_file)
+        img = nib.load(tmp_bet)
         data = img.get_fdata(dtype=np.float32)
         aff = img.affine
 
@@ -239,134 +279,89 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
         data_lip = nib.orientations.apply_orientation(data, transform)
         aff_lip = aff @ nib.orientations.inv_ornt_aff(transform, img.shape)
 
-        # ---------- (2) Header-only swaps/flips ----------
-        world_swaps = [(1, 2)]
-        world_flips = [1, 2]
-
-        aff2 = aff_lip.copy()
-
-        # swaps (safe)
-        for a, b in world_swaps:
-            tmp = aff2[[a, b], :].copy()
-            aff2[[a, b], :] = tmp[::-1, :]
-
-        # flips
-        for ax in world_flips:
-            aff2[ax, :] *= -1
-
-        # ---------- (3) Flip data axis 2 ----------
-        data_flip = np.flip(data_lip, 2)
-
-        img_flip = nib.Nifti1Image(
-            np.ascontiguousarray(data_flip, dtype=np.float32),
-            aff2
-        )
-
-        # ---------- (4) Closest canonical ----------
-        img_final = nib.as_closest_canonical(img_flip)
-
-        # ---------- (5) Set affine offset to 0 ----------
-        aff_final = img_final.affine.copy()
-        aff_final[:3, 3] = 0
-
-        hdr_final = img_final.header.copy()
+        # ---------- (2) Set affine ----------
+        hdr_final = img.header.copy()
         hdr_final.set_data_dtype(np.float32)
         hdr_final["pixdim"][0] = 1
         hdr_final["pixdim"][4:8] = 1
         hdr_final.set_xyzt_units('mm', 'sec')
 
-        img_final2 = nib.Nifti1Image(
-            np.ascontiguousarray(img_final.get_fdata(dtype=np.float32), dtype=np.float32),
-            aff_final,
+        img_final = nib.Nifti1Image(
+            np.ascontiguousarray(data_lip, dtype=np.float32),
+            aff_lip,
             header=hdr_final
         )
+        # To match FSL BET output
+        img_final.set_qform(aff_lip, code=1)
+        img_final.set_sform(aff_lip, code=1)
 
-        img_final2.set_qform(aff_final, code=0)
-        img_final2.set_sform(aff_final, code=2)
-
-        nib.save(img_final2, output_file)
+        nib.save(img_final, output_file)
 
         #print("Final orientation:", nib.aff2axcodes(aff_final))
         #print("Final offset:", aff_final[:3, 3])
 
         # ===== APPLY SAME POST-PROCESSING TO BET MASK =====
-        bet_mask_path = output_file.replace(".nii.gz", "_mask.nii.gz")
-        if os.path.exists(bet_mask_path):
+        if os.path.exists(tmp_mask):
             # (1) Reorient to LIP
-            m_img = nib.load(bet_mask_path)
+            m_img = nib.load(tmp_mask)
             m_data = m_img.get_fdata(dtype=np.float32)
             m_aff = m_img.affine
 
             m_ornt_cur = nib.orientations.io_orientation(m_aff)
-            m_ornt_tgt = nib.orientations.axcodes2ornt(target_axcodes)  # ('L','I','P')
-            m_transform = nib.orientations.ornt_transform(m_ornt_cur, m_ornt_tgt)
+            m_transform = nib.orientations.ornt_transform(m_ornt_cur, ornt_tgt)
 
             m_data_lip = nib.orientations.apply_orientation(m_data, m_transform)
             m_aff_lip = m_aff @ nib.orientations.inv_ornt_aff(m_transform, m_img.shape)
 
-            # (2) Header-only swaps/flips
-            m_aff2 = m_aff_lip.copy()
-            for a, b in world_swaps:
-                tmp = m_aff2[[a, b], :].copy()
-                m_aff2[[a, b], :] = tmp[::-1, :]
-            for ax in world_flips:
-                m_aff2[ax, :] *= -1
-
-            # (3) Flip data axis 2
-            m_data_flip = np.flip(m_data_lip, 2)
-
-            m_img_flip = nib.Nifti1Image(
-                np.ascontiguousarray(m_data_flip, dtype=np.float32),
-                m_aff2
-            )
-
-            # (4) Closest canonical
-            m_img_final = nib.as_closest_canonical(m_img_flip)
-
-            # (5) Set affine offset to 0
-            m_aff_final = m_img_final.affine.copy()
-            m_aff_final[:3, 3] = 0
-
             # Binarize mask + uint8
-            m_bin = (m_img_final.get_fdata(dtype=np.float32) > 0.5).astype(np.uint8)
+            m_bin = (m_data_lip > 0.5).astype(np.uint8)
 
-            m_hdr_final = m_img_final.header.copy()
-            m_hdr_final.set_data_dtype(np.uint8)
-            m_hdr_final["pixdim"][0] = 1
-            m_hdr_final["pixdim"][4:8] = 1
-            m_hdr_final.set_xyzt_units('mm', 'sec')
+            m_hdr_lip = m_img.header.copy()
+            m_hdr_lip.set_data_dtype(np.uint8)
+            m_hdr_lip["pixdim"][0] = 1
+            m_hdr_lip["pixdim"][4:8] = 1
+            m_hdr_lip.set_xyzt_units('mm', 'sec')
 
             m_out = nib.Nifti1Image(
                 np.ascontiguousarray(m_bin, dtype=np.uint8),
-                m_aff_final,
-                header=m_hdr_final
+                m_aff_lip,
+                header=m_hdr_lip
             )
-            m_out.set_qform(m_aff_final, code=0)
-            m_out.set_sform(m_aff_final, code=2)
+            # To match FSL BET output
+            m_out.set_qform(m_aff_lip, code=1)
+            m_out.set_sform(m_aff_lip, code=1)
 
-            nib.save(m_out, bet_mask_path)
+            nib.save(m_out, final_mask)
             #print("Mask processed:", bet_mask_path)
         else:
             print("Warning: BET mask not found:", bet_mask_path)
 
+        # remove temp
+        try:
+            for tmp_file in [tmp_std, tmp_bet, tmp_mask]:
+                if os.path.exists(tmp_file):
+                    os.remove(tmp_file)
+        except Exception:
+            pass
+    #FSL BET (human modified version)
     else:
-        # scale Nifti data by factor 10
         data = nib.load(input_file)
         imgTemp = data.get_fdata()
         if verbose:
             print("Image dimensions before scaling:", data.header.get_zooms())
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        imgTemp = np.flip(imgTemp, 2)
+        # create 4x4 scaling matrix and scale by 10 to match human like brain size
+        scale = np.eye(4)
+        scale[0, 0] = 10
+        scale[1, 1] = 10
+        scale[2, 2] = 10
         if verbose:
             print("Image dimensions after scaling:", (data.affine * scale)[:3,:3])
 
-        scaledNiiData = nib.Nifti1Image(imgTemp, data.affine * scale)
-        if verbose:
-            print("Image dimensions after flipping:", scaledNiiData.header.get_zooms())
+        #Create new Nifti image with scaled affine
+        scaled_affine = data.affine @ scale
+        scaledNiiData = nib.Nifti1Image(imgTemp, scaled_affine)
         hdrIn = scaledNiiData.header
         hdrIn.set_xyzt_units('mm')
-        scaledNiiData = nib.as_closest_canonical(scaledNiiData)
 
         fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
         nib.save(scaledNiiData, fslPath)
@@ -374,42 +369,84 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
             print("Saved scaled image to:", fslPath)
             print("Image dimensions:", scaledNiiData.header.get_zooms())
 
-        # extract brain
-        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+        # temporary BET input with header-only LIP -> LPI world swap
+        #This insures that the vertical gradient works in horizontally (so snout to cerebellum). This is needed bc this is a issue in FSL BET used for mice
+        #Any questions regarding this ask Julian and hope he still knows
+        bet_input_tmp = os.path.join(os.path.dirname(input_file), 'fslScaleTemp_LPIhdr.nii.gz')
+        save_header_only_reoriented_copy(
+            fslPath,
+            bet_input_tmp,
+            swaps=FSL_BET_WORLD_SWAPS,
+        )
+
+        # final output path
+        output_file = os.path.join(
+            os.path.dirname(input_file),
+            os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz'
+        )
+
+        # temporary BET output in LPI-header space
+        bet_output_tmp = os.path.join(
+            os.path.dirname(input_file),
+            os.path.basename(input_file).split('.')[0] + 'Bet_LPIhdr_tmp.nii.gz'
+        )
         if center is not None:
             # nipype BET requires ints
             center_int = [int(round(c)) for c in center]
             print(f"Using user-defined center (rounded): {center_int}")
             myBet = fsl.BET(
-                in_file=fslPath,
-                out_file=output_file,
+                in_file=bet_input_tmp,
+                out_file=bet_output_tmp,
                 frac=frac,
                 radius=radius,
-                vertical_gradient=vertical_gradient,
+                vertical_gradient=horizontal_gradient,
                 center=center_int,
                 mask=True
             )
         else:
             print("Using robust center estimation (-R)")
             myBet = fsl.BET(
-                in_file=fslPath,
-                out_file=output_file,
+                in_file=bet_input_tmp,
+                out_file=bet_output_tmp,
                 frac=frac,
                 radius=radius,
-                vertical_gradient=vertical_gradient,
+                vertical_gradient=horizontal_gradient,
                 robust=True,
                 mask=True
             )
         myBet.run()
-        os.remove(fslPath)
+
+        # backswap BET image: LPI -> LIP (same swap again, because swap is its own inverse)
+        save_header_only_reoriented_copy(
+            bet_output_tmp,
+            output_file,
+            swaps=FSL_BET_WORLD_SWAPS,
+        )
+
+        # backswap BET mask: LPI -> LIP
+        mask_tmp_file = bet_output_tmp.replace('.nii.gz', '_mask.nii.gz')
+        mask_file = output_file.replace('.nii.gz', '_mask.nii.gz')
+
+        if os.path.exists(mask_tmp_file):
+            save_header_only_reoriented_copy(
+                mask_tmp_file,
+                mask_file,
+                swaps=FSL_BET_WORLD_SWAPS,
+            )
 
         # unscale result data by factor 10ˆ(-1)
         dataOut = nib.load(output_file)
-        imgOut = dataOut.get_fdata()
-        scale = np.eye(4) / 10
-        scale[3][3] = 1
+        imgOut = dataOut.get_fdata(dtype=np.float32)
+        #rescale nifti
+        inv_scale = np.eye(4)
+        inv_scale[0, 0] = 0.1
+        inv_scale[1, 1] = 0.1
+        inv_scale[2, 2] = 0.1
 
-        unscaledNiiData = nib.Nifti1Image(imgOut, dataOut.affine * scale)
+        unscaled_affine = dataOut.affine @ inv_scale
+        unscaledNiiData = nib.Nifti1Image(imgOut, unscaled_affine)
+        unscaledNiiData.set_qform(unscaled_affine, code=1)
+        unscaledNiiData.set_sform(unscaled_affine, code=1)
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm', 'sec')
         if verbose:
@@ -420,34 +457,23 @@ def applyBET(input_file, frac=0.40, radius=6, vertical_gradient=0.0,
         mask_file = output_file.replace('.nii.gz', '_mask.nii.gz')
         if os.path.exists(mask_file):
             mask_data = nib.load(mask_file)
-            mask_img = mask_data.get_fdata()
-            #unscale mask affine
-            scale = np.eye(4) / 10
-            scale[3][3] = 1
-            #make binary mask and apply unscaled affine
-            unscaledMask = nib.Nifti1Image(
-                (mask_img > 0.5).astype(np.uint8),
-                mask_data.affine * scale
-            )
-            hdrMask = unscaledMask.header
+            bet_ref = nib.load(output_file)
+            #make binary mask and apply affine of BET NIFTI
+            mask_img = (mask_data.get_fdata() > 0.5).astype(np.uint8)
+
+            finalMask = nib.Nifti1Image(mask_img, bet_ref.affine)
+            finalMask.set_qform(bet_ref.affine, code=1)
+            finalMask.set_sform(bet_ref.affine, code=1)
+
+            hdrMask = finalMask.header
             hdrMask.set_data_dtype(np.uint8)
             hdrMask.set_xyzt_units('mm', 'sec')
-            hdrMask["pixdim"][0] = 1
-            hdrMask["pixdim"][4:8] = 1
-            #set offset to 0 (important for BET/mask overlay)
-            aff_mask = unscaledMask.affine.copy()
-            aff_mask[:3, 3] = 0
-
-            finalMask = nib.Nifti1Image(
-                (mask_img > 0.5).astype(np.uint8),
-                aff_mask,
-                header=hdrMask
-            )
-            #inline with Bet image
-            finalMask.set_qform(aff_mask, code=0)
-            finalMask.set_sform(aff_mask, code=2)
 
             nib.save(finalMask, mask_file)
+        # delete temporary files
+        for tmp_file in [fslPath, bet_input_tmp, bet_output_tmp, mask_tmp_file]:
+            if os.path.exists(tmp_file):
+                os.remove(tmp_file)
     print(f"Brain extraction completed, output saved to {output_file}")
     return output_file
 
@@ -503,19 +529,6 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     #     print("Final denoised image sform after copying geometry:", output.header.get_sform())
     return output_file
 
-
-
-def dwibiasfieldcorr(input_file,outputPath):
-    output_file = os.path.join(outputPath, os.path.basename(input_file).split('.')[0] + 'N4Bias.nii.gz')
-    # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
-    myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,
-                                        shrink_factor=4,bspline_fitting_distance=20,
-                                        bspline_order=3,n_iterations=[1000,0],dimension=3)
-    myAnts.run()
-    print("Biasfield correction completed")
-    return output_file
-
-
 def smoothIMG(input_file, output_path,skip_min=False):
     """
     Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
@@ -567,10 +580,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Preprocessing of DTI Data')
 
-    requiredNamed = parser.add_argument_group('required named arguments')
+    requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument(
         '-i',
-        '--input',
+        '--input_file',
         help='Path to the raw NIfTI DTI file',
         required=True,
     )
@@ -591,8 +604,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '-g',
-        '--vertical_gradient',
-        help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        '--horizontal_gradient',
+        help='Horizontal gradient in fractional intensity threshold - default=0.0. Not for bet4animals! Higher positive values make the BET stricter posterior and less stricter anterior (snout)',
         type=float,
         default=0.0,
     )
@@ -604,6 +617,29 @@ if __name__ == "__main__":
         default=None
     )
     parser.add_argument(
+        '--bet_skip',
+        help='Skip BET during DTI preprocessing (still creates *Bet.nii.gz and *_mask.nii.gz for pipeline compatibility). '
+             'If not set it uses FSL BET (modified human version)',
+        action='store_true'
+    )
+
+    parser.add_argument(
+        '-b',
+        '--bias_method',
+        help='Biasfield correction method - default="mico", other options are "ants" or "none"',
+        choices = ["none", "mico", "ants"],
+        type=str.lower,
+        default=None,
+    )
+
+    parser.add_argument(
+        '--use_bet4animal',
+        help='Use BET for animal brains. '
+             'If not set it use FSL (modified human version)',
+        action='store_true'
+    )
+
+    parser.add_argument(
         '-d',
         '--denoiser',
         help='Denoising method - default=None, other option is "patch2self"',
@@ -611,24 +647,7 @@ if __name__ == "__main__":
         type=str.lower,
         default=None
     )
-    parser.add_argument(
-        '-b',
-        '--bias_method',
-        help='Biasfield correction method - default=None, other options are "mico" or "ants"',
-        choices = ["mico", "ants"],
-        type=str.lower,
-        default=None,
-    )
-    parser.add_argument(
-        '--use_bet4animal',
-        help='Use BET for animal brains',
-        action = 'store_true'
-    )
-    parser.add_argument(
-        '--bet_skip',
-        help='Skip BET during DTI preprocessing (still creates *Bet.nii.gz and *_mask.nii.gz for pipeline compatibility)',
-        action='store_true'
-    )
+
     parser.add_argument(
         '--average_b0',
         help='Average the b0 volumes',
@@ -641,77 +660,162 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    # set parameters
-    input_file = args.input
-
+    # set Parameters
+    input_file = args.input_file
     if not os.path.exists(input_file):
         sys.exit(f"Error: input file does not exist: {input_file}")
-        
+
     frac = args.frac
     radius = args.radius
-    vertical_gradient = args.vertical_gradient
+    horizontal_gradient = args.horizontal_gradient
+    bias_method = args.bias_method
     output_path = os.path.dirname(input_file)
     b0_thresh=100
 
-    print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
+    print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
 
-    reset_orientation(input_file)
-    print("Orientation reset to RAS")
+    creat_brkraw_backup(input_file)
     header_check(input_file)
     
     if args.denoiser == "patch2self":
         # Denoising using Patch2Self
-        denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
-        print("Denoising completed, output saved to", denoised_image)
-        # reset_orientation(denoised_image)
+        print("Starting denoising using patch2self")
+        try:
+            # start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running Denoising with Patch2Self")
+            )
+            thread.start()
+
+            try:
+                denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+            finally:
+                stop_event.set()
+                thread.join()
+
+            print("Denoising completed, output saved to", denoised_image)
+        except Exception as e:
+            print(f'Error in Patch2Self denoising\nError message: {str(e)}')
+            raise
+
+
         input_file = denoised_image
 
     if args.average_b0:
         # Average b0 volumes
-        b0image = averageb0.averageb0(input_file,b0_thresh)
+        print("Starting averaging b0 volumes")
+        try:
+            # start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event)
+            )
+            thread.start()
+
+            try:
+                b0image = averageb0.averageb0(input_file,b0_thresh)
+            finally:
+                stop_event.set()
+                thread.join()
         # # Copy header with fslcopygeom
         # myFslCpGeom = fsl.utils.CopyGeom(dest_file=b0image, in_file=input_file)
         # myFslCpGeom.run()
-        input_file = b0image
-        print("Averaging b0 volumes completed, output saved to", input_file)
+            input_file = b0image
+            print("Averaging b0 volumes completed, output saved to", input_file)
+        except Exception as e:
+            print(f'Error in averaging b0 volumes\nError message: {str(e)}')
+            raise
+
 
     try:
-        output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_min=args.skip_min)
-        print("Smoothing completed")
+        # start spinner
+        stop_event = threading.Event()
+        thread = threading.Thread(
+            target=spinner,
+            args=(stop_event, "Running smoothing")
+        )
+        thread.start()
+
+        try:
+            output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_min=args.skip_min)
+        finally:
+            stop_event.set()
+            thread.join()
+        print(f"Smoothing completed, output saved to {output_path}")
     except Exception as e:
-        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        print(f'Error in smoothing\nError message: {str(e)}')
         raise
-    
-    if args.bias_method is None:
+
+    # intensity correction using non parametric bias field correction algorithm
+    if bias_method == "none":
         print("No bias field correction applied")
-        output_biascorr = output_smooth
-    elif args.bias_method == "mico":
-        # intensity correction using MICO
+        outputBiasCorr = output_smooth
+    elif bias_method == "mico":
+        print("Starting Biasfieldcorrection with MICO:")
         try:
-            output_biascorr = applyMICO.run_MICO(output_smooth, output_path)
+            outputBiasCorr = applyMICO.run_MICO(output_smooth, output_path)
+            set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
             raise
-    elif args.bias_method == "ants":
+    elif bias_method == "ants":
         # intensity correction using ANTs N4BiasFieldCorrection
+        print("Starting Biasfieldcorrection with ANTS:")
         try:
-            output_biascorr = dwibiasfieldcorr(input_file=output_smooth, outputPath=output_path)
+            #start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running N4 ANTS bias correction")
+            )
+            thread.start()
+
+            try:
+                outputBiasCorr = n4biasfieldcorr(input_file=output_smooth)
+            finally:
+                stop_event.set()
+                thread.join()
+            set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
             raise
+    #print(os.path.exists(outputBiasCorr))
+
+    use_bet4animal = args.use_bet4animal
 
     if args.bet_skip:
         print("Skipping brain extraction.")
-        outputBET = skip_bet_function(output_biascorr)
+        outputBET = skip_bet_function(outputBiasCorr)
     else:
-        outputBET = applyBET(
-            input_file=output_biascorr,
-            frac=frac,
-            radius=radius,
-            vertical_gradient=vertical_gradient,
-            use_bet4animal=args.use_bet4animal,
-            center=args.center
-        )
-        print("Brain extraction was successful")
+        # brain extraction
+        print("Starting brain extraction")
+        try:
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running Brain extraction")
+            )
+            thread.start()
+            try:
+                outputBET = applyBET(
+                    input_file=outputBiasCorr,
+                    frac=frac,
+                    radius=radius,
+                    horizontal_gradient=horizontal_gradient,
+                    use_bet4animal=use_bet4animal,
+                    center=args.center)
+            finally:
+                stop_event.set()
+                thread.join()
+            print("Brain extraction was successful")
+        except Exception as e:
+            print(f'Error in brain extraction\nError messsage: {str(e)}')
+            raise
+
+    print("Preprocessing completed")
+
