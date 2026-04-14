@@ -10,13 +10,17 @@ University Hospital Cologne
 
 
 import nipype.interfaces.fsl as fsl
-import os,sys
+import os, sys
 import nibabel as nib
 import numpy as np
 import applyMICO
+import nipype.interfaces.ants as ants
 import subprocess
 import shutil
-import nipype.interfaces.ants as ants
+import itertools
+import sys
+import threading
+import time
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 
@@ -61,7 +65,7 @@ def header_check(input_file):
     return input_file
 
 def n4biasfieldcorr(input_file):
-    output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bias.nii.gz')
+    output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AntsBias.nii.gz')
     # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
     myAnts = ants.N4BiasFieldCorrection(input_image=input_file, output_image=output_file,
                                         shrink_factor=2, bspline_fitting_distance=20,
@@ -70,34 +74,27 @@ def n4biasfieldcorr(input_file):
     print("Biasfield correction completed")
     return output_file
 
+def spinner(stop_event, message="Working"):
+    """
+    Displays a simple terminal spinner while a long-running processing step is active.
+    Does not report the actual progress of external tools such as FSL BET or ANTs.
+    """
+    for ch in itertools.cycle("|/-\\"):
+        if stop_event.is_set():
+            break
+        sys.stdout.write(f"\r{message}... {ch}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write(f"\r{message}... done\n")
+    sys.stdout.flush()
+
+
 def set_xform_codes_to_one(input_file):
     img = nib.load(input_file)
     img.set_qform(img.affine, code=1)
     img.set_sform(img.affine, code=1)
     nib.save(img, input_file)
     return input_file
-
-def copy_xform(ref_file, dst_file):
-    ref = nib.load(ref_file)
-    dst = nib.load(dst_file)
-
-    data = dst.get_fdata(dtype=np.float32)
-
-    new = nib.Nifti1Image(data, ref.affine, header=dst.header)
-
-    # Copy qform from reference
-    qaff, qcode = ref.get_qform(coded=True)
-    if qaff is not None:
-        new.set_qform(qaff, int(qcode))
-
-    # Set sform explicitly → Code = 2 (aligned anatomical)
-    saff, _ = ref.get_sform(coded=True)
-    if saff is None:
-        saff = ref.affine
-
-    new.set_sform(saff, code=2)
-
-    nib.save(new, dst_file)
 
 def estimate_center_intensity_based(nifti, percentile=60):
     """
@@ -216,7 +213,8 @@ def save_header_only_reoriented_copy(src_path, dst_path, swaps=()):
     return dst_path
 
 
-def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, species='mouse', center= None):
+def applyBET(input_file,frac,radius,horizontal_gradient,
+             use_bet4animal=False, species='mouse', center=None):
     """Apply BET"""
     if use_bet4animal == True:
         # Use BET for animal brains
@@ -224,7 +222,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
         print("Note: bet4animal requires that the AC-PC line of brain is parallel to Y-axis")
         w_value = 2 #smooth the surface (lissencephalic weighting)
         species_id = 6 if species == 'mouse' else 5
-        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
+        output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AnimalBet.nii.gz')
 
         tmp_bet = os.path.join(os.path.dirname(input_file), "bet4animal_tmp_out.nii.gz")
         tmp_mask = tmp_bet.replace(".nii.gz", "_mask.nii.gz")
@@ -263,10 +261,9 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
         # ===== AFTER bet4animal =====
         #Nifti has to be reoriented to match the expected orientation and geometry of the AIDAmri pipeline (similar to real BET output) so that downstream steps remain compatible
 
-        # ---------- (1) Reorient to LIP ----------
+        # ---------- (1) Reorient to original ----------
         input_img = nib.load(input_file)
         target_axcodes = nib.aff2axcodes(input_img.affine)
-        print(target_axcodes)
 
         img = nib.load(tmp_bet)
         data = img.get_fdata(dtype=np.float32)
@@ -347,7 +344,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
     else:
         data = nib.load(input_file)
         imgTemp = data.get_fdata()
-        # create 4x4 scaling matrix and scale by 10
+        # create 4x4 scaling matrix and scale by 10 to match human like brain size
         scale = np.eye(4)
         scale[0, 0] = 10
         scale[1, 1] = 10
@@ -363,7 +360,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
         nib.save(scaledNiiData, fslPath)
 
         # temporary BET input with header-only LIP -> LPI world swap
-        #This insures that the vertical gradient works in horizontally (so snout to cerebellum). This is needed bc this is a issue in BET used for mice
+        #This insures that the vertical gradient works in horizontally (so snout to cerebellum). This is needed bc this is a issue in FSL BET used for mice
         #Any questions regarding this ask Julian and hope he still knows
         bet_input_tmp = os.path.join(os.path.dirname(input_file), 'fslScaleTemp_LPIhdr.nii.gz')
         save_header_only_reoriented_copy(
@@ -466,7 +463,6 @@ def applyBET(input_file,frac,radius,horizontal_gradient,use_bet4animal=False, sp
             if os.path.exists(tmp_file):
                 os.remove(tmp_file)
     print(f"Brain extraction completed, output saved to {output_file}")
-
     return output_file
 
 #%% Program
@@ -486,21 +482,21 @@ if __name__ == "__main__":
         help='Fractional intensity threshold - default=0.15  smaller values give larger brain outline estimates',
         type=float,
         default=0.15,
-        )
+    )
     parser.add_argument(
-        '-r', 
+        '-r',
         '--radius',
         help='Head radius (mm not voxels) - default=45',
         type=int,
         default=45,
-        )
+    )
     parser.add_argument(
         '-g',
         '--horizontal_gradient',
-        help='Horizontal gradient in fractional intensity threshold - default=0.0   positive values give larger brain outlines at bottom and smaller brain outlines at top',
+        help='Horizontal gradient in fractional intensity threshold - default=0.0. Not for bet4animals! Higher positive values make the BET stricter posterior and less stricter anterior (snout)',
         type=float,
         default=0.0,
-        )
+    )
     parser.add_argument(
         '-c', '--center',
         help='Brain center in voxel coordinates: x y z',
@@ -510,7 +506,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--bet_skip',
-        help='Skip BET during T2 preprocessing (still creates *Bet.nii.gz as copy for pipeline compatibility)', #Output will stil be named as '*Bet.nii.gz' but will be identical to bias-corrected (or original) image
+        help='Skip BET during T2 preprocessing (still creates *Bet.nii.gz as copy for pipeline compatibility). '
+             'If not set it uses FSL BET (modified human version)', #Output will stil be named as '*Bet.nii.gz' but will be identical to bias-corrected (or original) image
         action='store_true'
     )
 
@@ -521,10 +518,12 @@ if __name__ == "__main__":
         choices = ["none", "mico", "ants"],
         type=str.lower,
         default="mico",
-        )
+    )
+
     parser.add_argument(
         '--use_bet4animal',
-        help='Use BET for animal brains',
+        help='Use BET for animal brains. '
+             'If not set it uses FSL BET (modified human version)',
         action='store_true'
     )
 
@@ -534,7 +533,6 @@ if __name__ == "__main__":
     input_file = args.input_file
     if not os.path.exists(input_file):
         sys.exit(f"Error: input file does not exist: {input_file}")
-
 
     frac = args.frac
     radius = args.radius
@@ -560,40 +558,61 @@ if __name__ == "__main__":
             print(f'Error in bias field correction\nError message: {str(e)}')
             raise
     elif bias_method == "ants":
+        # intensity correction using ANTs N4BiasFieldCorrection
         print("Starting Biasfieldcorrection with ANTS:")
         try:
-            outputBiasCorr = n4biasfieldcorr(input_file=input_file)
-            copy_xform(input_file, outputBiasCorr)
+            #start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running N4 ANTS bias correction")
+            )
+            thread.start()
+
+            try:
+                outputBiasCorr = n4biasfieldcorr(input_file=input_file)
+            finally:
+                stop_event.set()
+                thread.join()
             set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
             raise
-    
     #print(os.path.exists(outputBiasCorr))
 
     use_bet4animal = args.use_bet4animal
 
     if args.bet_skip:
+        print("Skipping brain extraction.")
         outputBET = skip_bet_function(outputBiasCorr)
     else:
         # brain extraction
         print("Starting brain extraction")
         try:
-            outputBET = applyBET(input_file=outputBiasCorr,frac=frac,radius=radius,horizontal_gradient=horizontal_gradient,use_bet4animal=use_bet4animal, center=args.center)
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running Brain extraction")
+            )
+            thread.start()
+            try:
+                outputBET = applyBET(
+                    input_file=outputBiasCorr,
+                    frac=frac,
+                    radius=radius,
+                    horizontal_gradient=horizontal_gradient,
+                    use_bet4animal=use_bet4animal,
+                    center=args.center)
+            finally:
+                stop_event.set()
+                thread.join()
             print("Brain extraction was successful")
         except Exception as e:
             print(f'Error in brain extraction\nError messsage: {str(e)}')
             raise
     
     print("Preprocessing completed")
- 
-
-
-
-
-
-
 
 
 
