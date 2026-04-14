@@ -184,7 +184,7 @@ def run_MICO(IMGdata,outputPath):
     hdrOut.set_data_dtype(np.float32)
     hdrOut.set_xyzt_units('mm')
 
-    outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'Bias.nii.gz')
+    outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'MicoBias.nii.gz')
     nii.save(unscaledNiiData,outputData)
 
     return outputData
