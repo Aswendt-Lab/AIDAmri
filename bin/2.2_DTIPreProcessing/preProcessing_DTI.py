@@ -219,7 +219,7 @@ def save_header_only_reoriented_copy(src_path, dst_path, swaps=()):
 def applyBET(input_file, frac, radius, horizontal_gradient,
              use_bet4animal=False, species='mouse', verbose=True, center=None):
     """Apply BET"""
-    if use_bet4animal == True:
+    if use_bet4animal:
         # Use BET for animal brains
         print("Using BET for animal brains")
         print("Note: bet4animal requires that the AC-PC line of brain is parallel to Y-axis")
