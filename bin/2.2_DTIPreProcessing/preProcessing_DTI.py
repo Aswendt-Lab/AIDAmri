@@ -40,9 +40,22 @@ def creat_brkraw_backup(input_file):
     shutil.copyfile(input_file, dst_path)
 
     data = nib.load(input_file)
-    raw_img = data.dataobj.get_unscaled()
+    raw_img = data.dataobj.get_unscaled().astype(np.float32)
 
-    raw_nii = nib.Nifti1Image(raw_img, data.affine)
+    hdr = data.header.copy()
+    hdr.set_data_dtype(np.float32)
+    space_unit, time_unit = hdr.get_xyzt_units()
+
+    if not space_unit or space_unit.lower() == "unknown":
+        space_unit = "mm"
+    if not time_unit or time_unit.lower() == "unknown":
+        time_unit = "sec"
+
+    hdr.set_xyzt_units(space_unit, time_unit)
+
+    raw_nii = nib.Nifti1Image(raw_img, data.affine, header=hdr)
+    raw_nii.set_qform(data.affine, code=1)
+    raw_nii.set_sform(data.affine, code=1)
     nib.save(raw_nii, input_file)
 
 def header_check(input_file):
@@ -66,6 +79,20 @@ def header_check(input_file):
     hdr.set_data_dtype(np.float32)
 
     nib.save(out, input_file)
+    return input_file
+
+def set_default_xyzt_units_if_unknown(input_file):
+    img = nib.load(input_file)
+    hdr = img.header
+
+    space_unit, time_unit = hdr.get_xyzt_units()
+    if not space_unit or space_unit.lower() == "unknown":
+        space_unit = "mm"
+    if not time_unit or time_unit.lower() == "unknown":
+        time_unit = "sec"
+
+    hdr.set_xyzt_units(space_unit, time_unit)
+    nib.save(img, input_file)
     return input_file
 
 def n4biasfieldcorr(input_file):
@@ -217,7 +244,7 @@ def save_header_only_reoriented_copy(src_path, dst_path, swaps=()):
     return dst_path
 
 def applyBET(input_file, frac, radius, horizontal_gradient,
-             use_bet4animal=False, species='mouse', verbose=True, center=None):
+             use_bet4animal=False, species='mouse', verbose=False, center=None):
     """Apply BET"""
     if use_bet4animal:
         # Use BET for animal brains
@@ -496,7 +523,7 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     data = nib.load(input_file)
     img = data.get_fdata()
     affine = data.affine
-    debug = True
+    debug = False
     if debug:
         print("Debugging information:")
         print("Image header:", data.header)
@@ -506,12 +533,11 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
         raise ValueError("Input image must be a 4D NIfTI file.")
     
     # Apply Patch2Self denoising
-    denoised_img = patch2self.patch2self(img, bvals, b0_threshold=b0_thresh, model='ols', out_dtype=np.int16)
+    denoised_img = patch2self.patch2self(img, bvals, b0_threshold=b0_thresh, model='ols', out_dtype=np.float32)
     
     # Save the denoised image
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
     denoised_nii = nib.Nifti1Image(denoised_img, affine)
-    denoised_nii.header.set_xyzt_units('mm')
     if debug:
         print("Denoised image header:", denoised_nii.header)
         print("Denoised affine matrix:", denoised_nii.affine)
@@ -537,10 +563,20 @@ def smoothIMG(input_file, output_path,skip_min=False):
     data = nib.load(input_file)
     vol = data.get_fdata()
     if not skip_min:
-        ImgSmooth = np.min(vol, 3)
+        ImgSmooth = np.min(vol, 3).astype(np.float32)
         unscaledNiiData = nib.Nifti1Image(ImgSmooth, data.affine)
+        unscaledNiiData.set_qform(data.affine, code=1)
+        unscaledNiiData.set_sform(data.affine, code=1)
+
         hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
+        hdrOut.set_data_dtype(np.float32)
+        space_unit, time_unit = hdrOut.get_xyzt_units()
+
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
+        hdrOut.set_xyzt_units(space_unit, time_unit)
         output_file = os.path.join(os.path.dirname(input_file),
                                    os.path.basename(input_file).split('.')[0] + 'DN.nii.gz')
         nib.save(unscaledNiiData, output_file)
@@ -691,6 +727,8 @@ if __name__ == "__main__":
 
             try:
                 denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+                set_xform_codes_to_one(denoised_image)
+                set_default_xyzt_units_if_unknown(denoised_image)
             finally:
                 stop_event.set()
                 thread.join()
@@ -711,12 +749,14 @@ if __name__ == "__main__":
             stop_event = threading.Event()
             thread = threading.Thread(
                 target=spinner,
-                args=(stop_event)
+                args=(stop_event,)
             )
             thread.start()
 
             try:
                 b0image = averageb0.averageb0(input_file,b0_thresh)
+                set_xform_codes_to_one(b0image)
+                set_default_xyzt_units_if_unknown(b0image)
             finally:
                 stop_event.set()
                 thread.join()
@@ -758,6 +798,7 @@ if __name__ == "__main__":
         try:
             outputBiasCorr = applyMICO.run_MICO(output_smooth, output_path)
             set_xform_codes_to_one(outputBiasCorr)
+            set_default_xyzt_units_if_unknown(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
@@ -779,7 +820,6 @@ if __name__ == "__main__":
             finally:
                 stop_event.set()
                 thread.join()
-            set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
