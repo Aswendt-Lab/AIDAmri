@@ -82,15 +82,16 @@ def averageb0(input_file, b0_thresh=100, use_mcflirt=False):
             b0_mc = nii.load(b0_filename.replace(
                 '.nii.gz', '_mcflirt.nii.gz')).get_fdata()
             # average the b0 volumes
-            b0mean = np.mean(b0_mc, axis=3)
+            b0mean = np.mean(b0_mc, axis=3).astype(np.float32)
         elif use_mcflirt is False:
             # average the b0 volumes without mcflirt alignment
-            b0mean = np.mean(b0, axis=3)
+            b0mean = np.mean(b0, axis=3).astype(np.float32)
     else:
-        b0mean = np.mean(b0, axis=3)
+        b0mean = np.mean(b0, axis=3).astype(np.float32)
     unscaledNiiData = nii.Nifti1Image(b0mean, data.affine)
     hdrOut = unscaledNiiData.header
-    hdrOut.set_xyzt_units('mm')
+    hdrOut.set_data_dtype(np.float32)
+    #hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0] + 'B0mean.nii.gz')
     nii.save(unscaledNiiData, output_file)
