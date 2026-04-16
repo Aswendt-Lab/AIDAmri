@@ -36,9 +36,22 @@ def creat_brkraw_backup(input_file):
     shutil.copyfile(input_file, dst_path)
 
     data = nib.load(input_file)
-    raw_img = data.dataobj.get_unscaled()
+    raw_img = data.dataobj.get_unscaled().astype(np.float32)
 
-    raw_nii = nib.Nifti1Image(raw_img, data.affine)
+    hdr = data.header.copy()
+    hdr.set_data_dtype(np.float32)
+    space_unit, time_unit = hdr.get_xyzt_units()
+
+    if not space_unit or space_unit.lower() == "unknown":
+        space_unit = "mm"
+    if not time_unit or time_unit.lower() == "unknown":
+        time_unit = "sec"
+
+    hdr.set_xyzt_units(space_unit, time_unit)
+
+    raw_nii = nib.Nifti1Image(raw_img, data.affine, header=hdr)
+    raw_nii.set_qform(data.affine, code=1)
+    raw_nii.set_sform(data.affine, code=1)
     nib.save(raw_nii, input_file)
 
 def header_check(input_file):
@@ -64,6 +77,40 @@ def header_check(input_file):
     nib.save(out, input_file)
     return input_file
 
+def set_default_xyzt_units_if_unknown(target):
+    """
+       Set NIfTI space/time units to mm/sec only if they are unknown.
+
+       Accepts either:
+       - a file path to a NIfTI file, or
+       - a nibabel header object
+       """
+    if isinstance(target, str):
+        img = nib.load(target)
+        hdr = img.header
+
+        space_unit, time_unit = hdr.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
+
+        hdr.set_xyzt_units(space_unit, time_unit)
+        nib.save(img, target)
+        return target
+
+    if hasattr(target, "get_xyzt_units") and hasattr(target, "set_xyzt_units"):
+        space_unit, time_unit = target.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
+
+        target.set_xyzt_units(space_unit, time_unit)
+        return target
+
+    raise TypeError("Expected a NIfTI file path or nibabel header object")
+
 def n4biasfieldcorr(input_file):
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AntsBias.nii.gz')
     # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
@@ -71,6 +118,12 @@ def n4biasfieldcorr(input_file):
                                         shrink_factor=2, bspline_fitting_distance=20,
                                         bspline_order=3, n_iterations=[50, 50, 50, 50, 0], dimension=3)
     myAnts.run()
+
+    img = nib.load(output_file)
+    hdr = img.header
+    hdr["pixdim"][4:8] = 1
+    nib.save(img, output_file)
+
     print("Biasfield correction completed")
     return output_file
 
@@ -141,7 +194,7 @@ def skip_bet_function(input_file):
     hdr.set_data_dtype(np.float32)
     hdr["pixdim"][0] = 1
     hdr["pixdim"][4:8] = 1
-    hdr.set_xyzt_units('mm', 'sec')
+    set_default_xyzt_units_if_unknown(hdr)
 
     final_img = nib.Nifti1Image(
         np.ascontiguousarray(bet_like.get_fdata(dtype=np.float32), dtype=np.float32),
@@ -165,7 +218,7 @@ def skip_bet_function(input_file):
     mask_hdr.set_data_dtype(np.uint8)
     mask_hdr["pixdim"][0] = 1
     mask_hdr["pixdim"][4:8] = 1
-    mask_hdr.set_xyzt_units('mm', 'sec')
+    set_default_xyzt_units_if_unknown(mask_hdr)
 
     mask_img = nib.Nifti1Image(
         np.ascontiguousarray(mask, dtype=np.uint8),
@@ -281,7 +334,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,
         hdr_final.set_data_dtype(np.float32)
         hdr_final["pixdim"][0] = 1
         hdr_final["pixdim"][4:8] = 1
-        hdr_final.set_xyzt_units('mm', 'sec')
+        set_default_xyzt_units_if_unknown(hdr_final)
 
         img_final = nib.Nifti1Image(
             np.ascontiguousarray(data_lip, dtype=np.float32),
@@ -317,7 +370,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,
             m_hdr_lip.set_data_dtype(np.uint8)
             m_hdr_lip["pixdim"][0] = 1
             m_hdr_lip["pixdim"][4:8] = 1
-            m_hdr_lip.set_xyzt_units('mm', 'sec')
+            set_default_xyzt_units_if_unknown(m_hdr_lip)
 
             m_out = nib.Nifti1Image(
                 np.ascontiguousarray(m_bin, dtype=np.uint8),
@@ -354,7 +407,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,
         scaled_affine = data.affine @ scale
         scaledNiiData = nib.Nifti1Image(imgTemp, scaled_affine)
         hdrIn = scaledNiiData.header
-        hdrIn.set_xyzt_units('mm')
+        set_default_xyzt_units_if_unknown(hdrIn)
 
         fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
         nib.save(scaledNiiData, fslPath)
@@ -438,7 +491,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,
         unscaledNiiData.set_qform(unscaled_affine, code=1)
         unscaledNiiData.set_sform(unscaled_affine, code=1)
         hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm', 'sec')
+        set_default_xyzt_units_if_unknown(hdrOut)
         nib.save(unscaledNiiData, output_file)
 
         # also unscale BET mask
@@ -455,7 +508,7 @@ def applyBET(input_file,frac,radius,horizontal_gradient,
 
             hdrMask = finalMask.header
             hdrMask.set_data_dtype(np.uint8)
-            hdrMask.set_xyzt_units('mm', 'sec')
+            set_default_xyzt_units_if_unknown(hdrMask)
 
             nib.save(finalMask, mask_file)
         # delete temporary files
@@ -553,6 +606,7 @@ if __name__ == "__main__":
         try:
             outputBiasCorr = applyMICO.run_MICO(input_file, os.path.dirname(input_file))
             set_xform_codes_to_one(outputBiasCorr)
+            set_default_xyzt_units_if_unknown(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
@@ -574,7 +628,6 @@ if __name__ == "__main__":
             finally:
                 stop_event.set()
                 thread.join()
-            set_xform_codes_to_one(outputBiasCorr)
             print("Biasfield correction was successful")
         except Exception as e:
             print(f'Error in bias field correction\nError message: {str(e)}')
@@ -613,6 +666,5 @@ if __name__ == "__main__":
             raise
     
     print("Preprocessing completed")
-
 
 
