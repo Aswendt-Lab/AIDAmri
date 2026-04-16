@@ -102,6 +102,12 @@ def n4biasfieldcorr(input_file):
                                         shrink_factor=4,bspline_fitting_distance=20,
                                         bspline_order=3,n_iterations=[1000,0],dimension=3)
     myAnts.run()
+
+    img = nib.load(output_file)
+    hdr = img.header
+    hdr["pixdim"][4:8] = 1
+    nib.save(img, output_file)
+
     print("Biasfield correction completed")
     return output_file
 
@@ -557,14 +563,22 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
 
 def smoothIMG(input_file, output_path,skip_min=False):
     """
-    Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
-    If skip_min is True, the median filter is not applied, and the image is directly smoothed (No "DN" files are produced).
+    Prepare a 3D image for smoothing and apply FSL's median spatial filter.
+    For 4D inputs, a voxel-wise minimum projection across the 4th dimension is
+    written as *DN.nii.gz before smoothing. For 3D inputs, the DN image is just
+    a float32/header-normalized copy. If skip_min is True, no DN file is
+    created and the input image is passed directly to FSL smoothing.
     """
     data = nib.load(input_file)
     vol = data.get_fdata()
     if not skip_min:
-        ImgSmooth = np.min(vol, 3).astype(np.float32)
-        unscaledNiiData = nib.Nifti1Image(ImgSmooth, data.affine)
+        if vol.ndim == 4:
+            img_smooth = np.min(vol, axis=3).astype(np.float32)
+        elif vol.ndim == 3:
+            img_smooth = vol.astype(np.float32)
+        else:
+            raise ValueError(f"Unsupported image dimensionality: {vol.ndim}")
+        unscaledNiiData = nib.Nifti1Image(img_smooth, data.affine)
         unscaledNiiData.set_qform(data.affine, code=1)
         unscaledNiiData.set_sform(data.affine, code=1)
 
@@ -578,11 +592,9 @@ def smoothIMG(input_file, output_path,skip_min=False):
             time_unit = "sec"
         hdrOut.set_xyzt_units(space_unit, time_unit)
         output_file = os.path.join(os.path.dirname(input_file),
-                                   os.path.basename(input_file).split('.')[0] + 'DN.nii.gz')
+                                   os.path.basename(input_file).split('.')[0] + 'MP.nii.gz')
         nib.save(unscaledNiiData, output_file)
         input_file = output_file
-    else:
-        ImgSmooth = vol
 
     output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
     myGauss =  fsl.SpatialFilter(
@@ -593,6 +605,12 @@ def smoothIMG(input_file, output_path,skip_min=False):
         kernel_size = 0.1
     )
     myGauss.run()
+
+    img = nib.load(output_file)
+    hdr = img.header
+    hdr["pixdim"][4:8] = 1
+    nib.save(img, output_file)
+
     return output_file
 
 def thresh(input_file, output_path):
@@ -690,8 +708,8 @@ if __name__ == "__main__":
         action='store_true'
     )
     parser.add_argument(
-        '--skip_min',
-        help='Skip the minimum filter before smoothing',
+        '--skip_min_projection',
+        help='Skip creation of the 3D minimum-projection reference image before smoothing',
         action='store_true'
     )
     args = parser.parse_args()
@@ -780,7 +798,7 @@ if __name__ == "__main__":
         thread.start()
 
         try:
-            output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_min=args.skip_min)
+            output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_min=args.skip_min_projection)
         finally:
             stop_event.set()
             thread.join()
@@ -790,7 +808,7 @@ if __name__ == "__main__":
         raise
 
     # intensity correction using non parametric bias field correction algorithm
-    if bias_method == "none":
+    if bias_method is None:
         print("No bias field correction applied")
         outputBiasCorr = output_smooth
     elif bias_method == "mico":
@@ -858,4 +876,3 @@ if __name__ == "__main__":
             raise
 
     print("Preprocessing completed")
-
