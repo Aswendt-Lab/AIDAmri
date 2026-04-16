@@ -81,19 +81,39 @@ def header_check(input_file):
     nib.save(out, input_file)
     return input_file
 
-def set_default_xyzt_units_if_unknown(input_file):
-    img = nib.load(input_file)
-    hdr = img.header
+def set_default_xyzt_units_if_unknown(target):
+    """
+       Set NIfTI space/time units to mm/sec only if they are unknown.
 
-    space_unit, time_unit = hdr.get_xyzt_units()
-    if not space_unit or space_unit.lower() == "unknown":
-        space_unit = "mm"
-    if not time_unit or time_unit.lower() == "unknown":
-        time_unit = "sec"
+       Accepts either:
+       - a file path to a NIfTI file, or
+       - a nibabel header object
+       """
+    if isinstance(target, str):
+        img = nib.load(target)
+        hdr = img.header
 
-    hdr.set_xyzt_units(space_unit, time_unit)
-    nib.save(img, input_file)
-    return input_file
+        space_unit, time_unit = hdr.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
+
+        hdr.set_xyzt_units(space_unit, time_unit)
+        nib.save(img, target)
+        return target
+
+    if hasattr(target, "get_xyzt_units") and hasattr(target, "set_xyzt_units"):
+        space_unit, time_unit = target.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
+
+        target.set_xyzt_units(space_unit, time_unit)
+        return target
+
+    raise TypeError("Expected a NIfTI file path or nibabel header object")
 
 def n4biasfieldcorr(input_file):
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AntsBias.nii.gz')
@@ -178,7 +198,7 @@ def skip_bet_function(input_file):
     hdr.set_data_dtype(np.float32)
     hdr["pixdim"][0] = 1
     hdr["pixdim"][4:8] = 1
-    hdr.set_xyzt_units('mm', 'sec')
+    set_default_xyzt_units_if_unknown(hdr)
 
     final_img = nib.Nifti1Image(
         np.ascontiguousarray(bet_like.get_fdata(dtype=np.float32), dtype=np.float32),
@@ -202,7 +222,7 @@ def skip_bet_function(input_file):
     mask_hdr.set_data_dtype(np.uint8)
     mask_hdr["pixdim"][0] = 1
     mask_hdr["pixdim"][4:8] = 1
-    mask_hdr.set_xyzt_units('mm', 'sec')
+    set_default_xyzt_units_if_unknown(mask_hdr)
 
     mask_img = nib.Nifti1Image(
         np.ascontiguousarray(mask, dtype=np.uint8),
@@ -317,7 +337,7 @@ def applyBET(input_file, frac, radius, horizontal_gradient,
         hdr_final.set_data_dtype(np.float32)
         hdr_final["pixdim"][0] = 1
         hdr_final["pixdim"][4:8] = 1
-        hdr_final.set_xyzt_units('mm', 'sec')
+        set_default_xyzt_units_if_unknown(hdr_final)
 
         img_final = nib.Nifti1Image(
             np.ascontiguousarray(data_lip, dtype=np.float32),
@@ -353,7 +373,7 @@ def applyBET(input_file, frac, radius, horizontal_gradient,
             m_hdr_lip.set_data_dtype(np.uint8)
             m_hdr_lip["pixdim"][0] = 1
             m_hdr_lip["pixdim"][4:8] = 1
-            m_hdr_lip.set_xyzt_units('mm', 'sec')
+            set_default_xyzt_units_if_unknown(m_hdr_lip)
 
             m_out = nib.Nifti1Image(
                 np.ascontiguousarray(m_bin, dtype=np.uint8),
@@ -394,7 +414,7 @@ def applyBET(input_file, frac, radius, horizontal_gradient,
         scaled_affine = data.affine @ scale
         scaledNiiData = nib.Nifti1Image(imgTemp, scaled_affine)
         hdrIn = scaledNiiData.header
-        hdrIn.set_xyzt_units('mm')
+        set_default_xyzt_units_if_unknown(hdrIn)
 
         fslPath = os.path.join(os.path.dirname(input_file), 'fslScaleTemp.nii.gz')
         nib.save(scaledNiiData, fslPath)
@@ -481,7 +501,7 @@ def applyBET(input_file, frac, radius, horizontal_gradient,
         unscaledNiiData.set_qform(unscaled_affine, code=1)
         unscaledNiiData.set_sform(unscaled_affine, code=1)
         hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm', 'sec')
+        set_default_xyzt_units_if_unknown(hdrOut)
         if verbose:
             print("Image dimensions after unscaling:", unscaledNiiData.header.get_zooms())
         nib.save(unscaledNiiData, output_file)
@@ -500,7 +520,7 @@ def applyBET(input_file, frac, radius, horizontal_gradient,
 
             hdrMask = finalMask.header
             hdrMask.set_data_dtype(np.uint8)
-            hdrMask.set_xyzt_units('mm', 'sec')
+            set_default_xyzt_units_if_unknown(hdrMask)
 
             nib.save(finalMask, mask_file)
         # delete temporary files
