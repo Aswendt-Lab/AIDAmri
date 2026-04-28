@@ -410,7 +410,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     if legacy:
                         cli_str += ' -l'
                     if no_mcf:
-                        cli_str += ' -nomcf'
+                        cli_str += ' ---no_motion_correction'
 
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
