@@ -36,7 +36,7 @@ import re
 import sys
 import time
 import glob
-import nibabel as nii
+import nibabel as nib
 import numpy as np
 import nipype.interfaces.fsl as fsl
 import shutil
@@ -44,26 +44,36 @@ import subprocess
 import pandas as pd
 
 def scaleBy10(input_path, inv):
-    data = nii.load(input_path)
+    data = nib.load(input_path)
     imgTemp = data.get_fdata()
     if inv is False:
-        # scale = np.eye(4) * 10
-        # scale[3][3] = 1
-        # scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        scaledNiiData = nii.Nifti1Image(imgTemp, data.affine)
+        # create 4x4 scaling matrix and scale by 10 to match human like brain size
+        scale = np.eye(4)
+        scale[0, 0] = 10
+        scale[1, 1] = 10
+        scale[2, 2] = 10
+
+        # Create new Nifti image with scaled affine
+        scaled_affine = data.affine @ scale
+
+        scaledNiiData = nib.Nifti1Image(imgTemp, scaled_affine)
         # overwrite old nifti
         fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
-        nii.save(scaledNiiData, fslPath)
+        nib.save(scaledNiiData, fslPath)
         return fslPath
     elif inv is True:
-        # scale = np.eye(4) / 10
-        # scale[3][3] = 1
-        # unscaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        unscaledNiiData = nii.Nifti1Image(imgTemp, data.affine)
+        #rescale nifti
+        inv_scale = np.eye(4)
+        inv_scale[0, 0] = 0.1
+        inv_scale[1, 1] = 0.1
+        inv_scale[2, 2] = 0.1
+
+        unscaled_affine = data.affine @ inv_scale
+        unscaledNiiData = nib.Nifti1Image(imgTemp, unscaled_affine)
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
 
-        nii.save(unscaledNiiData, input_path)
+        nib.save(unscaledNiiData, input_path)
         return input_path
     else:
         sys.exit("Error: inv - parameter should be a boolean.")
@@ -77,6 +87,21 @@ def findSlicesData(path, pre):
     regMR_list.sort()
     return regMR_list
 
+def infer_slice_axis(nifti_path):
+    img = nii.load(nifti_path)
+    shape = img.shape[:3]
+    zooms = img.header.get_zooms()[:3]
+
+    # First, search for the smallest matrix dimension.
+    # For typical 2D multislice DWI data, this is the slice axis.
+    axis_index = min(range(3), key=lambda i: shape[i])
+    axis_name = ["x", "y", "z"][axis_index]
+
+    #print(f"Image shape: {shape}")
+    #print(f"Voxel sizes: {zooms}")
+    #print(f"Inferred slice axis for slice-wise MoCo: {axis_name}")
+
+    return axis_name
 
 def fsl_SeparateSliceMoCo(input_file, par_folder):
     # scale Nifti data by factor 10
@@ -89,7 +114,10 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
         os.mkdir(temp_dir)
 
     os.chdir(temp_dir)
-    mySplit = fsl.Split(in_file=fslPath, dimension='z', out_base_name=dataName)
+
+    #find slice axis
+    slice_axis = infer_slice_axis(fslPath)
+    mySplit = fsl.Split(in_file=fslPath, dimension=slice_axis, out_base_name=dataName)
     mySplit.run()
     os.remove(fslPath)
 
@@ -108,7 +136,7 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     mcf_sliceFiles = findSlicesData(par_folder, dataName)
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
-    myMerge = fsl.Merge(in_files=mcf_sliceFiles, dimension='z', merged_file=output_file)
+    myMerge = fsl.Merge(in_files=mcf_sliceFiles, dimension=slice_axis, merged_file=output_file)
     myMerge.run()
 
     for slc in mcf_sliceFiles: 
@@ -190,7 +218,7 @@ def erode_mask(input_file, outputPath, n_voxels=1):
 
 
 def get_min_voxel_size_mm(nifti_path):
-    nii_file = nii.load(nifti_path)
+    nii_file = nib.load(nifti_path)
     header = nii_file.header
     mm_voxel_size_arr = header.get_zooms()
     spatial_dims = mm_voxel_size_arr[:3]
@@ -619,7 +647,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         # Remove .gz if present
         if base_name.endswith('.nii'):
             base_name = base_name[:-4]
-        img = nii.load(nifti_path)
+        img = nib.load(nifti_path)
         png_slice_path = os.path.join(dir_qa, f"{base_name}.png")
         cmd = ["slicer", nifti_path, "-L -a", png_slice_path]
         subprocess.run(cmd, check=True)
