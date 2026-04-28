@@ -231,19 +231,20 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # Stroke Mask
         outputStrokeMaskScaled = os.path.join(outfileDSI,
                                         os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
+        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         # uperPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
         # superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
+        # scale = np.eye(4) * 10
+        # scale[3][3] = 1
+        # unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
+        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
 
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputStrokeMaskScaled)
         #src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
         #dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.txt')#> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
+        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         #shutil.copyfile(src_file, dst_file)
 
         # Superposition of rsfMRI annotations and mask
@@ -269,15 +270,16 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
         #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
 
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
+        # scale = np.eye(4) * 10
+        # scale[3][3] = 1
+        # unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
+        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
         nii.save(unscaledNiiDataMask, outputParentalStrokeLabelsScaled)
         #src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt')
         #dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-        superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
+        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         #shutil.copyfile(src_file, dst_file)
 
     # --- Safety checks for DSI export inputs ---
@@ -313,11 +315,11 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     dataMask = nii.load(bet_mask_path)
     imgMask = dataMask.get_fdata()
 
-    imgMask = np.flip(imgMask, 2)
-    scale = np.eye(4) * 10
-    scale[3][3] = 1
+    # imgMask = np.flip(imgMask, 2)
+    # scale = np.eye(4) * 10
+    # scale[3][3] = 1
 
-    unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine * scale)
+    unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine)
     unscaledNiiDataMask.header.set_xyzt_units('mm')
     nii.save(unscaledNiiDataMask, outputBrainMaskScaled)
 
@@ -352,16 +354,16 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         imgTempAllen = dataAllen.get_fdata()
 
         # pipeline expects these flips for DSI export (keep consistent with your existing behavior)
-        imgTempAllen = np.flip(imgTempAllen, 2)
-        imgTempAnno = np.flip(imgTempAnno, 2)
-        imgTempAnnorspar = np.flip(imgTempAnnorspar, 2)
+        # imgTempAllen = np.flip(imgTempAllen, 2)
+        # imgTempAnno = np.flip(imgTempAnno, 2)
+        # imgTempAnnorspar = np.flip(imgTempAnnorspar, 2)
 
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
+        # scale = np.eye(4) * 10
+        # scale[3][3] = 1
 
-        unscaledNiiDataAnno = nii.Nifti1Image(imgTempAnno, dataAnno.affine * scale)
-        unscaledNiiDataAnnorspar = nii.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine * scale)
-        unscaledNiiDataAllen = nii.Nifti1Image(imgTempAllen, dataAllen.affine * scale)
+        unscaledNiiDataAnno = nii.Nifti1Image(imgTempAnno, dataAnno.affine)
+        unscaledNiiDataAnnorspar = nii.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine)
+        unscaledNiiDataAllen = nii.Nifti1Image(imgTempAllen, dataAllen.affine)
 
         unscaledNiiDataAnno.header.set_xyzt_units('mm')
         unscaledNiiDataAnnorspar.header.set_xyzt_units('mm')
@@ -521,6 +523,4 @@ if __name__ == "__main__":
         continue
 
     print("Registration completed")
-
-
 
