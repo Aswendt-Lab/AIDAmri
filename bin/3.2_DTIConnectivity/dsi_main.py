@@ -59,15 +59,15 @@ if __name__ == '__main__':
     # Resolve helper files relative to this script so the mounted repo can be
     # executed directly without depending on the shell's current directory.
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    repo_root = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir))
-
     # Keep the DSI Studio binary path in a sidecar file next to this script.
     dsi_path_file = os.path.join(script_dir, "dsi_studioPath.txt")
     with open(dsi_path_file, "r") as f:
         dsi_studio = f.read().splitlines()[0]
 
-    # default b-table in input directory
-    b_table = os.path.join(repo_root, 'lib', 'DTI_Jones30.txt')
+    # Use explicit b-table paths only when the user asks for them. In auto
+    # mode, the pipeline now requires a real .bval/.bvec pair.
+    b_table = None
+    gradient_pair = None
 
     # default connectivity directory relative to input directory
     dir_con = r'connectivity'
@@ -83,7 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('-b',
                         '--b_table',
                         default='auto',  # Default to 'auto' for automatic selection
-                        help='Specify the b-table source: "auto" (will look for bvec and bval, create the btable. If val or vec can not be found, it uses the Jones30 file)'
+                        help='Specify the diffusion gradient source: "auto" requires matching .bval/.bvec files. Any other value is treated as a b-table path.'
                         )
     parser.add_argument('-r',
                         '--recon_method',
@@ -111,12 +111,6 @@ if __name__ == '__main__':
                         '--track_params',
                         default='default',
                         help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
-                        required=False
-                       )
-    parser.add_argument('-y',
-                        '--flip_image_y',
-                        action = 'store_true',
-                        help='Deprecated. Flip support has been removed and this flag is ignored.',
                         required=False
                        )
     parser.add_argument('-template',
@@ -158,16 +152,22 @@ if __name__ == '__main__':
         enable_process_log(process_log)
         print(f"Writing process log to {process_log}")
         
-     # Determine the btable source based on the -b option
+    # Determine the gradient source based on the -b option.
     if str(args.b_table).lower() == 'auto':
-        # Use the merge_bval_bvec_to_btable function with folder_path as file_in
-        b_table = dsi_tools.merge_bval_bvec_to_btable(os.path.dirname(args.file_in))
-        if b_table is False:
-            # Fall back to the repository copy even when the script is launched
-            # from a mounted checkout outside the image's default workdir.
-            b_table = os.path.join(repo_root, 'lib', 'DTI_Jones30.txt')
+        input_dir = os.path.dirname(os.path.abspath(args.file_in))
+        input_stem = dsi_tools.strip_nifti_suffix(args.file_in)
+        gradient_pair, gradient_error = dsi_tools.find_matching_gradient_pair(
+            input_dir,
+            preferred_stem=input_stem,
+        )
+        if gradient_pair is None:
+            sys.exit(f"ERROR: {gradient_error}")
+        else:
+            print(f"Using gradient files: {gradient_pair['bval']} and {gradient_pair['bvec']}")
+    else:
+        b_table = args.b_table
+        print(f"Using explicit b-table: {b_table}")
 
-    bet4animal = False
     # Preparing directories
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
@@ -177,7 +177,6 @@ if __name__ == '__main__':
         if not dir_mask:
             # check for mask without scaled in name
             dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz')))
-            bet4animal = True
     if not dir_mask:
         raise FileNotFoundError("No BET mask found in DSI_studio folder.")
 
@@ -189,22 +188,17 @@ if __name__ == '__main__':
         make_isotropic = 'auto'
     else:
         make_isotropic = float(args.make_isotropic)
-
-    if args.flip_image_y:
-        print("Notice: --flip_image_y is ignored because flip support has been removed.")
     flip_image_y = False
-    
-    template = 6
-    if args.template.lower() == 'rat':
+
+    if args.template.lower() == 'rat' or str(args.template) == '5':
         template = 5
     elif args.template.lower() == 'mouse' or str(args.template) == '1':
-        template = 6
+        template = 1
     else:
-        try:
-            template = int(args.template)
-        except ValueError:
-            print(f"Invalid template value: {args.template}. Using default template 6 (mouse).")
-            template = 6
+        sys.exit(
+            f"Error: Invalid template value: {args.template}. "
+            "Allowed values are: 'mouse' or '1', 'rat' or '5'."
+        )
 
     # if it exists, find the denoised dwi data and use it as file_in
     file_in = args.file_in
@@ -226,7 +220,20 @@ if __name__ == '__main__':
             os.makedirs(dsi_path)
         file_in = dsi_tools.fsl_SeparateSliceMoCo(file_in, mcf_path)
 
-    voxel_size = dsi_tools.srcgen(dsi_studio, file_in, dir_mask, dir_out, b_table, args.recon_method, args.vivo, make_isotropic, flip_image_y, template, args.legacy)
+    voxel_size = dsi_tools.srcgen(
+        dsi_studio,
+        file_in,
+        dir_mask,
+        dir_out,
+        b_table,
+        args.recon_method,
+        args.vivo,
+        make_isotropic,
+        flip_image_y,
+        template,
+        args.legacy,
+        gradient_pair=gradient_pair,
+    )
     file_in = os.path.join(file_cur,'fib_map')
 
     track_param = args.track_params
