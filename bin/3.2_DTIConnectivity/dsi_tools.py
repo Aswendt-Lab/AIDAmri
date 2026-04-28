@@ -211,6 +211,61 @@ def strip_nifti_suffix(path):
     return os.path.splitext(name)[0]
 
 
+def find_matching_gradient_pair(folder_path, preferred_stem=None):
+    """
+    Find the .bval/.bvec pair that belongs to a DWI series.
+
+    The exact DWI stem is preferred when it is known. Otherwise we fall back to
+    the common *_dwi naming convention or to the only remaining unique pair.
+    """
+    bval_files = sorted(glob.glob(os.path.join(folder_path, '*.bval')))
+    bvec_files = sorted(glob.glob(os.path.join(folder_path, '*.bvec')))
+
+    bval_map = {
+        os.path.basename(path).replace('.bval', ''): path
+        for path in bval_files
+    }
+    bvec_map = {
+        os.path.basename(path).replace('.bvec', ''): path
+        for path in bvec_files
+    }
+
+    common_stems = sorted(set(bval_map) & set(bvec_map))
+    if not common_stems:
+        return None, "Both bval and bvec files must be present in the folder."
+
+    if preferred_stem:
+        preferred_stem = strip_nifti_suffix(os.path.basename(preferred_stem))
+        if preferred_stem in common_stems:
+            return {
+                'stem': preferred_stem,
+                'bval': bval_map[preferred_stem],
+                'bvec': bvec_map[preferred_stem],
+            }, None
+
+    preferred_dwi_stems = [stem for stem in common_stems if stem.endswith('_dwi')]
+    if len(preferred_dwi_stems) == 1:
+        stem = preferred_dwi_stems[0]
+        return {
+            'stem': stem,
+            'bval': bval_map[stem],
+            'bvec': bvec_map[stem],
+        }, None
+
+    if len(common_stems) == 1:
+        stem = common_stems[0]
+        return {
+            'stem': stem,
+            'bval': bval_map[stem],
+            'bvec': bvec_map[stem],
+        }, None
+
+    return None, (
+        "Multiple matching bval/bvec pairs were found. "
+        "Please keep only one pair in the folder."
+    )
+
+
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, flip_image_y=False, legacy=False):
     """
     Calculates connectivity data (types: pass and end).
@@ -355,7 +410,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=6, legacy=False):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=6, legacy=False, gradient_pair=None):
     """
     Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
     """
@@ -381,21 +436,33 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     if not os.path.exists(dir_out):
         sys.exit("Output directory \"%s\" does not exist." % (dir_out,))
 
-    b_table = os.path.join(dir_in, b_table)
-    if not os.path.isfile(b_table):
-        sys.exit("File \"%s\" does not exist." % (b_table,))
+    input_dir = os.path.dirname(os.path.abspath(dir_in))
+
+    if gradient_pair is None:
+        if not os.path.isabs(b_table):
+            b_table = os.path.join(input_dir, b_table)
+        if not os.path.isfile(b_table):
+            sys.exit("File \"%s\" does not exist." % (b_table,))
+    else:
+        if not os.path.isfile(gradient_pair['bval']):
+            sys.exit("File \"%s\" does not exist." % (gradient_pair['bval'],))
+        if not os.path.isfile(gradient_pair['bvec']):
+            sys.exit("File \"%s\" does not exist." % (gradient_pair['bvec'],))
 
     dir_src = make_dir(os.path.dirname(dir_out), dir_src)
     dir_fib = make_dir(os.path.dirname(dir_out), dir_fib)
     dir_qa  = make_dir(os.path.dirname(dir_out), dir_qa)
 
     # change to input directory
-    os.chdir(os.path.dirname(dir_in))
+    os.chdir(input_dir)
 
-    cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s' # command saves to *.src.gz.sz file
+    # Prefer explicit gradient files when they are available. This keeps the
+    # source image and the original gradients coupled even after motion
+    # correction changed the NIfTI filename to *_mcf.nii.gz.
+    cmd_src_btable = r'%s --action=%s --source=%s --output=%s --b_table=%s'
+    cmd_src_gradients = r'%s --action=%s --source=%s --output=%s --bval=%s --bvec=%s'
     # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
     # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
-    # flip image orientation in x, y or z direction !! needs to be adjusted according to your data, check fiber tracking result to be anatomically meaningful
     cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --other_output=all --output=%s --check_btable=%d --cmd=%s' # Dev note: if not using slice-wise motion correction, --motion_correction 1
 
     # create source files
@@ -404,8 +471,19 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # file_src = os.path.join(dir_src, filename[:pos] + ext_src)
     filename_base = filename.split('.')[0]
     file_src = os.path.join(dir_src, filename_base + ext_src)
-    parameters = (dsi_studio, 'src', filename, file_src, b_table)
-    os.system(cmd_src % parameters)
+    if gradient_pair is not None:
+        parameters = (
+            dsi_studio,
+            'src',
+            filename,
+            file_src,
+            gradient_pair['bval'],
+            gradient_pair['bvec'],
+        )
+        os.system(cmd_src_gradients % parameters)
+    else:
+        parameters = (dsi_studio, 'src', filename, file_src, b_table)
+        os.system(cmd_src_btable % parameters)
 
     patterns = [
         os.path.join(dir_src, filename_base + '*.src.gz.sz'),
@@ -605,40 +683,15 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     
     os.system(cmd_trk % parameters)
 
-def merge_bval_bvec_to_btable(folder_path):
-    # Match bval/bvec by shared stem so we do not silently combine unrelated files.
-    bval_files = sorted(glob.glob(os.path.join(folder_path, '*.bval')))
-    bvec_files = sorted(glob.glob(os.path.join(folder_path, '*.bvec')))
-
-    bval_map = {
-        os.path.basename(path).replace('.bval', ''): path
-        for path in bval_files
-    }
-    bvec_map = {
-        os.path.basename(path).replace('.bvec', ''): path
-        for path in bvec_files
-    }
-
-    common_stems = sorted(set(bval_map) & set(bvec_map))
-    if not common_stems:
-        print("Both bval and bvec files must be present in the folder.")
+def merge_bval_bvec_to_btable(folder_path, preferred_stem=None):
+    gradient_pair, error_message = find_matching_gradient_pair(folder_path, preferred_stem=preferred_stem)
+    if gradient_pair is None:
+        print(error_message)
         return False
 
-    # Prefer the usual diffusion stem if multiple pairs are present.
-    preferred_stems = [stem for stem in common_stems if stem.endswith('_dwi')]
-    if len(preferred_stems) == 1:
-        file_name = preferred_stems[0]
-    elif len(common_stems) == 1:
-        file_name = common_stems[0]
-    else:
-        print(
-            "Multiple matching bval/bvec pairs were found. "
-            "Please keep only one pair in the folder."
-        )
-        return False
-
-    bval_file = bval_map[file_name]
-    bvec_file = bvec_map[file_name]
+    file_name = gradient_pair['stem']
+    bval_file = gradient_pair['bval']
+    bvec_file = gradient_pair['bvec']
 
     try:
         with open(bval_file, 'r') as bval_handle:
