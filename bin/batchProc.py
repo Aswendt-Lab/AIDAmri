@@ -123,7 +123,20 @@ def run_subprocess(command, datatype, step, anat_process=False):
             os.remove(log_file)    
         with open(log_file, 'w') as outfile:
             time.sleep(2) # make sure logging file is created before starting the subprocess
-            result = subprocess.run(command_args, stdout=outfile, stderr=outfile, text=True, timeout=timeout)
+            child_env = os.environ.copy()
+            # dsi_main.py can create its own process.log during interactive
+            # runs. Disable that side log here because batchProc.py already
+            # captures stdout/stderr into the step-specific batch log.
+            if any(arg.endswith("dsi_main.py") for arg in command_args):
+                child_env["AIDAMRI_DISABLE_PROCESS_LOG"] = "1"
+            result = subprocess.run(
+                command_args,
+                stdout=outfile,
+                stderr=outfile,
+                text=True,
+                timeout=timeout,
+                env=child_env,
+            )
             if result.returncode != 0:
                 if (
                     result.returncode == FATAL_LIP_HEADER_EXIT_CODE
