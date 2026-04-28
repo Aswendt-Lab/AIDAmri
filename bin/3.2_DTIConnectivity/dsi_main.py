@@ -9,21 +9,65 @@ University Hospital Cologne
 """
 from __future__ import print_function
 
+import atexit
 import argparse
 import os
 import glob
 import dsi_tools
 import shutil
 import gzip
+import subprocess
+import sys
+
+
+def enable_process_log(log_path):
+    # Mirror stdout/stderr into a dataset-local log file so debugging works the
+    # same whether the script is launched from the image or a mounted checkout.
+    tee_proc = subprocess.Popen(["tee", "-a", log_path], stdin=subprocess.PIPE)
+    os.dup2(tee_proc.stdin.fileno(), sys.stdout.fileno())
+    os.dup2(tee_proc.stdin.fileno(), sys.stderr.fileno())
+    sys.stdout = os.fdopen(sys.stdout.fileno(), "w", buffering=1, closefd=False)
+    sys.stderr = os.fdopen(sys.stderr.fileno(), "w", buffering=1, closefd=False)
+
+    def _cleanup():
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+        finally:
+            try:
+                tee_proc.stdin.close()
+            except Exception:
+                pass
+            try:
+                tee_proc.wait(timeout=5)
+            except Exception:
+                pass
+
+    atexit.register(_cleanup)
+
+
+def should_enable_process_log():
+    # batchProc.py already redirects stdout/stderr into its own step log. In
+    # that case dsi_main.py should not create an additional process.log or tee
+    # the same lines twice. Allow an explicit override via environment variable
+    # and otherwise fall back to a TTY check for direct interactive runs.
+    if os.environ.get("AIDAMRI_DISABLE_PROCESS_LOG", "").lower() in {"1", "true", "yes"}:
+        return False
+    return os.isatty(sys.stdout.fileno()) and os.isatty(sys.stderr.fileno())
 
 if __name__ == '__main__':
-    # default dsi studio directory
-    f = open(os.path.join(os.getcwd(), "dsi_studioPath.txt"), "r")
-    dsi_studio = f.read().split("\n")[0]
-    f.close()
+    # Resolve helper files relative to this script so the mounted repo can be
+    # executed directly without depending on the shell's current directory.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir))
+
+    # Keep the DSI Studio binary path in a sidecar file next to this script.
+    dsi_path_file = os.path.join(script_dir, "dsi_studioPath.txt")
+    with open(dsi_path_file, "r") as f:
+        dsi_studio = f.read().splitlines()[0]
 
     # default b-table in input directory
-    b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir)) + '/lib/DTI_Jones30.txt'
+    b_table = os.path.join(repo_root, 'lib', 'DTI_Jones30.txt')
 
     # default connectivity directory relative to input directory
     dir_con = r'connectivity'
@@ -72,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('-y',
                         '--flip_image_y',
                         action = 'store_true',
-                        help='Specify whether to flip the image in the y-direction.',
+                        help='Deprecated. Flip support has been removed and this flag is ignored.',
                         required=False
                        )
     parser.add_argument('-template',
@@ -107,18 +151,24 @@ if __name__ == '__main__':
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
                         )
     args = parser.parse_args()
+
+    file_cur = os.path.dirname(args.file_in)
+    process_log = os.path.join(file_cur, "process.log")
+    if should_enable_process_log():
+        enable_process_log(process_log)
+        print(f"Writing process log to {process_log}")
         
      # Determine the btable source based on the -b option
     if str(args.b_table).lower() == 'auto':
         # Use the merge_bval_bvec_to_btable function with folder_path as file_in
         b_table = dsi_tools.merge_bval_bvec_to_btable(os.path.dirname(args.file_in))
         if b_table is False:
-        # Use the default "Jones30" btable
-            b_table = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/DTI_Jones30.txt'
+            # Fall back to the repository copy even when the script is launched
+            # from a mounted checkout outside the image's default workdir.
+            b_table = os.path.join(repo_root, 'lib', 'DTI_Jones30.txt')
 
     bet4animal = False
     # Preparing directories
-    file_cur = os.path.dirname(args.file_in)
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
     dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii')))
@@ -140,7 +190,9 @@ if __name__ == '__main__':
     else:
         make_isotropic = float(args.make_isotropic)
 
-    flip_image_y = args.flip_image_y
+    if args.flip_image_y:
+        print("Notice: --flip_image_y is ignored because flip support has been removed.")
+    flip_image_y = False
     
     template = 6
     if args.template.lower() == 'rat':
@@ -249,4 +301,3 @@ if __name__ == '__main__':
                         shutil.copyfileobj(f_in, f_out)
 
                 os.remove(oldName)
-
