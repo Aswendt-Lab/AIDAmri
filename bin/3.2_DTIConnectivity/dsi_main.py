@@ -133,8 +133,7 @@ if __name__ == '__main__':
                         help='Legacy file types for DSI-Studio releases before 2024. Default is False (uses new more storage-efficient ".sz" and ".fz" file types)',
                         action = 'store_true'
                         )
-    parser.add_argument('-nomcf',
-                        '--no_motion_correction',
+    parser.add_argument('--no_motion_correction',
                         action='store_true',
                         help='Specify whether to skip motion correction. Default is False (perform motion correction). Set to "true" to skip motion correction.',
                         required=False
