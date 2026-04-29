@@ -187,7 +187,6 @@ if __name__ == '__main__':
         make_isotropic = 'auto'
     else:
         make_isotropic = float(args.make_isotropic)
-    flip_image_y = False
 
     if args.template.lower() == 'rat' or str(args.template) == '5':
         template = 5
@@ -228,8 +227,6 @@ if __name__ == '__main__':
         args.recon_method,
         args.vivo,
         make_isotropic,
-        flip_image_y,
-        template,
         args.legacy,
         gradient_pair=gradient_pair,
     )
@@ -243,7 +240,7 @@ if __name__ == '__main__':
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
-    # if bet4animal is True:
+
     #     suffixes = ['*StrokeMask.nii', '*parental_Mask.nii', '*Anno.nii', '*AnnoSplit_parental.nii']
     for f in suffixes:
         dir_seeds = sorted(glob.glob(os.path.join(file_cur, 'DSI_studio', f)))
@@ -252,6 +249,7 @@ if __name__ == '__main__':
         if not dir_seeds:
             continue
         dir_seeds = dir_seeds[0]
+
         dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y, args.legacy)
 
     # rename files to reduce path length
