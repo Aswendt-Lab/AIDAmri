@@ -438,7 +438,7 @@ def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
         print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
         subprocess.call(cmd_exp % parameters)
 
-def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, flip_image_y=False, template=6, legacy=False, gradient_pair=None):
+def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, legacy=False, gradient_pair=None):
     """
     Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
     """
@@ -457,14 +457,18 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     if not os.path.exists(dir_in):
         sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
 
-    dir_msk = os.path.normpath(os.path.join(dir_in, dir_msk))
-    if not os.path.exists(dir_msk):
-        sys.exit("Masks directory \"%s\" does not exist." % (dir_msk,))
+    input_dir = os.path.dirname(os.path.abspath(dir_in))
+
+    if not os.path.isabs(dir_msk):
+        dir_msk = os.path.join(input_dir, dir_msk)
+    dir_msk = os.path.normpath(dir_msk)
+
+    if not os.path.isfile(dir_msk):
+        sys.exit("Mask file \"%s\" does not exist." % (dir_msk,))
 
     if not os.path.exists(dir_out):
-        sys.exit("Output directory \"%s\" does not exist." % (dir_out,))
+        sys.exit("Output path \"%s\" does not exist." % (dir_out,))
 
-    input_dir = os.path.dirname(os.path.abspath(dir_in))
 
     if gradient_pair is None:
         if not os.path.isabs(b_table):
@@ -487,31 +491,33 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # Prefer explicit gradient files when they are available. This keeps the
     # source image and the original gradients coupled even after motion
     # correction changed the NIfTI filename to *_mcf.nii.gz.
-    cmd_src_btable = r'%s --action=%s --source=%s --output=%s --b_table=%s'
-    cmd_src_gradients = r'%s --action=%s --source=%s --output=%s --bval=%s --bvec=%s'
     # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
     # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --other_output=all --output=%s --check_btable=%d --cmd=%s' # Dev note: if not using slice-wise motion correction, --motion_correction 1
 
     # create source files
     filename = os.path.basename(dir_in)
-    # pos = filename.rfind('.')
-    # file_src = os.path.join(dir_src, filename[:pos] + ext_src)
-    filename_base = filename.split('.')[0]
+    filename_base = strip_nifti_suffix(filename)
     file_src = os.path.join(dir_src, filename_base + ext_src)
     if gradient_pair is not None:
-        parameters = (
+        cmd = [
             dsi_studio,
-            'src',
-            filename,
-            file_src,
-            gradient_pair['bval'],
-            gradient_pair['bvec'],
-        )
-        os.system(cmd_src_gradients % parameters)
+            "--action=src",
+            f"--source={filename}",
+            f"--output={file_src}",
+            f"--bval={gradient_pair['bval']}",
+            f"--bvec={gradient_pair['bvec']}",
+        ]
     else:
-        parameters = (dsi_studio, 'src', filename, file_src, b_table)
-        os.system(cmd_src_btable % parameters)
+        cmd = [
+            dsi_studio,
+            "--action=src",
+            f"--source={filename}",
+            f"--output={file_src}",
+            f"--b_table={b_table}",
+        ]
+
+    print("Running:", " ".join(cmd))
+    subprocess.run(cmd, check=True)
 
     patterns = [
         os.path.join(dir_src, filename_base + '*.src.gz.sz'),
@@ -535,13 +541,18 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # If unrealistic streamlines cross top of cortex are present due to an oversized mask, erode mask
     mask_erosion = 0
     if mask_erosion > 0:
-        # Erode mask by 1 voxel
-        dir_msk = erode_mask(dir_msk, os.path.join(dir_msk, 'eroded_mask.nii.gz'), n_voxels=mask_erosion)
-        print(f'Eroded mask saved to {dir_msk}')
+        eroded_mask_path = os.path.join(
+            os.path.dirname(dir_msk),
+            strip_nifti_suffix(dir_msk) + "_eroded_mask.nii.gz"
+        )
+
+        dir_msk = erode_mask(dir_msk, eroded_mask_path, n_voxels=mask_erosion)
+        print(f"Eroded mask saved to {dir_msk}")
 
     # create fib files
     file_msk = dir_msk
 
+    #param0 still used in dsi_studio 2025?
     param_zero='1.25'
     # Select reconstruction parameters
     if vivo == "ex_vivo":
@@ -551,20 +562,30 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         print(f'Using param0 value {param_zero} recommended for in vivo data')
 
     # get voxel size from nifti header to resample if make_isotropic == 'auto', use function get_min_voxel_size_mm
-    min_vox_size_mm = get_min_voxel_size_mm(filename)
-    if make_isotropic == "auto":
+    min_vox_size_mm = get_min_voxel_size_mm(dir_in)
+
+    if str(make_isotropic).lower() == "auto":
         iso_value = float(min_vox_size_mm)
     else:
-        iso_value = float(make_isotropic)
+        try:
+            iso_value = float(make_isotropic)
+        except ValueError:
+            sys.exit(
+                f"Invalid make_isotropic value: {make_isotropic}. "
+                'Use 0, "auto", or a voxel size in mm, e.g. 0.2.'
+            )
     # Dev note: The parcellation image must be registered to the resampled (and flipped) diffusion image if this is the case
     #           We need to register the T2-weighted image to the resampled diffusion image to guide the registration of the parcellation image
     #           This should be done using the equivalent commands from registration_DTI.py
 
     additional_cmd = ''
+    #Atlas has to be in the same space resampled space if iso_value above 0
     if iso_value > 0:
         additional_cmd = f'[Step T2][Edit][Resample]={iso_value}'
         print(f'Resampling to {iso_value} mm isotropic voxel size')
-    
+
+    # Optional future DSI Studio corrections. Currently disabled because AIDAmri
+    # performs slice-wise motion correction before source generation.
     use_eddy_correct = False
     use_dsi_topup = False
     rev_pe_image = '' # path to reverse phase encoding image if using dsi topup
@@ -575,57 +596,59 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     if use_dsi_topup:
         additional_cmd = f'[Step T2][Edit][TOPUP]={rev_pe_image}+{additional_cmd}'
 
-    # default method value for DTI 
-    method_rec=1
-    if recon_method == "gqi":
-        method_rec=4
-
-    # Select template for DSI Studio
-    # 1: C57BL6_mouse, 5: WHS_SD_rat 
-    if template == "Mouse":
-        template = 6
-    elif template == "Rat":
-        template = 5
+    # method for reconstruction algorithm
+    if recon_method == "dti":
+        method_rec = 1
+    elif recon_method == "gqi":
+        method_rec = 4
+    else:
+        sys.exit(f"Unknown reconstruction method: {recon_method}")
 
     file_fib = os.path.join(dir_fib, filename_base + ext_fib)
 
+    #Reconstruction command
+    cmd = [
+        dsi_studio,
+        "--action=rec",
+        f"--source={file_src_real}",
+        f"--mask={file_msk}",
+        f"--method={method_rec}",
+        "--other_output=all",
+        f"--output={file_fib}",
+        "--check_btable=0",
+    ]
+
     if additional_cmd:
-        parameters = (dsi_studio, 'rec', file_src_real, file_msk, method_rec, file_fib, 0, '"'f'{additional_cmd}"')
-        os.system(cmd_rec % parameters)
-    else:
-        cmd_rec_no_cmd = r'%s --action=%s --source=%s --mask=%s --method=%d --other_output=all --output=%s --check_btable=%d'
-        parameters = (dsi_studio, 'rec', file_src_real, file_msk, method_rec, file_fib, 0)
-        os.system(cmd_rec_no_cmd % parameters)
+        cmd.append(f"--cmd={additional_cmd}")
+
+    print("Running:", " ".join(cmd))
+    subprocess.run(cmd, check=True)
 
     # move fib to corresponding folders
     move_files(dir_src, dir_fib, f'/*{ext_fib}')
 
-    # extracts maps: 2 ways:
-    cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib+f'/*{ext_fib}')[0]
+    fib_candidates = sorted(glob.glob(os.path.join(dir_fib, f"*{ext_fib}")))
+    if not fib_candidates:
+        raise FileNotFoundError(f"No reconstructed FIB/FZ file found in {dir_fib}")
+
+    file_fib = fib_candidates[0]
+
     if recon_method == "gqi":
-        parameters = (dsi_studio, 'exp', file_fib, 'dti_fa')
+        exports = ["dti_fa", "md", "ad", "rd"]
     elif recon_method == "dti":
-        parameters = (dsi_studio, 'exp', file_fib, 'fa')
-    os.system(cmd_exp % parameters)
+        exports = ["fa", "md", "ad", "rd"]
+    else:
+        sys.exit(f"Unknown reconstruction method: {recon_method}")
 
-    # extracts maps: 2 ways:
-    cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib + f'/*{ext_fib}')[0]
-    parameters = (dsi_studio, 'exp', file_fib, 'md')
-    os.system(cmd_exp % parameters)
-
-    # extracts maps: 2 ways:
-    cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib + f'/*{ext_fib}')[0]
-    parameters = (dsi_studio, 'exp', file_fib, 'ad')
-    os.system(cmd_exp % parameters)
-
-    # extracts maps: 2 ways:
-    cmd_exp = r'%s --action=%s --source=%s --export=%s'
-    file_fib = glob.glob(dir_fib + f'/*{ext_fib}')[0]
-    parameters = (dsi_studio, 'exp', file_fib, 'rd')
-    os.system(cmd_exp % parameters)
+    for metric in exports:
+        cmd = [
+            dsi_studio,
+            "--action=exp",
+            f"--source={file_fib}",
+            f"--export={metric}",
+        ]
+        print("Running:", " ".join(cmd))
+        subprocess.run(cmd, check=True)
 
     move_files(dir_fib, dir_qa, '/*qa.nii.gz')
     move_files(dir_fib, dir_qa, '/*fa.nii.gz')
@@ -636,23 +659,24 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # Generate PNG images for each NIfTI file using FSL's slicer tool
     # Collect all NIfTI files in dir_qa, including .nii and .nii.gz
     all_nifti_files = glob.glob(os.path.join(dir_qa, "*.nii")) + glob.glob(os.path.join(dir_qa, "*.nii.gz"))
-
-    # Remove duplicates and ensure unique file paths
-    all_nifti_files = list(set(all_nifti_files))
-
-    nifti_files = all_nifti_files
+    #delete duplicates
+    nifti_files = sorted(set(all_nifti_files))
 
     for nifti_path in nifti_files:
-        base_name = os.path.splitext(os.path.basename(nifti_path))[0]
-        # Remove .gz if present
-        if base_name.endswith('.nii'):
+        base_name = os.path.basename(nifti_path)
+        if base_name.endswith(".nii.gz"):
+            base_name = base_name[:-7]
+        elif base_name.endswith(".nii"):
             base_name = base_name[:-4]
-        img = nib.load(nifti_path)
+        else:
+            base_name = os.path.splitext(base_name)[0]
+
         png_slice_path = os.path.join(dir_qa, f"{base_name}.png")
-        cmd = ["slicer", nifti_path, "-L -a", png_slice_path]
+        cmd = ["slicer", nifti_path, "-L", "-a", png_slice_path]
+        print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
 
-    return min_vox_size_mm # , flip_image_y
+    return min_vox_size_mm
 
 def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, thread_count=1, legacy=False):
     """
