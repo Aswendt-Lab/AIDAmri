@@ -293,151 +293,6 @@ def find_matching_gradient_pair(folder_path, preferred_stem=None):
         "Please keep only one pair in the folder."
     )
 
-
-def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, flip_image_y=False, legacy=False):
-    """
-    Calculates connectivity data (types: pass and end).
-    """
-    if not os.path.exists(dir_in):
-        sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
-
-    dir_seeds = os.path.normpath(os.path.join(dir_in, dir_seeds))
-    if not os.path.exists(dir_seeds):
-        sys.exit("Seeds directory \"%s\" does not exist." % (dir_seeds,))
-
-    if not os.path.exists(dir_out):
-        sys.exit("Output directory \"%s\" does not exist." % (dir_out,))
-
-    dir_con = make_dir(dir_out, dir_con)
-
-    # change to input directory
-    os.chdir(os.path.dirname(dir_in))
-    cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s'
-
-    if legacy:
-        filename = glob.glob(dir_in+'/*.fib.gz')[0]
-    else:
-        filename = glob.glob(dir_in + '/*.fz')[0]
-    file_trk = glob.glob(dir_in+'/*trk.gz')[0]
-    file_seeds = dir_seeds
-
-    # Dev note: if we resample the diffusion image, we need to resample the file_seeds here
-    iso_value = None
-    if make_isotropic == "auto":
-        # Match srcgen(): when "auto" is requested, use the native voxel size
-        # of the ROI/seed image for the optional connectivity resampling step.
-        iso_value = float(get_min_voxel_size_mm(file_seeds))
-    else:
-        iso_value = float(make_isotropic)
-    if iso_value is not None and iso_value > 0:
-        # resample seeds image to isotropic voxel size using AFNI 3dresample
-        resampled_seeds_path = os.path.join(dir_con, os.path.basename(file_seeds).replace('.nii', '_resampled.nii.gz'))
-
-        cmd_resample = f"flirt -in {file_seeds} -ref {file_seeds} -applyisoxfm {iso_value} -nosearch -interp trilinear -out {resampled_seeds_path}"
-        print(f'Resampling seeds image to {iso_value} mm isotropic voxel size')
-        subprocess.run(cmd_resample, shell=True, check=True)
-        # create a quality control image for the resampling, with the original image and the resampled image side by side
-        # Generate PNG images for original and resampled seeds
-        qc_orig_png = os.path.join(dir_con, 'qc_seeds_orig.png')
-        qc_resampled_png = os.path.join(dir_con, 'qc_seeds_resampled.png')
-        subprocess.run(f"slicer {file_seeds} -L -a {qc_orig_png}", shell=True, check=True)
-        subprocess.run(f"slicer {resampled_seeds_path} -L -a {qc_resampled_png}", shell=True, check=True)
-        # Combine the two PNGs using pngappend
-        qc_combined_png = os.path.join(dir_con, 'qc_resampled_seeds_combined.png')
-        cmd_qc = f"pngappend {qc_orig_png} - {qc_resampled_png} {qc_combined_png}"
-        print(f'Creating quality control image for resampled seeds image')
-        subprocess.run(cmd_qc, shell=True, check=True)
-        # update file_seeds to the resampled path
-        file_seeds = resampled_seeds_path
-        # # command needs to use the --t1t2 t2_rare.nii.gz to align the ROI files
-        # cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s --t1t2=%s'
-        # # Inverse scale the file_seeds by 10
-        # # file_seeds = scaleBy10(file_seeds, inv=True)
-    # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
-    connect_vals = ['qa', 'count']
-    for i in connect_vals:
-        parameters = (dsi_studio, 'ana', filename, file_trk, file_seeds, i, 'pass,end')
-        # if make_isotropic != 0:
-        #     parameters += (t2rare)
-        os.system(cmd_ana % parameters)
-
-        # DSI Studio reuses the same default connectivity filename regardless of
-        # connectivity_value. Rename each result immediately so qa/count do not
-        # overwrite each other before the files are moved to dir_con.
-        tract_dir = os.path.dirname(file_trk)
-        tract_base = os.path.basename(file_trk)
-        roi_base = strip_nifti_suffix(file_seeds)
-        connectivity_outputs = sorted(glob.glob(os.path.join(
-            tract_dir, f'{tract_base}.{roi_base}.connectivity.*'
-        )))
-        for output_path in connectivity_outputs:
-            output_dir = os.path.dirname(output_path)
-            output_name = os.path.basename(output_path)
-            if f'.{i}.connectivity.' in output_name:
-                continue
-            renamed_name = output_name.replace('.connectivity.', f'.{i}.connectivity.', 1)
-            os.replace(output_path, os.path.join(output_dir, renamed_name))
-
-    #move_files(dir_in, dir_con, re.escape(filename) + '\.' + re.escape(pre_seeds) + '.*(?:\.pass\.|\.end\.)')
-    move_files(os.path.dirname(file_trk), dir_con, '/*.txt')
-    move_files(os.path.dirname(file_trk), dir_con, '/*.mat')
-
-def mapsgen(dsi_studio, dir_in, dir_msk, b_table, pattern_in, pattern_fib):
-    """
-    FUNCTION DEPRECATED. REMOVAL PENDING.
-    """
-    pre_msk = 'bet.bin.'
-
-    ext_src = '.src.gz'
-    ext_nii = '.nii.gz'
-
-    if not os.path.exists(dir_in):
-        sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
-
-    dir_msk = os.path.normpath(os.path.join(dir_in, dir_msk))
-    if not os.path.exists(dir_msk):
-        sys.exit("Masks directory \"%s\" does not exist." % (dir_msk,))
-
-    b_table = os.path.join(dir_in, b_table)
-    if not os.path.isfile(b_table):
-        sys.exit("File \"%s\" does not exist." % (b_table,))
-
-    # change to input directory
-    os.chdir(dir_in)
-
-    cmd_src = r'%s --action=%s --source=%s --output=%s --b_table=%s'
-    # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, --thread_count: number of multi-threads used to conduct reconstruction 
-    cmd_rec = r'%s --action=%s --source=%s --mask=%s --method=%d --param0=%s --thread_count=%d --check_btable=%d'
-
-    file_list = [x for x in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, x)) and re.match(pattern_in, x)]
-    file_list.sort()
-
-    for index, filename in enumerate(file_list):
-        # create source files
-        pos = filename.rfind('_')
-
-        file_src = filename[:pos] + ext_src
-        parameters = (dsi_studio, 'src', filename, file_src, b_table)
-        subprocess.call(cmd_src % parameters)
-
-        # create fib files
-        file_msk = os.path.join(dir_msk, pre_msk + filename[:pos] + ext_nii)
-        parameters = (dsi_studio, 'rec', file_src, file_msk, 3, '1.25', 2, 0)
-        subprocess.call(cmd_rec % parameters)
-
-    # extracts maps: 2 ways:
-    cmd_exp = r'%s --action=%s --source=%s --export=%s'
-
-    file_list = [x for x in os.listdir(dir_in) if os.path.isfile(os.path.join(dir_in, x)) and re.match(pattern_fib, x)]
-    file_list.sort()
-
-    for index, filename in enumerate(file_list):
-        #file_fib = os.path.join(dir_in, filename)
-        #parameters = (dsi_studio, 'exp', file_fib, 'fa')
-        parameters = (dsi_studio, 'exp', filename, 'fa')
-        print("%d of %d:" % (index + 1, len(file_list)), cmd_exp % parameters)
-        subprocess.call(cmd_exp % parameters)
-
 def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, legacy=False, gradient_pair=None):
     """
     Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
@@ -676,15 +531,15 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
 
-    return min_vox_size_mm
+    return float(min_vox_size_mm)
 
 def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, thread_count=1, legacy=False):
     """
     Performs seed-based fiber-tracking.
     Default parameters are used unless a custom parameter is specified.
     """
-    if not os.path.exists(dir_in):
-        sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
+    if not os.path.isdir(dir_in):
+        sys.exit(f"Input directory does not exist: {dir_in}")
 
     if legacy:
         ext_fib = '.fib.gz'
@@ -697,43 +552,221 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
         'aida_optimized': [1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0'],
         'rat':            [1000000, 0, '.01', '60', 0, '.02', '.1', '.3', '20.0'],
         'mouse':          [1000000, 0, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
+        #fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length
     }
 
     if isinstance(track_param, str):
-        params = param_sets.get(track_param.lower())
+        track_param_key = track_param.lower()
+        params = param_sets.get(track_param_key)
         if params is None:
             sys.exit(f'Unknown track_param set: {track_param}')
+        params = list(params)
     elif isinstance(track_param, list):
-        params = track_param
+        track_param_key = "custom"
+        params = list(track_param)
     else:
-        sys.exit('track_param must be "default", "aida_optimized", "rat", "mouse", or a list of parameter values for fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length.')
+        sys.exit(
+            'track_param must be "default", "aida_optimized", "rat", "mouse", '
+            "or a list of values for fiber_count, interpolation, step_size, "
+            "turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length."
+        )
 
-    # change to input directory
-    os.chdir(os.path.dirname(dir_in))
+    fib_candidates = sorted(glob.glob(os.path.join(dir_in, f"*{ext_fib}")))
+    if not fib_candidates:
+        raise FileNotFoundError(f"No reconstructed file '*{ext_fib}' found in {dir_in}")
+    if len(fib_candidates) > 1:
+        print(f"Warning: multiple reconstructed files found. Using: {fib_candidates[0]}")
 
-    filename = glob.glob(dir_in + f'/*{ext_fib}')[0]
+    filename = fib_candidates[0]
+    track_file = filename + ".trk.gz"
 
     # Set tracking based on track_param:
-    if track_param == 'default':
+    if track_param_key == "default":
         print('Using DSI Studio default tracking parameters')
         # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
-        cmd_trk = r'%s --action=%s --source=%s --output=%s --parameter_id=%s'
-        # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
-        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), '0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec')
+        cmd = [
+            dsi_studio,
+            "--action=trk",
+            f"--source={filename}",
+            f"--output={track_file}",
+            f"--parameter_id={params[0]}",
+        ]
+
     else:
         # Use this tracking parameters if you want to specify each tracking parameter separately.
-        # cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s --thread_count=%s'
-        cmd_trk = r'%s --action=%s --source=%s --output=%s --fiber_count=%d --interpolation=%d --step_size=%s --turning_angle=%s --check_ending=%d --fa_threshold=%s --smoothing=%s --min_length=%s --max_length=%s --thread_count=%s --export=tdi:color' # The tract-density image saved here may not be viewable in FSLeyes or ITK-SNAP, but is compatible with Mango viewer. 
-        #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
-        #parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
-        if track_param != 'aida_optimized':
-            # step size = 1/2 (voxel size)
+        if track_param_key != "aida_optimized":
             params[2] = min_voxel_size_mm / 2
-            # min streamline length = 2 * (voxel_size)
             params[7] = min_voxel_size_mm * 2
-        parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), *params, thread_count)
-    
-    os.system(cmd_trk % parameters)
+
+        # The tract-density image saved here may not be viewable in FSLeyes or ITK-SNAP, but is compatible with Mango viewer.
+        cmd = [
+            dsi_studio,
+            "--action=trk",
+            f"--source={filename}",
+            f"--output={track_file}",
+            f"--fiber_count={int(params[0])}",
+            f"--interpolation={int(params[1])}",
+            f"--step_size={params[2]}",
+            f"--turning_angle={params[3]}",
+            f"--check_ending={int(params[4])}",
+            f"--fa_threshold={params[5]}",
+            f"--smoothing={params[6]}",
+            f"--min_length={params[7]}",
+            f"--max_length={params[8]}",
+            f"--thread_count={thread_count}",
+            "--export=tdi:color",
+        ]
+
+        # parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
+        # parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
+
+    print("Running:", " ".join(cmd))
+    subprocess.run(cmd, check=True)
+
+def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, legacy=False):
+    """
+Calculates connectivity data (types: pass and end).
+"""
+    if not os.path.isdir(dir_in):
+        sys.exit(f"Input directory does not exist: {dir_in}")
+
+    # dir_seeds is a seed/ROI/atlas file, not a directory.
+    # If it is relative, resolve it relative to the DWI folder.
+    if not os.path.isabs(dir_seeds):
+        dir_seeds = os.path.join(os.path.dirname(dir_in), "DSI_studio", dir_seeds)
+
+    dir_seeds = os.path.normpath(dir_seeds)
+
+    if not os.path.isfile(dir_seeds):
+        sys.exit(f"Seed/ROI file does not exist: {dir_seeds}")
+
+    if not os.path.exists(dir_out):
+        sys.exit(f"Output path does not exist: {dir_out}")
+
+    dir_con = make_dir(dir_out, dir_con)
+
+    ext_fib = ".fib.gz" if legacy else ".fz"
+
+    fib_candidates = sorted(glob.glob(os.path.join(dir_in, f"*{ext_fib}")))
+    if not fib_candidates:
+        raise FileNotFoundError(f"No reconstructed file '*{ext_fib}' found in {dir_in}")
+    if len(fib_candidates) > 1:
+        print(f"WARNING: Multiple reconstructed files found. Using: {fib_candidates[0]}")
+
+    filename = fib_candidates[0]
+
+    trk_candidates = sorted(glob.glob(os.path.join(dir_in, "*trk.gz")))
+    if not trk_candidates:
+        raise FileNotFoundError(f"No tract file '*trk.gz' found in {dir_in}")
+    if len(trk_candidates) > 1:
+        print(f"WARNING: Multiple tract files found. Using: {trk_candidates[0]}")
+
+    file_trk = trk_candidates[0]
+    file_seeds = dir_seeds
+
+    # Dev note: if we resample the diffusion image, we need to resample the file_seeds here
+    iso_value = None
+    if make_isotropic == "auto":
+        # Match srcgen(): when "auto" is requested, use the native voxel size
+        # of the ROI/seed image for the optional connectivity resampling step.
+        iso_value = float(get_min_voxel_size_mm(file_seeds))
+    else:
+        iso_value = float(make_isotropic)
+    if iso_value is not None and iso_value > 0:
+        # resample seeds image to isotropic voxel size using AFNI 3dresample
+        resampled_seeds_path = os.path.join(
+            dir_con,
+            strip_nifti_suffix(file_seeds) + "_resampled.nii.gz"
+        )
+
+        cmd_resample = [
+            "flirt",
+            "-in", file_seeds,
+            "-ref", file_seeds,
+            "-applyisoxfm", str(iso_value),
+            "-nosearch",
+            "-interp", "nearestneighbour",
+            "-out", resampled_seeds_path,
+        ]
+        subprocess.run(cmd_resample, check=True)
+
+        print(f'Resampling seeds image to {iso_value} mm isotropic voxel size')
+
+        # Create a quality-control image for the resampling:
+        # original seed/ROI image and resampled seed/ROI image side by side.
+        qc_orig_png = os.path.join(dir_con, "qc_seeds_orig.png")
+        qc_resampled_png = os.path.join(dir_con, "qc_seeds_resampled.png")
+        qc_combined_png = os.path.join(dir_con, "qc_resampled_seeds_combined.png")
+
+        print("Creating quality-control image for original seed/ROI image")
+        subprocess.run(["slicer", file_seeds, "-L", "-a", qc_orig_png], check=True)
+
+        print("Creating quality-control image for resampled seed/ROI image")
+        subprocess.run(["slicer", resampled_seeds_path, "-L", "-a", qc_resampled_png], check=True)
+
+        print("Combining seed/ROI quality-control images")
+        subprocess.run(
+            ["pngappend", qc_orig_png, "-", qc_resampled_png, qc_combined_png],
+            check=True
+        )
+
+        # Use resampled seed/ROI image for connectivity.
+        file_seeds = resampled_seeds_path
+        # # command needs to use the --t1t2 t2_rare.nii.gz to align the ROI files
+        # cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s --t1t2=%s'
+        # # Inverse scale the file_seeds by 10
+        # # file_seeds = scaleBy10(file_seeds, inv=True)
+    # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
+    connect_vals = ['qa', 'count']
+    for value in connect_vals:
+        cmd = [
+            dsi_studio,
+            "--action=ana",
+            f"--source={filename}",
+            f"--tract={file_trk}",
+            f"--connectivity={file_seeds}",
+            f"--connectivity_value={value}",
+            "--connectivity_type=pass,end",
+        ]
+
+        print("Running:", " ".join(cmd))
+        subprocess.run(cmd, check=True)
+
+        # DSI Studio reuses the same default connectivity filename regardless of
+        # connectivity_value. Rename each result immediately so qa/count do not
+        # overwrite each other before the files are moved to dir_con.
+        tract_dir = os.path.dirname(file_trk)
+        tract_base = os.path.basename(file_trk)
+        roi_base = strip_nifti_suffix(os.path.basename(file_seeds))
+
+        connectivity_outputs = sorted(glob.glob(os.path.join(
+            tract_dir,
+            f"{tract_base}.{roi_base}.connectivity.*"
+        )))
+
+        if not connectivity_outputs:
+            print(
+                f"WARNING: No connectivity output files found for "
+                f"tract='{tract_base}', roi='{roi_base}', value='{value}'."
+            )
+
+        for output_path in connectivity_outputs:
+            output_dir = os.path.dirname(output_path)
+            output_name = os.path.basename(output_path)
+
+            if f".{value}.connectivity." in output_name:
+                continue
+
+            renamed_name = output_name.replace(
+                ".connectivity.",
+                f".{value}.connectivity.",
+                1
+            )
+
+            os.replace(output_path, os.path.join(output_dir, renamed_name))
+
+        move_files(os.path.dirname(file_trk), dir_con, "/*.txt")
+        move_files(os.path.dirname(file_trk), dir_con, "/*.mat")
 
 def merge_bval_bvec_to_btable(folder_path, preferred_stem=None):
     gradient_pair, error_message = find_matching_gradient_pair(folder_path, preferred_stem=preferred_stem)
