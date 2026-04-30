@@ -88,7 +88,7 @@ def findSlicesData(path, pre):
     return regMR_list
 
 def infer_slice_axis(nifti_path):
-    img = nii.load(nifti_path)
+    img = nib.load(nifti_path)
     shape = img.shape[:3]
     zooms = img.header.get_zooms()[:3]
 
