@@ -21,7 +21,7 @@ by '#'.
 """
 
 import sys,os
-import nibabel as nii
+import nibabel as nib
 import numpy as np
 import shutil
 import glob
