@@ -236,7 +236,14 @@ if __name__ == '__main__':
 
     # Fiber tracking
     dir_out = os.path.dirname(args.file_in)
-    dsi_tools.tracking(dsi_studio, file_in, track_param, voxel_size, args.thread_count, args.legacy)
+    dsi_tools.tracking(
+        dsi_studio,
+        file_in,
+        track_param,
+        voxel_size,
+        args.thread_count,
+        args.legacy
+    )
 
     # Calculating connectivity
     suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
@@ -247,34 +254,46 @@ if __name__ == '__main__':
         if not dir_seeds:
             dir_seeds = sorted(glob.glob(os.path.join(file_cur, 'DSI_studio', f + '.gz'))) # check for ending (either .nii or .nii.gz)
         if not dir_seeds:
+            f"WARNING: No connectivity seed/ROI file found for pattern: "
+            f"{f} or {f}.gz in {seed_dir}. Skipping."
             continue
         dir_seeds = dir_seeds[0]
 
-        dsi_tools.connectivity(dsi_studio, file_in, dir_seeds, dir_out, dir_con, make_isotropic, flip_image_y, args.legacy)
+        #Connectivity
+        dsi_tools.connectivity(
+            dsi_studio,
+            file_in,
+            dir_seeds,
+            dir_out,
+            dir_con,
+            make_isotropic,
+            args.legacy
+        )
 
-    # rename files to reduce path length
+    # Rename connectivity files to reduce path length.
     confiles = os.path.join(file_cur, dir_con)
     if not os.path.isdir(confiles):
         raise FileNotFoundError(f"Connectivity folder not found: {confiles}")
-    data_list = os.listdir(confiles)
-    for filename in data_list:
-        if args.recon_method == "dti":
-            if args.legacy:
-                splittedName = filename.split('.src.gz.dti.fib.gz.trk.gz.')
-            else:
-                splittedName = filename.split('.sz.dti.fz.trk.gz.')
-        elif args.recon_method == "gqi":
-            if args.legacy:
-                splittedName = filename.split('.src.gz.gqi.fib.gz.trk.gz.')
-            else:
-                splittedName = filename.split('.sz.gqi.fz.trk.gz.')
-        if len(splittedName)>1:
-            newName = splittedName[1]
-            newName = os.path.join(confiles,newName)
-            if os.path.isfile(newName):
-                os.remove(newName)
-            oldName = os.path.join(confiles,filename)
-            os.rename(oldName,newName)
+
+    if args.recon_method == "dti":
+        split_token = ".src.gz.dti.fib.gz.trk.gz." if args.legacy else ".sz.dti.fz.trk.gz."
+    elif args.recon_method == "gqi":
+        split_token = ".src.gz.gqi.fib.gz.trk.gz." if args.legacy else ".sz.gqi.fz.trk.gz."
+    else:
+        raise ValueError(f"Unknown reconstruction method: {args.recon_method}")
+
+    for filename in os.listdir(confiles):
+        if split_token not in filename:
+            continue
+
+        new_filename = filename.split(split_token, 1)[1]
+        old_path = os.path.join(confiles, filename)
+        new_path = os.path.join(confiles, new_filename)
+
+        if os.path.isfile(new_path):
+            os.remove(new_path)
+
+        os.rename(old_path, new_path)
 
     # Including optional arguments regarding deprecated terminology
     if args.optional is not None:
@@ -284,7 +303,7 @@ if __name__ == '__main__':
         for f in file_list:
 
             # fa0 was a former term used in earlier DSI-studio versions; the '0' in fa0 referred to the first fiber track. However, DTI can only result in one track, therefore only one fractional anisotropy value per voxel is given, thus the collective values are referred to as fa. With the 'fa0' flag toggled on, the 'fa' data file is renamed to the former naming convention (fa0).
-            if 'fa0' in opts and f.endswith('fa.nii.gz'):
+            if 'fa0' in opts and f.endswith('.fa.nii.gz'):
                 newName = f.split('fa.nii.gz')[0] + 'fa0.nii.gz'
                 newName = os.path.join(dsi_path, newName)
                 oldName = os.path.join(dsi_path, f)
