@@ -575,10 +575,11 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     # Define parameter sets
     param_sets = {
         'default':        ['0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec'],
-        'aida_optimized': [1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0'],
-        'rat':            [1000000, 0, '.01', '60', 0, '.02', '.1', '.3', '20.0'],
-        'mouse':          [1000000, 0, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
-        #fiber_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length
+        'aida_optimized': [1000000, '.01', '55', 0, '.02', '.1', '.3', '120.0'],
+        'rat':            [1000000, '.01', '60', 0, '.02', '.1', '.3', '20.0'],
+        'mouse':          [1000000, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
+        'test':           [10000, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
+        #tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length
     }
 
     if isinstance(track_param, str):
@@ -621,8 +622,8 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     else:
         # Use this tracking parameters if you want to specify each tracking parameter separately.
         if track_param_key != "aida_optimized":
-            params[2] = min_voxel_size_mm / 2
-            params[7] = min_voxel_size_mm * 2
+            params[1] = min_voxel_size_mm / 2
+            params[6] = min_voxel_size_mm * 2
 
         # The tract-density image saved here may not be viewable in FSLeyes or ITK-SNAP, but is compatible with Mango viewer.
         cmd = [
@@ -630,15 +631,14 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
             "--action=trk",
             f"--source={filename}",
             f"--output={track_file}",
-            f"--fiber_count={int(params[0])}",
-            f"--interpolation={int(params[1])}",
-            f"--step_size={params[2]}",
-            f"--turning_angle={params[3]}",
-            f"--check_ending={int(params[4])}",
-            f"--fa_threshold={params[5]}",
-            f"--smoothing={params[6]}",
-            f"--min_length={params[7]}",
-            f"--max_length={params[8]}",
+            f"--tract_count={int(params[0])}",
+            f"--step_size={params[1]}",
+            f"--turning_angle={params[2]}",
+            f"--check_ending={int(params[3])}",
+            f"--fa_threshold={params[4]}",
+            f"--smoothing={params[5]}",
+            f"--min_length={params[6]}",
+            f"--max_length={params[7]}",
             f"--thread_count={thread_count}",
             "--export=tdi:color",
         ]
@@ -648,6 +648,12 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
 
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
+
+    tdi_color_file = track_file + ".tdi:color.nii.gz"
+    tdi_color_renamed = track_file + ".tdi_color.nii.gz"
+
+    if os.path.exists(tdi_color_file):
+        os.replace(tdi_color_file, tdi_color_renamed)
 
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, legacy=False):
     """
