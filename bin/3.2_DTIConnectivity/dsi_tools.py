@@ -716,57 +716,59 @@ Calculates connectivity data (types: pass and end).
         # cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s --t1t2=%s'
         # # Inverse scale the file_seeds by 10
         # # file_seeds = scaleBy10(file_seeds, inv=True)
-    # Performs analysis on every connectivity value within the list ('qa' may not be necessary; might be removed in the future.)
+    # Performs analysis on every connectivity value and type. DSI Studio reuses
+    # the same default connectivity filename, so each result must be renamed
+    # immediately after the corresponding command finishes.
     connect_vals = ['qa', 'count']
+    connect_types = ['pass', 'end']
+    tract_dir = os.path.dirname(file_trk)
+    tract_base = os.path.basename(file_trk)
+    roi_base = strip_nifti_suffix(os.path.basename(file_seeds))
+
     for value in connect_vals:
-        cmd = [
-            dsi_studio,
-            "--action=ana",
-            f"--source={filename}",
-            f"--tract={file_trk}",
-            f"--connectivity={file_seeds}",
-            f"--connectivity_value={value}",
-            "--connectivity_type=pass,end",
-        ]
+        for connectivity_type in connect_types:
+            cmd = [
+                dsi_studio,
+                "--action=ana",
+                f"--source={filename}",
+                f"--tract={file_trk}",
+                f"--connectivity={file_seeds}",
+                f"--connectivity_value={value}",
+                f"--connectivity_type={connectivity_type}",
+            ]
 
-        print("Running:", " ".join(cmd))
-        subprocess.run(cmd, check=True)
+            print("Running:", " ".join(cmd))
+            subprocess.run(cmd, check=True)
 
-        # DSI Studio reuses the same default connectivity filename regardless of
-        # connectivity_value. Rename each result immediately so qa/count do not
-        # overwrite each other before the files are moved to dir_con.
-        tract_dir = os.path.dirname(file_trk)
-        tract_base = os.path.basename(file_trk)
-        roi_base = strip_nifti_suffix(os.path.basename(file_seeds))
+            connectivity_outputs = sorted(glob.glob(os.path.join(
+                tract_dir,
+                f"{tract_base}.{roi_base}.connectivity.*"
+            )))
 
-        connectivity_outputs = sorted(glob.glob(os.path.join(
-            tract_dir,
-            f"{tract_base}.{roi_base}.connectivity.*"
-        )))
+            if not connectivity_outputs:
+                print(
+                    f"WARNING: No connectivity output files found for "
+                    f"tract='{tract_base}', roi='{roi_base}', "
+                    f"value='{value}', type='{connectivity_type}'."
+                )
 
-        if not connectivity_outputs:
-            print(
-                f"WARNING: No connectivity output files found for "
-                f"tract='{tract_base}', roi='{roi_base}', value='{value}'."
-            )
+            for output_path in connectivity_outputs:
+                output_dir = os.path.dirname(output_path)
+                output_name = os.path.basename(output_path)
 
-        for output_path in connectivity_outputs:
-            output_dir = os.path.dirname(output_path)
-            output_name = os.path.basename(output_path)
+                if f".{value}.{connectivity_type}.connectivity." in output_name:
+                    continue
 
-            if f".{value}.connectivity." in output_name:
-                continue
+                renamed_name = output_name.replace(
+                    ".connectivity.",
+                    f".{value}.{connectivity_type}.connectivity.",
+                    1
+                )
 
-            renamed_name = output_name.replace(
-                ".connectivity.",
-                f".{value}.connectivity.",
-                1
-            )
+                os.replace(output_path, os.path.join(output_dir, renamed_name))
 
-            os.replace(output_path, os.path.join(output_dir, renamed_name))
-
-        move_files(os.path.dirname(file_trk), dir_con, "/*.txt")
-        move_files(os.path.dirname(file_trk), dir_con, "/*.mat")
+            move_files(tract_dir, dir_con, "/*.txt")
+            move_files(tract_dir, dir_con, "/*.mat")
 
 def merge_bval_bvec_to_btable(folder_path, preferred_stem=None):
     gradient_pair, error_message = find_matching_gradient_pair(folder_path, preferred_stem=preferred_stem)
