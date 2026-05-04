@@ -214,18 +214,18 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
             raise RuntimeError(f"Command failed: {command}")
 
         # Superposition of annotations and mask
-        dataAnno = nii.load(outputAnnoSplit_par)
-        dataStroke = nii.load(outputStrokeMask)
+        dataAnno = nib.load(outputAnnoSplit_par)
+        dataStroke = nib.load(outputStrokeMask)
         imgAnno = dataAnno.get_fdata()
         imgStroke = dataStroke.get_fdata()
         imgStroke[imgStroke > 0] = 1
         imgStroke[imgStroke == 0] = 0
 
         superPosAnnoStroke = imgStroke * imgAnno
-        unscaledNiiData = nii.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
+        unscaledNiiData = nib.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiData,
+        nib.save(unscaledNiiData,
                  os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_mask.nii.gz'))
 
         # Stroke Mask
@@ -237,29 +237,29 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # scale = np.eye(4) * 10
         # scale[3][3] = 1
         # unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
-        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
+        unscaledNiiDataMask = nib.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
 
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiDataMask, outputStrokeMaskScaled)
+        nib.save(unscaledNiiDataMask, outputStrokeMaskScaled)
         #src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
         #dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.txt')#> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
         #shutil.copyfile(src_file, dst_file)
 
         # Superposition of rsfMRI annotations and mask
-        dataAnno = nii.load(outputAnnoSplit_par)
-        dataStroke = nii.load(outputStrokeMask)
+        dataAnno = nib.load(outputAnnoSplit_par)
+        dataStroke = nib.load(outputStrokeMask)
         imgAnno = dataAnno.get_fdata()
         imgStroke = dataStroke.get_fdata()
         imgStroke[imgStroke > 0] = 1
         imgStroke[imgStroke == 0] = 0
 
         superPosAnnoStroke = imgStroke * imgAnno
-        unscaledNiiData = nii.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
+        unscaledNiiData = nib.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiData,
+        nib.save(unscaledNiiData,
                  os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_parental_mask.nii.gz'))
         #superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
 
@@ -273,10 +273,10 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # scale = np.eye(4) * 10
         # scale[3][3] = 1
         # unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
-        unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
+        unscaledNiiDataMask = nib.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
-        nii.save(unscaledNiiDataMask, outputParentalStrokeLabelsScaled)
+        nib.save(unscaledNiiDataMask, outputParentalStrokeLabelsScaled)
         #src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt')
         #dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
         # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
@@ -312,16 +312,16 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         )
 
     outputBrainMaskScaled = os.path.join(outfileDSI, f"{base}Mask_scaled.nii")
-    dataMask = nii.load(bet_mask_path)
+    dataMask = nib.load(bet_mask_path)
     imgMask = dataMask.get_fdata()
 
     # imgMask = np.flip(imgMask, 2)
     # scale = np.eye(4) * 10
     # scale[3][3] = 1
 
-    unscaledNiiDataMask = nii.Nifti1Image(imgMask, dataMask.affine)
+    unscaledNiiDataMask = nib.Nifti1Image(imgMask, dataMask.affine)
     unscaledNiiDataMask.header.set_xyzt_units('mm')
-    nii.save(unscaledNiiDataMask, outputBrainMaskScaled)
+    nib.save(unscaledNiiDataMask, outputBrainMaskScaled)
 
     # --- Anno/Template export (optional, but independent of mask) ---
     missing_core = [p for p in [anno_path, annop_path, templ_path] if not os.path.exists(p)]
@@ -345,9 +345,9 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         else:
             print(f"Notice: LUT missing: {annop_lut_src}")
 
-        dataAnno = nii.load(anno_path)
-        dataAnnorspar = nii.load(annop_path)
-        dataAllen = nii.load(templ_path)
+        dataAnno = nib.load(anno_path)
+        dataAnnorspar = nib.load(annop_path)
+        dataAllen = nib.load(templ_path)
 
         imgTempAnno = dataAnno.get_fdata()
         imgTempAnnorspar = dataAnnorspar.get_fdata()
@@ -361,17 +361,17 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         # scale = np.eye(4) * 10
         # scale[3][3] = 1
 
-        unscaledNiiDataAnno = nii.Nifti1Image(imgTempAnno, dataAnno.affine)
-        unscaledNiiDataAnnorspar = nii.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine)
-        unscaledNiiDataAllen = nii.Nifti1Image(imgTempAllen, dataAllen.affine)
+        unscaledNiiDataAnno = nib.Nifti1Image(imgTempAnno, dataAnno.affine)
+        unscaledNiiDataAnnorspar = nib.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine)
+        unscaledNiiDataAllen = nib.Nifti1Image(imgTempAllen, dataAllen.affine)
 
         unscaledNiiDataAnno.header.set_xyzt_units('mm')
         unscaledNiiDataAnnorspar.header.set_xyzt_units('mm')
         unscaledNiiDataAllen.header.set_xyzt_units('mm')
 
-        nii.save(unscaledNiiDataAnno, outputAnnoScaled)
-        nii.save(unscaledNiiDataAnnorspar, outputAnnorparScaled)
-        nii.save(unscaledNiiDataAllen, outputAllenBScaled)
+        nib.save(unscaledNiiDataAnno, outputAnnoScaled)
+        nib.save(unscaledNiiDataAnnorspar, outputAnnorparScaled)
+        nib.save(unscaledNiiDataAllen, outputAllenBScaled)
 
     if outputRefStrokeMaskAff is not None:
         os.remove(outputRefStrokeMaskAff)
