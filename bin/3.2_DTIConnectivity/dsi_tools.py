@@ -239,6 +239,28 @@ def strip_nifti_suffix(path):
     return os.path.splitext(name)[0]
 
 
+def reorient_nifti_to_lip(nifti_path):
+    """
+    Reorder a NIfTI image to LIP orientation in-place.
+    """
+    img = nib.load(nifti_path)
+    current = nib.orientations.io_orientation(img.affine)
+    target = nib.orientations.axcodes2ornt(("L", "I", "P"))
+
+    if np.array_equal(current, target):
+        return nifti_path
+
+    transform = nib.orientations.ornt_transform(current, target)
+    data = nib.orientations.apply_orientation(np.asanyarray(img.dataobj), transform)
+    new_affine = img.affine @ nib.orientations.inv_ornt_aff(transform, img.shape)
+
+    out_img = nib.Nifti1Image(data, new_affine, img.header)
+    out_img.set_qform(new_affine, code=1)
+    out_img.set_sform(new_affine, code=1)
+    nib.save(out_img, nifti_path)
+    return nifti_path
+
+
 def find_matching_gradient_pair(folder_path, preferred_stem=None):
     """
     Find the .bval/.bvec pair that belongs to a DWI series.
@@ -505,7 +527,11 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
 
-    move_files(dir_fib, dir_qa, '/*qa.nii.gz')
+    for metric in exports:
+        for metric_path in glob.glob(os.path.join(dir_fib, f"*.{metric}.nii.gz")):
+            print(f"Reorienting {metric_path} to LIP")
+            reorient_nifti_to_lip(metric_path)
+
     move_files(dir_fib, dir_qa, '/*fa.nii.gz')
     move_files(dir_fib, dir_qa, '/*md.nii.gz')
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
