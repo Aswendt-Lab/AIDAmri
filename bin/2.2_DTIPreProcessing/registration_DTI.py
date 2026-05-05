@@ -213,7 +213,20 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
             print("STDERR:\n", result.stderr)
             raise RuntimeError(f"Command failed: {command}")
 
-        # Superposition of annotations and mask
+        # Binary mask of the split annotation.
+        dataAnno = nib.load(outputAnnoSplit)
+        imgAnno = dataAnno.get_fdata()
+        imgAnno[imgAnno > 0] = 1
+        imgAnno[imgAnno == 0] = 0
+        imgAnno = imgAnno.astype(np.uint8)
+
+        unscaledNiiData = nib.Nifti1Image(imgAnno, dataAnno.affine)
+        hdrOut = unscaledNiiData.header
+        hdrOut.set_xyzt_units('mm')
+        nib.save(unscaledNiiData,
+                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_mask.nii.gz'))
+
+        # Labelled stroke ROI for DSI Studio connectivity.
         dataAnno = nib.load(outputAnnoSplit_par)
         dataStroke = nib.load(outputStrokeMask)
         imgAnno = dataAnno.get_fdata()
@@ -222,13 +235,6 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         imgStroke[imgStroke == 0] = 0
 
         superPosAnnoStroke = imgStroke * imgAnno
-        unscaledNiiData = nib.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
-        nib.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_mask.nii.gz'))
-
-        # Labelled stroke ROI for DSI Studio connectivity.
         outputStrokeMaskAnno = os.path.join(
             outfile,
             os.path.basename(inputVolume).split('.')[0] + 'Stroke_mask_anno.nii.gz'
@@ -239,20 +245,6 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
         nib.save(unscaledNiiDataMask, outputStrokeMaskAnno)
-        # Superposition of rsfMRI annotations and mask
-        dataAnno = nib.load(outputAnnoSplit_par)
-        dataStroke = nib.load(outputStrokeMask)
-        imgAnno = dataAnno.get_fdata()
-        imgStroke = dataStroke.get_fdata()
-        imgStroke[imgStroke > 0] = 1
-        imgStroke[imgStroke == 0] = 0
-
-        superPosAnnoStroke = imgStroke * imgAnno
-        unscaledNiiData = nib.Nifti1Image(superPosAnnoStroke, dataAnno.affine)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
-        nib.save(unscaledNiiData,
-                 os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_parental_mask.nii.gz'))
     # --- Safety checks for DSI Studio inputs ---
     base = os.path.basename(inputVolume).split('.')[0]
     #os.makedirs(outfileDSI, exist_ok=True)
