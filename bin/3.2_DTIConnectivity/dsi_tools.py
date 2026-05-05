@@ -537,8 +537,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     move_files(dir_fib, dir_qa, '/*ad.nii.gz')
     move_files(dir_fib, dir_qa, '/*rd.nii.gz')
 
-    # Generate PNG images for each NIfTI file using FSL's slicer tool
-    # Collect all NIfTI files in dir_qa, including .nii and .nii.gz
+    #PNG generation creating QA images.
     all_nifti_files = glob.glob(os.path.join(dir_qa, "*.nii")) + glob.glob(os.path.join(dir_qa, "*.nii.gz"))
     #delete duplicates
     nifti_files = sorted(set(all_nifti_files))
@@ -724,8 +723,7 @@ Calculates connectivity data (types: pass and end).
 
         print(f'Resampling seeds image to {iso_value} mm isotropic voxel size')
 
-        # Create a quality-control image for the resampling:
-        # original seed/ROI image and resampled seed/ROI image side by side.
+        #PNG generation creating QA images.
         qc_orig_png = os.path.join(dir_con, "qc_seeds_orig.png")
         qc_resampled_png = os.path.join(dir_con, "qc_seeds_resampled.png")
         qc_combined_png = os.path.join(dir_con, "qc_resampled_seeds_combined.png")
