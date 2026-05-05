@@ -593,7 +593,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     else:
         sys.exit(
             'track_param must be "default", "aida_optimized", "rat", "mouse", '
-            "or a list of values for fiber_count, interpolation, step_size, "
+            "or a list of values for tract_count, step_size, "
             "turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length."
         )
 
