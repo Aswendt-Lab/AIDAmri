@@ -170,14 +170,11 @@ if __name__ == '__main__':
     # Preparing directories
     dsi_path = os.path.join(file_cur, 'DSI_studio')
     mcf_path = os.path.join(file_cur, 'mcf_Folder')
-    dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii')))
+    dir_mask = sorted(glob.glob(os.path.join(file_cur, '*Bet_mask.nii.gz')))
     if not dir_mask:
-        dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask_scaled.nii.gz'))) # check for ending (either .nii or .nii.gz)
-        if not dir_mask:
-            # check for mask without scaled in name
-            dir_mask = sorted(glob.glob(os.path.join(dsi_path, '*BetMask.nii.gz')))
+        dir_mask = sorted(glob.glob(os.path.join(file_cur, '*Bet_mask.nii')))
     if not dir_mask:
-        raise FileNotFoundError("No BET mask found in DSI_studio folder.")
+        raise FileNotFoundError("No BET mask found in DWI folder.")
 
     dir_mask = dir_mask[0]
 
@@ -246,16 +243,22 @@ if __name__ == '__main__':
     )
 
     # Calculating connectivity
-    suffixes = ['*StrokeMask_scaled.nii', '*parental_Mask_scaled.nii', '*Anno_scaled.nii', '*AnnoSplit_parental_scaled.nii']
+    seed_patterns = [
+        '*Stroke_mask_anno.nii.gz',
+        '*Anno_parental_mask.nii.gz',
+        '*_AnnoSplit.nii.gz',
+        '*_AnnoSplit_parental.nii.gz',
+    ]
 
-    #     suffixes = ['*StrokeMask.nii', '*parental_Mask.nii', '*Anno.nii', '*AnnoSplit_parental.nii']
-    for f in suffixes:
-        dir_seeds = sorted(glob.glob(os.path.join(file_cur, 'DSI_studio', f)))
+    for seed_pattern in seed_patterns:
+        dir_seeds = sorted(glob.glob(os.path.join(file_cur, seed_pattern)))
+        if not dir_seeds and seed_pattern.endswith('.nii.gz'):
+            dir_seeds = sorted(glob.glob(os.path.join(file_cur, seed_pattern[:-3])))
         if not dir_seeds:
-            dir_seeds = sorted(glob.glob(os.path.join(file_cur, 'DSI_studio', f + '.gz'))) # check for ending (either .nii or .nii.gz)
-        if not dir_seeds:
-            f"WARNING: No connectivity seed/ROI file found for pattern: "
-            f"{f} or {f}.gz in {seed_dir}. Skipping."
+            print(
+                f"WARNING: No connectivity seed/ROI file found for pattern "
+                f"{seed_pattern} in {file_cur}. Skipping."
+            )
             continue
         dir_seeds = dir_seeds[0]
 
