@@ -228,25 +228,17 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         nib.save(unscaledNiiData,
                  os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_mask.nii.gz'))
 
-        # Stroke Mask
-        outputStrokeMaskScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        # uperPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
-        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
-        # scale = np.eye(4) * 10
-        # scale[3][3] = 1
-        # unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
+        # Labelled stroke ROI for DSI Studio connectivity.
+        outputStrokeMaskAnno = os.path.join(
+            outfile,
+            os.path.basename(inputVolume).split('.')[0] + 'Stroke_mask_anno.nii.gz'
+        )
+
         unscaledNiiDataMask = nib.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
 
         hdrOut = unscaledNiiDataMask.header
         hdrOut.set_xyzt_units('mm')
-        nib.save(unscaledNiiDataMask, outputStrokeMaskScaled)
-        #src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/', 'ARA_annotationR+2000.nii.txt')
-        #dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'StrokeMask_scaled.txt')#> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        #shutil.copyfile(src_file, dst_file)
-
+        nib.save(unscaledNiiDataMask, outputStrokeMaskAnno)
         # Superposition of rsfMRI annotations and mask
         dataAnno = nib.load(outputAnnoSplit_par)
         dataStroke = nib.load(outputStrokeMask)
@@ -261,35 +253,13 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         hdrOut.set_xyzt_units('mm')
         nib.save(unscaledNiiData,
                  os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'Anno_parental_mask.nii.gz'))
-        #superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-
-        # Stroke Mask
-        outputParentalStrokeLabelsScaled = os.path.join(outfileDSI,
-                                        os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.nii') #> removed '.gz' ending to correct atlas implementation // VVF 23/05/10
-        #superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        # superPosAnnoStroke = np.rot90(superPosAnnoStroke, 2)
-        #superPosAnnoStroke = np.flip(superPosAnnoStroke, 0)
-
-        # scale = np.eye(4) * 10
-        # scale[3][3] = 1
-        # unscaledNiiDataMask = nii.Nifti1Image(superPosAnnoStroke, dataStroke.affine * scale)
-        unscaledNiiDataMask = nib.Nifti1Image(superPosAnnoStroke, dataStroke.affine)
-        hdrOut = unscaledNiiDataMask.header
-        hdrOut.set_xyzt_units('mm')
-        nib.save(unscaledNiiDataMask, outputParentalStrokeLabelsScaled)
-        #src_file = os.path.join(os.path.abspath(os.path.join(os.getcwd(),os.pardir,os.pardir))+'/lib/annoVolume+2000_rsfMRI.nii.txt')
-        #dst_file = os.path.join(outfileDSI, os.path.basename(inputVolume).split('.')[0] + 'parental_Mask_scaled.txt') #> removed '.nii.' ending to correct atlas implementation // VVF 23/05/10
-        # superPosAnnoStroke = np.flip(superPosAnnoStroke, 2)
-        #shutil.copyfile(src_file, dst_file)
-
-    # --- Safety checks for DSI export inputs ---
+    # --- Safety checks for DSI Studio inputs ---
     base = os.path.basename(inputVolume).split('.')[0]
     #os.makedirs(outfileDSI, exist_ok=True)
 
     bet_mask_path = os.path.join(outfile, f"{base}_mask.nii.gz")
     anno_path = os.path.join(outfile, f"{base}_AnnoSplit.nii.gz")
     annop_path = os.path.join(outfile, f"{base}_AnnoSplit_parental.nii.gz")
-    templ_path = os.path.join(outfile, f"{base}_Template.nii.gz")
 
     #Textfiles for DSI Studio lookup
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -297,81 +267,37 @@ def regABA2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     anno_lut_src = os.path.join(lib_dir, "ARA_annotationR+2000.nii.txt")
     annop_lut_src = os.path.join(lib_dir, "annoVolume+2000_rsfMRI.nii.txt")
 
-    needed = [anno_path, annop_path, templ_path]
+    needed = [anno_path, annop_path]
     missing = [p for p in needed if not os.path.exists(p)]
     if missing:
-        print("Notice: Skipping DSI_studio export, missing:")
+        print("Notice: Missing DSI Studio connectivity inputs:")
         for p in missing:
             print("  -", p)
 
-    # --- Mask export ---
     if not os.path.exists(bet_mask_path):
         raise RuntimeError(
             f"Required BET brain mask is missing:\n  {bet_mask_path}\n"
-            "BET mask is mandatory for DSI Studio export."
+            "BET mask is mandatory for DSI Studio reconstruction."
         )
 
-    outputBrainMaskScaled = os.path.join(outfileDSI, f"{base}Mask_scaled.nii")
-    dataMask = nib.load(bet_mask_path)
-    imgMask = dataMask.get_fdata()
-
-    # imgMask = np.flip(imgMask, 2)
-    # scale = np.eye(4) * 10
-    # scale[3][3] = 1
-
-    unscaledNiiDataMask = nib.Nifti1Image(imgMask, dataMask.affine)
-    unscaledNiiDataMask.header.set_xyzt_units('mm')
-    nib.save(unscaledNiiDataMask, outputBrainMaskScaled)
-
-    # --- Anno/Template export (optional, but independent of mask) ---
-    missing_core = [p for p in [anno_path, annop_path, templ_path] if not os.path.exists(p)]
+    # --- DSI Studio LUTs for original DWI-space annotation files ---
+    missing_core = [p for p in [anno_path, annop_path] if not os.path.exists(p)]
     if missing_core:
-        print("Notice: Missing Anno/Template for DSI export, skipping these:")
+        print("Notice: Missing Anno/Template for DSI Studio connectivity:")
         for p in missing_core:
             print("  -", p)
     else:
-        outputAnnoScaled = os.path.join(outfileDSI, f"{base}Anno_scaled.nii")
-        outputAnnorparScaled = os.path.join(outfileDSI, f"{base}AnnoSplit_parental_scaled.nii")
-        outputAllenBScaled = os.path.join(outfileDSI, f"{base}Allen_scaled.nii")
-
-        # copy LUTs (only if present)
+        # Copy LUTs next to the original DWI-space NIfTIs so DSI Studio can
+        # find labels without requiring redundant NIfTI copies in DSI_studio.
         if os.path.exists(anno_lut_src):
-            shutil.copyfile(anno_lut_src, os.path.join(outfileDSI, f"{base}Anno_scaled.txt"))
+            shutil.copyfile(anno_lut_src, os.path.join(outfile, f"{base}_AnnoSplit.txt"))
         else:
             print(f"Notice: LUT missing: {anno_lut_src} (DSI will still load NIfTI, but labels may be missing)")
 
         if os.path.exists(annop_lut_src):
-            shutil.copyfile(annop_lut_src, os.path.join(outfileDSI, f"{base}AnnoSplit_parental_scaled.txt"))
+            shutil.copyfile(annop_lut_src, os.path.join(outfile, f"{base}_AnnoSplit_parental.txt"))
         else:
             print(f"Notice: LUT missing: {annop_lut_src}")
-
-        dataAnno = nib.load(anno_path)
-        dataAnnorspar = nib.load(annop_path)
-        dataAllen = nib.load(templ_path)
-
-        imgTempAnno = dataAnno.get_fdata()
-        imgTempAnnorspar = dataAnnorspar.get_fdata()
-        imgTempAllen = dataAllen.get_fdata()
-
-        # pipeline expects these flips for DSI export (keep consistent with your existing behavior)
-        # imgTempAllen = np.flip(imgTempAllen, 2)
-        # imgTempAnno = np.flip(imgTempAnno, 2)
-        # imgTempAnnorspar = np.flip(imgTempAnnorspar, 2)
-
-        # scale = np.eye(4) * 10
-        # scale[3][3] = 1
-
-        unscaledNiiDataAnno = nib.Nifti1Image(imgTempAnno, dataAnno.affine)
-        unscaledNiiDataAnnorspar = nib.Nifti1Image(imgTempAnnorspar, dataAnnorspar.affine)
-        unscaledNiiDataAllen = nib.Nifti1Image(imgTempAllen, dataAllen.affine)
-
-        unscaledNiiDataAnno.header.set_xyzt_units('mm')
-        unscaledNiiDataAnnorspar.header.set_xyzt_units('mm')
-        unscaledNiiDataAllen.header.set_xyzt_units('mm')
-
-        nib.save(unscaledNiiDataAnno, outputAnnoScaled)
-        nib.save(unscaledNiiDataAnnorspar, outputAnnorparScaled)
-        nib.save(unscaledNiiDataAllen, outputAllenBScaled)
 
     if outputRefStrokeMaskAff is not None:
         os.remove(outputRefStrokeMaskAff)
@@ -523,4 +449,3 @@ if __name__ == "__main__":
         continue
 
     print("Registration completed")
-
