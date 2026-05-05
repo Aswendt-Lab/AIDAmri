@@ -110,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument('-t',
                         '--track_params',
                         default='default',
-                        help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for tract_count, interpolation, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
+                        help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
                         required=False
                        )
     parser.add_argument('-template',
@@ -245,7 +245,6 @@ if __name__ == '__main__':
     # Calculating connectivity
     seed_patterns = [
         '*Stroke_mask_anno.nii.gz',
-        '*Anno_parental_mask.nii.gz',
         '*_AnnoSplit.nii.gz',
         '*_AnnoSplit_parental.nii.gz',
     ]
