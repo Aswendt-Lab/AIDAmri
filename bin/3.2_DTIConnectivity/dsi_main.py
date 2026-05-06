@@ -69,8 +69,8 @@ if __name__ == '__main__':
     b_table = None
     gradient_pair = None
 
-    # default connectivity directory relative to input directory
-    dir_con = r'connectivity'
+    # Connectivity outputs are written relative to the DWI directory.
+    connectivity_dir_name = r'connectivity'
 
     # Defining CLI flags
     parser = argparse.ArgumentParser(description='Get connectivity of DTI dataset')
@@ -113,16 +113,7 @@ if __name__ == '__main__':
                         help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
                         required=False
                        )
-    parser.add_argument('-template',
-                        '--template',
-                        default='mouse',
-                        choices = ['mouse', 'rat'],
-                        type=str.lower,
-                        help='Specify the template to use for the reconstruction. Default is mouse. Other options is "rat"',
-                        required=False
-                       )
-    parser.add_argument('-thread_count',
-                        '--thread_count',
+    parser.add_argument('--thread_count',
                         type=int,
                         default=1,
                         help='Specify the number of threads to use for fiber tracking. Default is 1.',
@@ -141,12 +132,12 @@ if __name__ == '__main__':
     parser.add_argument('-o',
                         '--optional',
                         nargs = '*',
-                        help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to former DSI naming convention.\n\t"nii_gz": Converts ROI labeling relating files from .nii to .nii.gz format to match former data structures.'
+                        help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to the former DSI naming convention.\n\t"nii_gz": Compresses legacy .nii files in DSI_studio to .nii.gz.'
                         )
     args = parser.parse_args()
 
-    file_cur = os.path.dirname(args.file_in)
-    process_log = os.path.join(file_cur, "process.log")
+    dwi_dir = os.path.dirname(args.file_in)
+    process_log = os.path.join(dwi_dir, "process.log")
     if should_enable_process_log():
         enable_process_log(process_log)
         print(f"Writing process log to {process_log}")
@@ -167,59 +158,45 @@ if __name__ == '__main__':
         b_table = args.b_table
         print(f"Using explicit b-table: {b_table}")
 
-    # Preparing directories
-    dsi_path = os.path.join(file_cur, 'DSI_studio')
-    mcf_path = os.path.join(file_cur, 'mcf_Folder')
-    dir_mask = sorted(glob.glob(os.path.join(file_cur, '*Bet_mask.nii.gz')))
-    if not dir_mask:
-        dir_mask = sorted(glob.glob(os.path.join(file_cur, '*Bet_mask.nii')))
-    if not dir_mask:
+    # Resolve the dataset-local folders and the brain mask used by DSI Studio.
+    dsi_metrics_dir = os.path.join(dwi_dir, 'DSI_studio')
+    motion_correction_dir = os.path.join(dwi_dir, 'mcf_Folder')
+    mask_candidates = sorted(glob.glob(os.path.join(dwi_dir, '*Bet_mask.nii.gz')))
+    if not mask_candidates:
+        mask_candidates = sorted(glob.glob(os.path.join(dwi_dir, '*Bet_mask.nii')))
+    if not mask_candidates:
         raise FileNotFoundError("No BET mask found in DWI folder.")
 
-    dir_mask = dir_mask[0]
-
-    dir_out = args.file_in
+    brain_mask_file = mask_candidates[0]
+    dwi_output_anchor = args.file_in
 
     if str(args.make_isotropic).lower() == 'auto':
         make_isotropic = 'auto'
     else:
         make_isotropic = float(args.make_isotropic)
 
-    if args.template.lower() == 'rat' or str(args.template) == '5':
-        template = 5
-    elif args.template.lower() == 'mouse' or str(args.template) == '1':
-        template = 1
-    else:
-        sys.exit(
-            f"Error: Invalid template value: {args.template}. "
-            "Allowed values are: 'mouse' or '1', 'rat' or '5'."
-        )
-
-    # if it exists, find the denoised dwi data and use it as file_in
-    file_in = args.file_in
-    if os.path.exists(file_cur):
-        denoised = sorted(glob.glob(os.path.join(file_cur, '*Denoised.nii*')))
+    # Prefer denoised DWI data when the preprocessing step created it.
+    dwi_input_file = args.file_in
+    if os.path.exists(dwi_dir):
+        denoised = sorted(glob.glob(os.path.join(dwi_dir, '*Denoised.nii*')))
         if denoised:
-            file_in = denoised[0]
+            dwi_input_file = denoised[0]
 
-    if os.path.exists(mcf_path):
-        shutil.rmtree(mcf_path)
+    if os.path.exists(motion_correction_dir):
+        shutil.rmtree(motion_correction_dir)
    
     if args.no_motion_correction:
         print("Skipping motion correction")
     else:
         print("Performing slice-wise motion correction")
-        os.mkdir(mcf_path)
-        # Use FSL's SeparateSliceMoCo to perform motion correction
-        if not os.path.exists(dsi_path):
-            os.makedirs(dsi_path)
-        file_in = dsi_tools.fsl_SeparateSliceMoCo(file_in, mcf_path)
+        os.mkdir(motion_correction_dir)
+        dwi_input_file = dsi_tools.fsl_SeparateSliceMoCo(dwi_input_file, motion_correction_dir)
 
     voxel_size = dsi_tools.srcgen(
         dsi_studio,
-        file_in,
-        dir_mask,
-        dir_out,
+        dwi_input_file,
+        brain_mask_file,
+        dwi_output_anchor,
         b_table,
         args.recon_method,
         args.vivo,
@@ -227,16 +204,16 @@ if __name__ == '__main__':
         args.legacy,
         gradient_pair=gradient_pair,
     )
-    file_in = os.path.join(file_cur,'fib_map')
+    fib_dir = os.path.join(dwi_dir, 'fib_map')
 
-    track_param = args.track_params
+    tracking_params = args.track_params
 
     # Fiber tracking
-    dir_out = os.path.dirname(args.file_in)
+    connectivity_output_root = os.path.dirname(args.file_in)
     dsi_tools.tracking(
         dsi_studio,
-        file_in,
-        track_param,
+        fib_dir,
+        tracking_params,
         voxel_size,
         args.thread_count,
         args.legacy
@@ -250,32 +227,32 @@ if __name__ == '__main__':
     ]
 
     for seed_pattern in seed_patterns:
-        dir_seeds = sorted(glob.glob(os.path.join(file_cur, seed_pattern)))
-        if not dir_seeds and seed_pattern.endswith('.nii.gz'):
-            dir_seeds = sorted(glob.glob(os.path.join(file_cur, seed_pattern[:-3])))
-        if not dir_seeds:
+        seed_candidates = sorted(glob.glob(os.path.join(dwi_dir, seed_pattern)))
+        if not seed_candidates and seed_pattern.endswith('.nii.gz'):
+            seed_candidates = sorted(glob.glob(os.path.join(dwi_dir, seed_pattern[:-3])))
+        if not seed_candidates:
             print(
                 f"WARNING: No connectivity seed/ROI file found for pattern "
-                f"{seed_pattern} in {file_cur}. Skipping."
+                f"{seed_pattern} in {dwi_dir}. Skipping."
             )
             continue
-        dir_seeds = dir_seeds[0]
+        seed_file = seed_candidates[0]
 
-        #Connectivity
+        # Connectivity
         dsi_tools.connectivity(
             dsi_studio,
-            file_in,
-            dir_seeds,
-            dir_out,
-            dir_con,
+            fib_dir,
+            seed_file,
+            connectivity_output_root,
+            connectivity_dir_name,
             make_isotropic,
             args.legacy
         )
 
     # Rename connectivity files to reduce path length.
-    confiles = os.path.join(file_cur, dir_con)
-    if not os.path.isdir(confiles):
-        raise FileNotFoundError(f"Connectivity folder not found: {confiles}")
+    connectivity_dir = os.path.join(dwi_dir, connectivity_dir_name)
+    if not os.path.isdir(connectivity_dir):
+        raise FileNotFoundError(f"Connectivity folder not found: {connectivity_dir}")
 
     if args.recon_method == "dti":
         split_token = ".src.gz.dti.fib.gz.trk.gz." if args.legacy else ".sz.dti.fz.trk.gz."
@@ -284,45 +261,47 @@ if __name__ == '__main__':
     else:
         raise ValueError(f"Unknown reconstruction method: {args.recon_method}")
 
-    for filename in os.listdir(confiles):
+    for filename in os.listdir(connectivity_dir):
         if split_token not in filename:
             continue
 
         new_filename = filename.split(split_token, 1)[1]
-        old_path = os.path.join(confiles, filename)
-        new_path = os.path.join(confiles, new_filename)
+        old_path = os.path.join(connectivity_dir, filename)
+        new_path = os.path.join(connectivity_dir, new_filename)
 
         if os.path.isfile(new_path):
             os.remove(new_path)
 
         os.rename(old_path, new_path)
 
-    # Including optional arguments regarding deprecated terminology
+    # Optional compatibility renames for older AIDAmri/DSI Studio outputs.
     if args.optional is not None:
         opts = [s.lower() for s in args.optional]
 
-        file_list = os.listdir(dsi_path)
-        for f in file_list:
+        file_list = os.listdir(dsi_metrics_dir)
+        for output_name in file_list:
 
-            # fa0 was a former term used in earlier DSI-studio versions; the '0' in fa0 referred to the first fiber track. However, DTI can only result in one track, therefore only one fractional anisotropy value per voxel is given, thus the collective values are referred to as fa. With the 'fa0' flag toggled on, the 'fa' data file is renamed to the former naming convention (fa0).
-            if 'fa0' in opts and f.endswith('.fa.nii.gz'):
-                newName = f.split('fa.nii.gz')[0] + 'fa0.nii.gz'
-                newName = os.path.join(dsi_path, newName)
-                oldName = os.path.join(dsi_path, f)
-                if os.path.isfile(newName):
-                    os.remove(newName)
-                os.rename(oldName, newName)
+            # Older DSI Studio versions used fa0 for the first-fiber FA metric.
+            # DTI exports only one FA value per voxel, so current outputs use fa.
+            if 'fa0' in opts and output_name.endswith('.fa.nii.gz'):
+                new_metric_path = output_name.split('fa.nii.gz')[0] + 'fa0.nii.gz'
+                new_metric_path = os.path.join(dsi_metrics_dir, new_metric_path)
+                old_metric_path = os.path.join(dsi_metrics_dir, output_name)
+                if os.path.isfile(new_metric_path):
+                    os.remove(new_metric_path)
+                os.rename(old_metric_path, new_metric_path)
             
-            # Due to changes in ROI annotations the corresponding files are saved as '.nii' files as opposed to '.nii.gz' files in earlier versions of DSI studio. With the 'nii_gz' flag toggled on, the '.nii' files are renamed to '.nii.gz'.
-            if 'nii_gz' in opts and f.endswith('.nii'):
-                oldName = os.path.join(dsi_path, f)
-                newName = os.path.join(dsi_path, f + '.gz')
+            # Compress legacy .nii files in DSI_studio when the old output
+            # layout is explicitly requested.
+            if 'nii_gz' in opts and output_name.endswith('.nii'):
+                old_nifti_path = os.path.join(dsi_metrics_dir, output_name)
+                new_nifti_path = os.path.join(dsi_metrics_dir, output_name + '.gz')
 
-                if os.path.isfile(newName):
-                    os.remove(newName)
+                if os.path.isfile(new_nifti_path):
+                    os.remove(new_nifti_path)
 
-                with open(oldName, 'rb') as f_in:
-                    with gzip.open(newName, 'wb') as f_out:
+                with open(old_nifti_path, 'rb') as f_in:
+                    with gzip.open(new_nifti_path, 'wb') as f_out:
                         shutil.copyfileobj(f_in, f_out)
 
-                os.remove(oldName)
+                os.remove(old_nifti_path)
