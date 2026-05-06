@@ -45,47 +45,46 @@ import pandas as pd
 
 def scaleBy10(input_path, inv):
     data = nib.load(input_path)
-    imgTemp = data.get_fdata()
+    image_data = data.get_fdata()
     if inv is False:
-        # create 4x4 scaling matrix and scale by 10 to match human like brain size
+        # Scale only the affine. The voxel data stay unchanged, but FSL sees a
+        # brain size closer to human dimensions during motion correction.
         scale = np.eye(4)
         scale[0, 0] = 10
         scale[1, 1] = 10
         scale[2, 2] = 10
 
-        # Create new Nifti image with scaled affine
         scaled_affine = data.affine @ scale
 
-        scaledNiiData = nib.Nifti1Image(imgTemp, scaled_affine)
-        # overwrite old nifti
-        fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
-        nib.save(scaledNiiData, fslPath)
-        return fslPath
+        scaled_image = nib.Nifti1Image(image_data, scaled_affine)
+        scaled_path = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
+        nib.save(scaled_image, scaled_path)
+        return scaled_path
     elif inv is True:
-        #rescale nifti
+        # Undo the temporary affine scaling after FSL processing.
         inv_scale = np.eye(4)
         inv_scale[0, 0] = 0.1
         inv_scale[1, 1] = 0.1
         inv_scale[2, 2] = 0.1
 
         unscaled_affine = data.affine @ inv_scale
-        unscaledNiiData = nib.Nifti1Image(imgTemp, unscaled_affine)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
+        unscaled_image = nib.Nifti1Image(image_data, unscaled_affine)
+        output_header = unscaled_image.header
+        output_header.set_xyzt_units('mm')
 
-        nib.save(unscaledNiiData, input_path)
+        nib.save(unscaled_image, input_path)
         return input_path
     else:
         sys.exit("Error: inv - parameter should be a boolean.")
 
 
 def findSlicesData(path, pre):
-    regMR_list = []
-    fileALL = glob.iglob(path + '/' + pre + '*.nii.gz', recursive=True)
-    for filename in fileALL:
-        regMR_list.append(filename)
-    regMR_list.sort()
-    return regMR_list
+    slice_files = []
+    matching_files = glob.iglob(path + '/' + pre + '*.nii.gz', recursive=True)
+    for filename in matching_files:
+        slice_files.append(filename)
+    slice_files.sort()
+    return slice_files
 
 def infer_slice_axis(nifti_path):
     img = nib.load(nifti_path)
@@ -104,48 +103,45 @@ def infer_slice_axis(nifti_path):
     return axis_name
 
 def fsl_SeparateSliceMoCo(input_file, par_folder):
-    # scale Nifti data by factor 10
-    dataName = os.path.basename(input_file).split('.')[0]
-    fslPath = scaleBy10(input_file, inv=False)
+    # Temporarily scale the affine before FSL slice-wise motion correction.
+    input_stem = os.path.basename(input_file).split('.')[0]
+    scaled_input_file = scaleBy10(input_file, inv=False)
 
-    aidamri_dir = os.getcwd()
+    original_cwd = os.getcwd()
     temp_dir = os.path.join(os.path.dirname(input_file), "temp")
     if not os.path.exists(temp_dir):
         os.mkdir(temp_dir)
 
     os.chdir(temp_dir)
 
-    #find slice axis
-    slice_axis = infer_slice_axis(fslPath)
-    mySplit = fsl.Split(in_file=fslPath, dimension=slice_axis, out_base_name=dataName)
-    mySplit.run()
-    os.remove(fslPath)
+    slice_axis = infer_slice_axis(scaled_input_file)
+    split_interface = fsl.Split(in_file=scaled_input_file, dimension=slice_axis, out_base_name=input_stem)
+    split_interface.run()
+    os.remove(scaled_input_file)
 
-    # separate ref and src volume in slices
-    sliceFiles = findSlicesData(os.getcwd(), dataName)
+    # Split the volume along the inferred slice axis and correct every slice.
+    slice_files = findSlicesData(os.getcwd(), input_stem)
 
-    # start to correct motions slice by slice
-    for i in range(len(sliceFiles)):
-        slc = sliceFiles[i]
+    for slc in slice_files:
         output_file = os.path.join(par_folder, os.path.basename(slc))
-        myMCFLIRT = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
-        myMCFLIRT.run()
+        mcflirt = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
+        mcflirt.run()
         os.remove(slc)
 
-    # merge slices to a single volume
-    mcf_sliceFiles = findSlicesData(par_folder, dataName)
+    # Merge corrected slices back to a single volume.
+    corrected_slice_files = findSlicesData(par_folder, input_stem)
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
-    myMerge = fsl.Merge(in_files=mcf_sliceFiles, dimension=slice_axis, merged_file=output_file)
-    myMerge.run()
+    merge_interface = fsl.Merge(in_files=corrected_slice_files, dimension=slice_axis, merged_file=output_file)
+    merge_interface.run()
 
-    for slc in mcf_sliceFiles: 
+    for slc in corrected_slice_files:
         os.remove(slc)
 
-    # unscale result data by factor 10**(-1)
+    # Restore the original affine scale.
     output_file = scaleBy10(output_file, inv=True)
     
-    os.chdir(aidamri_dir)
+    os.chdir(original_cwd)
     if os.path.isdir(temp_dir):
         shutil.rmtree(temp_dir)
 
@@ -194,19 +190,21 @@ def make_dir(dir_out, dir_sub):
     return dir_out
 
 def move_files(dir_in, dir_out, pattern):
+    """
+    Move files matching pattern from dir_in to dir_out.
+
+    Existing call sites pass patterns such as '/*.nii.gz'. Strip the leading
+    slash before joining so the source and destination paths are explicit.
+    """
     time.sleep(1.0)
-    file_list = glob.glob(dir_in+pattern)
+    file_list = glob.glob(os.path.join(dir_in, pattern.lstrip("/")))
     file_list.sort()
 
     time.sleep(1.0)
-    for file_mv in file_list: # move files from input to output directory
-        file_in = os.path.join(dir_in, file_mv)
-        shutil.copy(file_in, dir_out)
-
-    for file_mv in file_list: # remove files in output directory
-        file_out = os.path.join(dir_out, file_mv)
-        if os.path.isfile(file_out):
-            os.remove(file_out)
+    for source_path in file_list:
+        destination_path = os.path.join(dir_out, os.path.basename(source_path))
+        shutil.copy(source_path, destination_path)
+        os.remove(source_path)
 
 
 def erode_mask(input_file, outputPath, n_voxels=1):
@@ -319,12 +317,16 @@ def find_matching_gradient_pair(folder_path, preferred_stem=None):
 
 def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, legacy=False, gradient_pair=None):
     """
-    Sources and creates fib files. Diffusivity and anisotropy metrics are exported from data.
+    Create DSI Studio source/reconstruction files and export scalar metrics.
     """
-    dir_src = r'src'
-    dir_fib = r'fib_map'
-    dir_qa  = r'DSI_studio'
-    dir_con = r'connectivity'
+    source_image_file = dir_in
+    mask_file = dir_msk
+    output_anchor = dir_out
+
+    src_dir_name = r'src'
+    fib_dir_name = r'fib_map'
+    dsi_metrics_dir_name = r'DSI_studio'
+
     # Support for backwards compatibility with pre-2024 DSI Studio (AIDAmri <= v2.0)
     if legacy:
         ext_src = '.src.gz'
@@ -333,22 +335,23 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         ext_src = '.sz'
         ext_fib = '.fz'
 
-    if not os.path.exists(dir_in):
-        sys.exit("Input directory \"%s\" does not exist." % (dir_in,))
+    if not os.path.exists(source_image_file):
+        sys.exit("Input file \"%s\" does not exist." % (source_image_file,))
 
-    input_dir = os.path.dirname(os.path.abspath(dir_in))
+    input_dir = os.path.dirname(os.path.abspath(source_image_file))
 
-    if not os.path.isabs(dir_msk):
-        dir_msk = os.path.join(input_dir, dir_msk)
-    dir_msk = os.path.normpath(dir_msk)
+    #Resolve mask_file relative to the DWI input directory and normalize the result.
+    if not os.path.isabs(mask_file):
+        mask_file = os.path.join(input_dir, mask_file)
+    mask_file = os.path.normpath(mask_file)
 
-    if not os.path.isfile(dir_msk):
-        sys.exit("Mask file \"%s\" does not exist." % (dir_msk,))
+    if not os.path.isfile(mask_file):
+        sys.exit("Mask file \"%s\" does not exist." % (mask_file,))
 
-    if not os.path.exists(dir_out):
-        sys.exit("Output path \"%s\" does not exist." % (dir_out,))
+    if not os.path.exists(output_anchor):
+        sys.exit("Output path \"%s\" does not exist." % (output_anchor,))
 
-
+    # Validate the b-table or bval/bvec information that will be passed to DSI Studio.
     if gradient_pair is None:
         if not os.path.isabs(b_table):
             b_table = os.path.join(input_dir, b_table)
@@ -360,29 +363,26 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         if not os.path.isfile(gradient_pair['bvec']):
             sys.exit("File \"%s\" does not exist." % (gradient_pair['bvec'],))
 
-    dir_src = make_dir(os.path.dirname(dir_out), dir_src)
-    dir_fib = make_dir(os.path.dirname(dir_out), dir_fib)
-    dir_qa  = make_dir(os.path.dirname(dir_out), dir_qa)
+    output_root = os.path.dirname(output_anchor)
+    src_dir = make_dir(output_root, src_dir_name)
+    fib_dir = make_dir(output_root, fib_dir_name)
+    dsi_metrics_dir = make_dir(output_root, dsi_metrics_dir_name)
 
     # change to input directory
     os.chdir(input_dir)
 
     # Prefer explicit gradient files when they are available. This keeps the
-    # source image and the original gradients coupled even after motion
-    # correction changed the NIfTI filename to *_mcf.nii.gz.
-    # method: 0:DSI, 1:DTI, 4:GQI 7:QSDR, param0: 1.25 (in vivo) diffusion sampling lenth ratio for GQI and QSDR reconstruction, 
-    # check_btable: Set –check_btable=1 to test b-table orientation and apply automatic flippin, thread_count: number of multi-threads used to conduct reconstruction
-
-    # create source files
-    filename = os.path.basename(dir_in)
-    filename_base = strip_nifti_suffix(filename)
-    file_src = os.path.join(dir_src, filename_base + ext_src)
+    # source image coupled to the original gradients even after motion correction
+    # changed the NIfTI filename to *_mcf.nii.gz.
+    input_filename = os.path.basename(source_image_file)
+    input_stem = strip_nifti_suffix(input_filename)
+    expected_src_file = os.path.join(src_dir, input_stem + ext_src)
     if gradient_pair is not None:
         cmd = [
             dsi_studio,
             "--action=src",
-            f"--source={filename}",
-            f"--output={file_src}",
+            f"--source={input_filename}",
+            f"--output={expected_src_file}",
             f"--bval={gradient_pair['bval']}",
             f"--bvec={gradient_pair['bvec']}",
         ]
@@ -390,8 +390,8 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         cmd = [
             dsi_studio,
             "--action=src",
-            f"--source={filename}",
-            f"--output={file_src}",
+            f"--source={input_filename}",
+            f"--output={expected_src_file}",
             f"--b_table={b_table}",
         ]
 
@@ -399,9 +399,9 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     subprocess.run(cmd, check=True)
 
     patterns = [
-        os.path.join(dir_src, filename_base + '*.src.gz.sz'),
-        os.path.join(dir_src, filename_base + '*.sz'),
-        os.path.join(dir_src, filename_base + '*.src.gz'),
+        os.path.join(src_dir, input_stem + '*.src.gz.sz'),
+        os.path.join(src_dir, input_stem + '*.sz'),
+        os.path.join(src_dir, input_stem + '*.src.gz'),
     ]
 
     src_candidates = []
@@ -412,36 +412,32 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     if not src_candidates:
         raise FileNotFoundError(
-            f"No DSI Studio source file found for base '{filename_base}' in {dir_src}"
+            f"No DSI Studio source file found for base '{input_stem}' in {src_dir}"
         )
 
-    file_src_real = src_candidates[0]
+    src_file = src_candidates[0]
 
     # If unrealistic streamlines cross top of cortex are present due to an oversized mask, erode mask
     mask_erosion = 0
     if mask_erosion > 0:
         eroded_mask_path = os.path.join(
-            os.path.dirname(dir_msk),
-            strip_nifti_suffix(dir_msk) + "_eroded_mask.nii.gz"
+            os.path.dirname(mask_file),
+            strip_nifti_suffix(mask_file) + "_eroded_mask.nii.gz"
         )
 
-        dir_msk = erode_mask(dir_msk, eroded_mask_path, n_voxels=mask_erosion)
-        print(f"Eroded mask saved to {dir_msk}")
+        mask_file = erode_mask(mask_file, eroded_mask_path, n_voxels=mask_erosion)
+        print(f"Eroded mask saved to {mask_file}")
 
-    # create fib files
-    file_msk = dir_msk
-
-    #param0 still used in dsi_studio 2025?
+    # param0 is currently reported for traceability only. The active DSI Studio
+    # command below does not pass it unless the reconstruction command is extended.
     param_zero='1.25'
-    # Select reconstruction parameters
     if vivo == "ex_vivo":
         param_zero='0.60'
         print(f'Using param0 value {param_zero} recommended for ex vivo data')
     elif vivo == "in_vivo":
         print(f'Using param0 value {param_zero} recommended for in vivo data')
 
-    # get voxel size from nifti header to resample if make_isotropic == 'auto', use function get_min_voxel_size_mm
-    min_vox_size_mm = get_min_voxel_size_mm(dir_in)
+    min_vox_size_mm = get_min_voxel_size_mm(source_image_file)
 
     if str(make_isotropic).lower() == "auto":
         iso_value = float(min_vox_size_mm)
@@ -453,12 +449,11 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
                 f"Invalid make_isotropic value: {make_isotropic}. "
                 'Use 0, "auto", or a voxel size in mm, e.g. 0.2.'
             )
-    # Dev note: The parcellation image must be registered to the resampled (and flipped) diffusion image if this is the case
-    #           We need to register the T2-weighted image to the resampled diffusion image to guide the registration of the parcellation image
-    #           This should be done using the equivalent commands from registration_DTI.py
+    # If diffusion data are resampled here, all ROI/parcellation images must be
+    # created in the same diffusion space before connectivity is calculated.
 
     additional_cmd = ''
-    #Atlas has to be in the same space resampled space if iso_value above 0
+    # Atlas/ROI images must match this resampled space when iso_value > 0.
     if iso_value > 0:
         additional_cmd = f'[Step T2][Edit][Resample]={iso_value}'
         print(f'Resampling to {iso_value} mm isotropic voxel size')
@@ -467,7 +462,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     # performs slice-wise motion correction before source generation.
     use_eddy_correct = False
     use_dsi_topup = False
-    rev_pe_image = '' # path to reverse phase encoding image if using dsi topup
+    rev_pe_image = '' # path to reverse phase encoding image if DSI Studio topup is enabled
     if use_eddy_correct and use_dsi_topup:
         additional_cmd = f'[Step T2][Corrections][TOPUP EDDY]={rev_pe_image}+{additional_cmd}'
     elif use_eddy_correct and not use_dsi_topup:
@@ -483,18 +478,18 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     else:
         sys.exit(f"Unknown reconstruction method: {recon_method}")
 
-    file_fib = os.path.join(dir_fib, filename_base + ext_fib)
+    fib_file = os.path.join(fib_dir, input_stem + ext_fib)
 
-    #Reconstruction command
+    # Reconstruction command. method: 1=DTI, 4=GQI.
     cmd = [
         dsi_studio,
         "--action=rec",
-        f"--source={file_src_real}",
-        f"--mask={file_msk}",
+        f"--source={src_file}",
+        f"--mask={mask_file}",
         f"--method={method_rec}",
-        "--other_output=all",
-        f"--output={file_fib}",
-        "--check_btable=0",
+        "--other_output=all", #diffusion metrics to compute. 'all' for every possible measure(fa,rd,rdi)
+        f"--output={fib_file}",
+        "--check_btable=0",#if 1 checks the gradient table and flips/swaps to fix gradient directions
     ]
 
     if additional_cmd:
@@ -503,16 +498,18 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
-    # move fib to corresponding folders
-    move_files(dir_src, dir_fib, f'/*{ext_fib}')
+    # Older DSI Studio releases may write reconstructed files next to the source.
+    move_files(src_dir, fib_dir, f'/*{ext_fib}')
 
-    fib_candidates = sorted(glob.glob(os.path.join(dir_fib, f"*{ext_fib}")))
+    fib_candidates = sorted(glob.glob(os.path.join(fib_dir, f"*{ext_fib}")))
     if not fib_candidates:
-        raise FileNotFoundError(f"No reconstructed FIB/FZ file found in {dir_fib}")
+        raise FileNotFoundError(f"No reconstructed FIB/FZ file found in {fib_dir}")
 
-    file_fib = fib_candidates[0]
+    fib_file = fib_candidates[0]
 
     if recon_method == "gqi":
+        # DSI Studio exports the DTI-derived FA metric from GQI reconstruction as
+        # dti_fa to distinguish it from GQI-specific anisotropy metrics.
         exports = ["dti_fa", "md", "ad", "rd"]
     elif recon_method == "dti":
         exports = ["fa", "md", "ad", "rd"]
@@ -523,25 +520,24 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         cmd = [
             dsi_studio,
             "--action=exp",
-            f"--source={file_fib}",
+            f"--source={fib_file}",
             f"--export={metric}",
         ]
         print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
 
     for metric in exports:
-        for metric_path in glob.glob(os.path.join(dir_fib, f"*.{metric}.nii.gz")):
+        for metric_path in glob.glob(os.path.join(fib_dir, f"*.{metric}.nii.gz")):
             print(f"Reorienting {metric_path} to LIP")
             reorient_nifti_to_lip(metric_path)
 
-    move_files(dir_fib, dir_qa, '/*fa.nii.gz')
-    move_files(dir_fib, dir_qa, '/*md.nii.gz')
-    move_files(dir_fib, dir_qa, '/*ad.nii.gz')
-    move_files(dir_fib, dir_qa, '/*rd.nii.gz')
+    move_files(fib_dir, dsi_metrics_dir, '/*fa.nii.gz')
+    move_files(fib_dir, dsi_metrics_dir, '/*md.nii.gz')
+    move_files(fib_dir, dsi_metrics_dir, '/*ad.nii.gz')
+    move_files(fib_dir, dsi_metrics_dir, '/*rd.nii.gz')
 
-    #PNG generation creating QA images.
-    all_nifti_files = glob.glob(os.path.join(dir_qa, "*.nii")) + glob.glob(os.path.join(dir_qa, "*.nii.gz"))
-    #delete duplicates
+    # Generate PNG quick-look images for all NIfTI outputs in DSI_studio.
+    all_nifti_files = glob.glob(os.path.join(dsi_metrics_dir, "*.nii")) + glob.glob(os.path.join(dsi_metrics_dir, "*.nii.gz"))
     nifti_files = sorted(set(all_nifti_files))
 
     for nifti_path in nifti_files:
@@ -553,7 +549,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         else:
             base_name = os.path.splitext(base_name)[0]
 
-        png_slice_path = os.path.join(dir_qa, f"{base_name}.png")
+        png_slice_path = os.path.join(dsi_metrics_dir, f"{base_name}.png")
         cmd = ["slicer", nifti_path, "-L", "-a", png_slice_path]
         print("Running:", " ".join(cmd))
         subprocess.run(cmd, check=True)
@@ -565,22 +561,24 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     Performs seed-based fiber-tracking.
     Default parameters are used unless a custom parameter is specified.
     """
-    if not os.path.isdir(dir_in):
-        sys.exit(f"Input directory does not exist: {dir_in}")
+    fib_dir = dir_in
+    if not os.path.isdir(fib_dir):
+        sys.exit(f"Input directory does not exist: {fib_dir}")
 
     if legacy:
         ext_fib = '.fib.gz'
     else:
         ext_fib = '.fz'
 
-    # Define parameter sets
+    # Parameter sets:
+    # tract_count, step_size, turning_angle, check_ending, fa_threshold,
+    # smoothing, min_length, max_length
     param_sets = {
         'default':        ['0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec'],
         'aida_optimized': [1000000, '.01', '55', 0, '.02', '.1', '.3', '120.0'],
         'rat':            [1000000, '.01', '60', 0, '.02', '.1', '.3', '20.0'],
         'mouse':          [1000000, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
         'test':           [10000, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
-        #tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length
     }
 
     if isinstance(track_param, str):
@@ -599,38 +597,41 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
             "turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length."
         )
 
-    fib_candidates = sorted(glob.glob(os.path.join(dir_in, f"*{ext_fib}")))
+    fib_candidates = sorted(glob.glob(os.path.join(fib_dir, f"*{ext_fib}")))
     if not fib_candidates:
-        raise FileNotFoundError(f"No reconstructed file '*{ext_fib}' found in {dir_in}")
+        raise FileNotFoundError(f"No reconstructed file '*{ext_fib}' found in {fib_dir}")
     if len(fib_candidates) > 1:
-        print(f"Warning: multiple reconstructed files found. Using: {fib_candidates[0]}")
+        sys.exit(
+            f"Multiple reconstructed files found in {fib_dir}. "
+            "Remove duplicates or run in a clean output folder."
+        )
 
-    filename = fib_candidates[0]
-    track_file = filename + ".trk.gz"
+    fib_file = fib_candidates[0]
+    track_file = fib_file + ".trk.gz"
 
     # Set tracking based on track_param:
     if track_param_key == "default":
         print('Using DSI Studio default tracking parameters')
-        # Use this tracking parameters in the form of parameter_id that you can get directly from the dsi_studio gui console. (this is here now the defualt mode)
+        # DSI Studio can replay GUI tracking settings through a parameter_id.
         cmd = [
             dsi_studio,
             "--action=trk",
-            f"--source={filename}",
+            f"--source={fib_file}",
             f"--output={track_file}",
             f"--parameter_id={params[0]}",
         ]
 
     else:
-        # Use this tracking parameters if you want to specify each tracking parameter separately.
+        # Custom/predefined sets pass each tracking parameter explicitly.
         if track_param_key != "aida_optimized":
             params[1] = min_voxel_size_mm / 2
             params[6] = min_voxel_size_mm * 2
 
-        # The tract-density image saved here may not be viewable in FSLeyes or ITK-SNAP, but is compatible with Mango viewer.
+        # Export a color TDI next to the tract file for visual QC.
         cmd = [
             dsi_studio,
             "--action=trk",
-            f"--source={filename}",
+            f"--source={fib_file}",
             f"--output={track_file}",
             f"--tract_count={int(params[0])}",
             f"--step_size={params[1]}",
@@ -644,9 +645,6 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
             "--export=tdi:color",
         ]
 
-        # parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.5', '55', 0, '.02', '.1', '.5', '12.0') #Our Old parameters
-        # parameters = (dsi_studio, 'trk', filename, os.path.join(dir_in, filename+'.trk.gz'), 1000000, 0, '.01', '55', 0, '.02', '.1', '.3', '120.0') #Here are the optimized parameters (fatemeh)
-
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
@@ -658,64 +656,74 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
 
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, legacy=False):
     """
-Calculates connectivity data (types: pass and end).
-"""
-    if not os.path.isdir(dir_in):
-        sys.exit(f"Input directory does not exist: {dir_in}")
+    Calculates connectivity data for pass-through and endpoint definitions.
+    """
+    fib_dir = dir_in
+    seed_file = dir_seeds
+    output_root = dir_out
+    connectivity_dir_name = dir_con
 
-    # dir_seeds is a seed/ROI/atlas file, not a directory.
-    # If it is relative, resolve it relative to the DWI folder.
-    if not os.path.isabs(dir_seeds):
-        dir_seeds = os.path.join(os.path.dirname(dir_in), "DSI_studio", dir_seeds)
+    if not os.path.isdir(fib_dir):
+        sys.exit(f"Input directory does not exist: {fib_dir}")
 
-    dir_seeds = os.path.normpath(dir_seeds)
+    # seed_file is a seed/ROI/atlas file, not a directory. Relative paths are
+    # kept for backwards compatibility and resolved against DSI_studio.
+    if not os.path.isabs(seed_file):
+        seed_file = os.path.join(os.path.dirname(fib_dir), "DSI_studio", seed_file)
 
-    if not os.path.isfile(dir_seeds):
-        sys.exit(f"Seed/ROI file does not exist: {dir_seeds}")
+    seed_file = os.path.normpath(seed_file)
 
-    if not os.path.exists(dir_out):
-        sys.exit(f"Output path does not exist: {dir_out}")
+    if not os.path.isfile(seed_file):
+        sys.exit(f"Seed/ROI file does not exist: {seed_file}")
 
-    dir_con = make_dir(dir_out, dir_con)
+    if not os.path.exists(output_root):
+        sys.exit(f"Output path does not exist: {output_root}")
+
+    connectivity_dir = make_dir(output_root, connectivity_dir_name)
 
     ext_fib = ".fib.gz" if legacy else ".fz"
 
-    fib_candidates = sorted(glob.glob(os.path.join(dir_in, f"*{ext_fib}")))
+    # Search for fib_files
+    fib_candidates = sorted(glob.glob(os.path.join(fib_dir, f"*{ext_fib}")))
     if not fib_candidates:
-        raise FileNotFoundError(f"No reconstructed file '*{ext_fib}' found in {dir_in}")
+        raise FileNotFoundError(f"No reconstructed file '*{ext_fib}' found in {fib_dir}")
     if len(fib_candidates) > 1:
-        print(f"WARNING: Multiple reconstructed files found. Using: {fib_candidates[0]}")
+        sys.exit(
+            f"Multiple reconstructed files found in {fib_dir}. "
+            "Remove duplicates or run in a clean output folder."
+        )
 
-    filename = fib_candidates[0]
+    fib_file = fib_candidates[0]
 
-    trk_candidates = sorted(glob.glob(os.path.join(dir_in, "*trk.gz")))
+    #Search for tracking file
+    trk_candidates = sorted(glob.glob(os.path.join(fib_dir, "*trk.gz")))
     if not trk_candidates:
-        raise FileNotFoundError(f"No tract file '*trk.gz' found in {dir_in}")
+        raise FileNotFoundError(f"No tract file '*trk.gz' found in {fib_dir}")
     if len(trk_candidates) > 1:
-        print(f"WARNING: Multiple tract files found. Using: {trk_candidates[0]}")
+        sys.exit(
+            f"Multiple tract files found in {fib_dir}. "
+            "Remove duplicates or run in a clean output folder."
+        )
 
-    file_trk = trk_candidates[0]
-    file_seeds = dir_seeds
+    tract_file = trk_candidates[0]
 
-    # Dev note: if we resample the diffusion image, we need to resample the file_seeds here
+    # If srcgen resampled diffusion data, use a nearest-neighbor resampled copy
+    # of the seed/ROI image for connectivity.
     iso_value = None
     if make_isotropic == "auto":
-        # Match srcgen(): when "auto" is requested, use the native voxel size
-        # of the ROI/seed image for the optional connectivity resampling step.
-        iso_value = float(get_min_voxel_size_mm(file_seeds))
+        iso_value = float(get_min_voxel_size_mm(seed_file))
     else:
         iso_value = float(make_isotropic)
     if iso_value is not None and iso_value > 0:
-        # resample seeds image to isotropic voxel size using AFNI 3dresample
         resampled_seeds_path = os.path.join(
-            dir_con,
-            strip_nifti_suffix(file_seeds) + "_resampled.nii.gz"
+            connectivity_dir,
+            strip_nifti_suffix(seed_file) + "_resampled.nii.gz"
         )
 
         cmd_resample = [
             "flirt",
-            "-in", file_seeds,
-            "-ref", file_seeds,
+            "-in", seed_file,
+            "-ref", seed_file,
             "-applyisoxfm", str(iso_value),
             "-nosearch",
             "-interp", "nearestneighbour",
@@ -725,13 +733,13 @@ Calculates connectivity data (types: pass and end).
 
         print(f'Resampling seeds image to {iso_value} mm isotropic voxel size')
 
-        #PNG generation creating QA images.
-        qc_orig_png = os.path.join(dir_con, "qc_seeds_orig.png")
-        qc_resampled_png = os.path.join(dir_con, "qc_seeds_resampled.png")
-        qc_combined_png = os.path.join(dir_con, "qc_resampled_seeds_combined.png")
+        # Generate PNG quick-look images for the original and resampled seed/ROI.
+        qc_orig_png = os.path.join(connectivity_dir, "qc_seeds_orig.png")
+        qc_resampled_png = os.path.join(connectivity_dir, "qc_seeds_resampled.png")
+        qc_combined_png = os.path.join(connectivity_dir, "qc_resampled_seeds_combined.png")
 
         print("Creating quality-control image for original seed/ROI image")
-        subprocess.run(["slicer", file_seeds, "-L", "-a", qc_orig_png], check=True)
+        subprocess.run(["slicer", seed_file, "-L", "-a", qc_orig_png], check=True)
 
         print("Creating quality-control image for resampled seed/ROI image")
         subprocess.run(["slicer", resampled_seeds_path, "-L", "-a", qc_resampled_png], check=True)
@@ -742,29 +750,24 @@ Calculates connectivity data (types: pass and end).
             check=True
         )
 
-        # Use resampled seed/ROI image for connectivity.
-        file_seeds = resampled_seeds_path
-        # # command needs to use the --t1t2 t2_rare.nii.gz to align the ROI files
-        # cmd_ana = r'%s --action=%s --source=%s --tract=%s --connectivity=%s --connectivity_value=%s --connectivity_type=%s --t1t2=%s'
-        # # Inverse scale the file_seeds by 10
-        # # file_seeds = scaleBy10(file_seeds, inv=True)
+        seed_file = resampled_seeds_path
     # Performs analysis on every connectivity value and type. DSI Studio reuses
     # the same default connectivity filename, so each result must be renamed
     # immediately after the corresponding command finishes.
-    connect_vals = ['qa', 'count']
-    connect_types = ['pass', 'end']
-    tract_dir = os.path.dirname(file_trk)
-    tract_base = os.path.basename(file_trk)
-    roi_base = strip_nifti_suffix(os.path.basename(file_seeds))
+    connectivity_values = ['qa', 'count']
+    connectivity_types = ['pass', 'end']
+    tract_dir = os.path.dirname(tract_file)
+    tract_base = os.path.basename(tract_file)
+    roi_base = strip_nifti_suffix(os.path.basename(seed_file))
 
-    for value in connect_vals:
-        for connectivity_type in connect_types:
+    for value in connectivity_values:
+        for connectivity_type in connectivity_types:
             cmd = [
                 dsi_studio,
                 "--action=ana",
-                f"--source={filename}",
-                f"--tract={file_trk}",
-                f"--connectivity={file_seeds}",
+                f"--source={fib_file}",
+                f"--tract={tract_file}",
+                f"--connectivity={seed_file}",
                 f"--connectivity_value={value}",
                 f"--connectivity_type={connectivity_type}",
             ]
@@ -799,54 +802,8 @@ Calculates connectivity data (types: pass and end).
 
                 os.replace(output_path, os.path.join(output_dir, renamed_name))
 
-            move_files(tract_dir, dir_con, "/*.txt")
-            move_files(tract_dir, dir_con, "/*.mat")
-
-def merge_bval_bvec_to_btable(folder_path, preferred_stem=None):
-    gradient_pair, error_message = find_matching_gradient_pair(folder_path, preferred_stem=preferred_stem)
-    if gradient_pair is None:
-        print(error_message)
-        return False
-
-    file_name = gradient_pair['stem']
-    bval_file = gradient_pair['bval']
-    bvec_file = gradient_pair['bvec']
-
-    try:
-        with open(bval_file, 'r') as bval_handle:
-            bval_contents = bval_handle.read()
-            # Split the content into a list of values (assuming it's space-separated)
-            bval_values = bval_contents.strip().split()
-            # Convert the list to a Pandas DataFrame and cast the 'bval' column to integers
-            bval_table = pd.DataFrame({'bval': bval_values}).astype(float)
-
-        with open(bvec_file, 'r') as bvec_handle:
-            # Read lines and split each line into values
-            bvec_lines = bvec_handle.readlines()
-            bvec_values = [line.strip().split() for line in bvec_lines]
-
-            # Create a Pandas DataFrame from the values
-            bvec_table = pd.DataFrame(bvec_values, columns=[f'bvec_{i+1}' for i in range(len(bvec_values[0]))])
-            # Transpose the bvec_table
-            bvec_table = bvec_table.T
-
-        # Merge bval_table and bvec_table
-        merged_table = np.hstack((bval_table, bvec_table))
-        # Convert the merged_table content to float
-        merged_table = merged_table.astype(float)
-        # Define the path for the final merged table
-        final_path = os.path.join(folder_path, file_name + "_btable.txt")
-
-        # Save the merged table to the final file
-        np.savetxt(final_path, merged_table, fmt='%f', delimiter='\t')
-        print(f"Merged table saved to {final_path}")
-        return final_path
-    except FileNotFoundError:
-        print("One or both of the bval and bvec files were not found.")
-        return False
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-        return False
+            move_files(tract_dir, connectivity_dir, "/*.txt")
+            move_files(tract_dir, connectivity_dir, "/*.mat")
 
 if __name__ == '__main__':
     pass
