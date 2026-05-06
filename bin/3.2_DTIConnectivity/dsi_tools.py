@@ -146,6 +146,8 @@ def fsl_SeparateSliceMoCo(input_file, par_folder):
     output_file = scaleBy10(output_file, inv=True)
     
     os.chdir(aidamri_dir)
+    if os.path.isdir(temp_dir):
+        shutil.rmtree(temp_dir)
 
     return output_file
 
