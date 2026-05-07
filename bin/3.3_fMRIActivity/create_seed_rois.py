@@ -64,7 +64,7 @@ def startSeedPoint(in_labels,in_atlas):
     for k, sPathAtlas in enumerate(PathAtlas):
         # print("Atlas%d:" % (k + 1,), sPathAtlas)
         labels_img.append(nib.load(sPathAtlas))
-        labels_data.append(labels_img[k].get_data())
+        labels_data.append(np.asanyarray(labels_img[k].dataobj))
         # print("labels_data[%d].dtype:" % (k,), labels_data[k].dtype)
         # print("labels_data[%d].shape:" % (k,), labels_data[k].shape)
         labels_hdr.append(labels_img[k].header)
@@ -175,7 +175,7 @@ def create_rois_3(iatlas, labels, labels_hdr, labels_data, datatype=None, preser
     else:
         labels_dtype = labels_hdr[0].get_data_dtype()
     labels_shape = labels_hdr[0].get_data_shape()
-    mask = np.zeros(labels_shape, dtype=np.bool)
+    mask = np.zeros(labels_shape, dtype=bool)
     rois = np.zeros(labels_shape + (len(iatlas),), dtype=labels_dtype)
     if preserve:
         for k, index in enumerate(iatlas):
@@ -242,10 +242,10 @@ if __name__ == '__main__':
     for k, sPathAtlas in enumerate(PathAtlas):
         #print("Atlas%d:" % (k + 1,), sPathAtlas)
         labels_img.append(nib.load(sPathAtlas))
-        labels_data.append(labels_img[k].get_data())
+        labels_data.append(np.asanyarray(labels_img[k].dataobj))
         #print("labels_data[%d].dtype:" % (k,), labels_data[k].dtype)
         #print("labels_data[%d].shape:" % (k,), labels_data[k].shape)
-        labels_hdr.append(labels_img[k].get_header())
+        labels_hdr.append(labels_img[k].header)
         labels_shape.append(labels_hdr[k].get_data_shape())
         #print("labels_shape[%d]:" % (k,), labels_shape[k])
         if len(labels_shape[k]) != 3:

@@ -18,27 +18,26 @@ from pathlib import Path
 
 
 def scaleBy10(input_path,inv):
-    data = nii.load(input_path)
-    imgTemp = data.get_data()
-    if inv == False:
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        fslPath = os.path.join(os.path.dirname(input_path), os.path.basename(input_path).split('.')[0]+'_fslScaleTemp.nii.gz')
-        nii.save(scaledNiiData, fslPath)
-        return fslPath
-    elif inv == True:
-        scale = np.eye(4) / 10
-        scale[3][3] = 1
-        unscaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
+    img = nii.load(input_path)
+    imgTemp = np.asanyarray(img.dataobj).copy()
+    aff = img.affine.copy()
 
-        # hdrOut['sform_code'] = 1
-        nii.save(unscaledNiiData, input_path)
-        return input_path
+    factor = 0.1 if inv else 10.0
+    aff[:3, :3] *= factor
+
+    out_img = nii.Nifti1Image(imgTemp, aff, header=img.header)
+    out_img.header.set_xyzt_units('mm')
+
+    if not inv:
+        fslPath = os.path.join(
+            os.path.dirname(input_path),
+            os.path.basename(input_path).split('.')[0] + "_fslScaleTemp.nii.gz"
+        )
+        nii.save(out_img, fslPath)
+        return fslPath
     else:
-        sys.exit("Error: inv - parameter should be a boolean.")
+        nii.save(out_img, input_path)
+        return input_path
 
 def findRegData(path):
     regMR_list = []
@@ -230,8 +229,8 @@ def applyBET(input_file,frac,radius,vertical_gradient):
     maskFile = scaleBy10(maskFile,inv=True)
     return output_file,maskFile
 
-
-def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, costum_timings = None):
+#adjust default parameters if needed
+def startRegression(input_File, FWHM=3.0, cutOff_sec=100.0, TR=1.0, stc=False, slice_order=None, costum_timings=None):
     # generate folder regr images
     
     origin_Path = os.path.dirname(os.path.dirname(input_File))
@@ -324,6 +323,6 @@ if __name__ == "__main__":
     if args.input is not None and args.input is not None:
         input = args.input
     if not os.path.exists(input):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input, args.file,))
+        sys.exit("Error: '%s' does not exist." % (input,))
 
     result = startRegression(input)

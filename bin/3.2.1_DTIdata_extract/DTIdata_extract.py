@@ -22,34 +22,42 @@ def getOutfile(roi_file,img_file):
     return outFile
 
 def extractDTIData(img,rois,outfile,txt_file):
+    if img.shape[:3] != rois.shape[:3]:
+        sys.exit(f"Error: image shape {img.shape} and roi shape {rois.shape} do not match.")
 
-    regions = np.uint16(np.unique(rois))
-    regions=np.delete(regions,0)
+    regions = np.unique(rois)
+    regions = regions[regions != 0]
 
-    indices = None
+    mapping = None
     if txt_file is not None:
+        mapping = {}
+        with open(txt_file, "r") as f:
+            for line in f:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) >= 2:
+                    try:
+                        mapping[int(parts[0])] = parts[1]
+                    except ValueError:
+                        pass  # if header/space
 
-        ref_lines = open(txt_file).readlines()
-        indices = np.zeros_like(ref_lines)
-        for idx in range(np.size(ref_lines)):
-            curNum = int(str.split(ref_lines[idx], '\t')[0])
+    # robust parametername from outfile
+    param_name = os.path.basename(outfile).replace(".txt", "").split("_")[-1].upper()
 
-            indices[idx] = curNum
-        indices = np.uint16(indices)
+    with open(outfile, "w") as fileID:
+        fileID.write(f"{param_name} values for {regions.size} given regions:\n\n")
 
-    fileID = open(outfile, 'w')
-    fileID.write("%s values for %i given regions:\n\n" % (str.upper(outfile[-6:-4]),np.size(regions)))
+        for r in regions:
+            msk = (rois == r)
+            if not np.any(msk):
+                continue
+            paramValue = float(np.mean(img[msk]))
 
-    for r in regions:
-        paramValue = np.mean(img[rois==r])
-        if indices is not None:
-            str_idx = ref_lines[int(np.argwhere(indices == r)[0])]
-            acro = str.split(str_idx,'\t')[1][:-1]
-            fileID.write("%i\t%s\t%.2f\n" % (r,acro ,paramValue))
-        else:
-            fileID.write("%i\t%.2f\n" % (r, paramValue))
+            if mapping is not None:
+                acro = mapping.get(int(r), "NA")
+                fileID.write(f"{int(r)}\t{acro}\t{paramValue:.2f}\n")
+            else:
+                fileID.write(f"{int(r)}\t{paramValue:.2f}\n")
 
-    fileID.close()
     return outfile
 
 
@@ -75,7 +83,7 @@ if __name__ == '__main__':
             sys.exit("Error: '%s' is not an existing image nii-file." % (image_file))
 
     img_data=nii.load(image_file)
-    img = img_data.get_data()
+    img = img_data.get_fdata(dtype=np.float32)
 
     # read roi data
     roi_file = None
@@ -92,7 +100,7 @@ if __name__ == '__main__':
             sys.exit("Error: '%s' is not an existing translation txt file." % (txt_file))
 
     roi_data = nii.load(roi_file)
-    rois = roi_data.get_data()
+    rois = np.asanyarray(roi_data.dataobj).copy()
 
     outFile = getOutfile(roi_file, image_file)
     file = extractDTIData(img,rois,outFile,txt_file)

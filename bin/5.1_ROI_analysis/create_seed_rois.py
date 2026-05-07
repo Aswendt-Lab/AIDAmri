@@ -91,7 +91,7 @@ def create_rois_3(iatlas, labels, labels_hdr, labels_data, datatype=None, preser
     else:
         labels_dtype = labels_hdr[0].get_data_dtype()
     labels_shape = labels_hdr[0].get_data_shape()
-    mask = np.zeros(labels_shape, dtype=np.bool)
+    mask = np.zeros(labels_shape, dtype=bool)
     rois = np.zeros(labels_shape + (len(iatlas),), dtype=labels_dtype)
     if preserve:
         for k, index in enumerate(iatlas):
@@ -120,14 +120,12 @@ def create_rois(path_labels, list_atlas, datatype=None, preserve=False):
     labels_data = []
     labels_shape = []
     for k, path_atlas in enumerate(list_atlas):
-        #print("Atlas%d:" % (k + 1,), path_atlas)
-        labels_img.append(nib.load(path_atlas))
-        labels_data.append(labels_img[k].get_data())
-        #print("labels_data[%d].dtype:" % (k,), labels_data[k].dtype)
-        #print("labels_data[%d].shape:" % (k,), labels_data[k].shape)
-        labels_hdr.append(labels_img[k].get_header())
-        labels_shape.append(labels_hdr[k].get_data_shape())
-        #print("labels_shape[%d]:" % (k,), labels_shape[k])
+        img = nib.load(path_atlas)
+        labels_img.append(img)
+        labels_data.append(np.asanyarray(img.dataobj))
+        labels_hdr.append(img.header)
+        labels_shape.append(img.header.get_data_shape())
+
         if len(labels_shape[k]) != 3:
             sys.exit("Error: Atlas%d labels %s don't have three dimensions." % (k, str(labels_shape[k])))
 
@@ -174,8 +172,8 @@ if __name__ == '__main__':
     #print(pt.get_date())
 
     # create atlas labels hyperstack (4D)
-    labels_hdr, rois = create_rois(path_labels, path_atlas, datatype=args.datatype, preserve=args.preserve)
+    labels_hdr, rois = create_rois(path_labels, list_atlas, datatype=args.datatype, preserve=args.preserve)
 
     # save atlas labels file
     voxel_dims = labels_hdr[0].get_zooms()
-    pt.save_data(rois, voxel_dims, path_rois, dtype=None)
+    pt.save_data(rois, voxel_dims, path_rois + ext_nifti, dtype=None)

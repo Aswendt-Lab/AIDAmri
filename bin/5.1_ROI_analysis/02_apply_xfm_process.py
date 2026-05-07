@@ -97,7 +97,7 @@ def xfm_T2w_rsfMRI(raw_dir, timepoint_P7, timepoint, group, subject, expno_T2w, 
     pv.read_2dseq(map_raw=False, map_pv6=False, roll_fg=False, squeeze=False, compact=False, swap_vd=False, scale=1.0)
     #pv.save_nifti(ftype='NIFTI_GZ')
     matrix_T2w, matrix_T2w_inv = pv.get_matrix()
-    data_T2w = pv.nifti_image.get_data()
+    data_T2w = pv.nifti_image.get_fdata(dtype=np.float32)
     #data_dims_T2w = pv.data_dims[:3]
     #data_type_T2w = pv.data_type
     voxel_dims_T2w = pv.voxel_dims[:3]
@@ -108,7 +108,7 @@ def xfm_T2w_rsfMRI(raw_dir, timepoint_P7, timepoint, group, subject, expno_T2w, 
     pv.read_2dseq(map_raw=False, map_pv6=False, roll_fg=False, squeeze=False, compact=False, swap_vd=False, scale=1.0)
     #pv.save_nifti(ftype='NIFTI_GZ')
     matrix_rsfMRI, matrix_rsfMRI_inv = pv.get_matrix()
-    #data_rsfMRI = np.mean(pv.nifti_image.get_data(), axis=3)
+    # data_rsfMRI = np.mean(pv.nifti_image.get_fdata(dtype=np.float32), axis=3)
     data_dims_rsfMRI = pv.data_dims[:3]
     #data_type_rsfMRI = pv.data_type
     voxel_dims_rsfMRI = pv.voxel_dims[:3]
@@ -210,7 +210,7 @@ def xfm_T2w_DTI(raw_dir, timepoint_P7, timepoint, group, subject, expno_T2w, exp
     pv.read_2dseq(map_raw=False, map_pv6=False, roll_fg=False, squeeze=False, compact=False, swap_vd=False, scale=1.0)
     #pv.save_nifti(ftype='NIFTI_GZ')
     matrix_DTI, matrix_DTI_inv = pv.get_matrix()
-    #data_DTI = np.mean(pv.nifti_image.get_data(), axis=3)
+    # data_DTI    = np.mean(pv.nifti_image.get_fdata(dtype=np.float32), axis=3)
     data_dims_DTI = pv.data_dims[:3]
     #data_type_DTI = pv.data_type
     voxel_dims_DTI = pv.voxel_dims[:3]

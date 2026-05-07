@@ -29,12 +29,34 @@ import progressbar
 from tqdm import tqdm
 
 
+def get_ap_axis(affine):
+    axcodes = nii.aff2axcodes(affine)
+    for axis, code in enumerate(axcodes[:3]):
+        if code in ("A", "P"):
+            return axis
+    raise ValueError(f"Could not determine anterior-posterior axis from orientation {axcodes}")
+
+
+def get_spatial_slice(vol, axis, idx):
+    if vol.ndim == 4:
+        return np.take(vol[:, :, :, 0], idx, axis=axis)
+    return np.take(vol, idx, axis=axis)
+
+
+def set_spatial_slice(vol, axis, idx, slice_data):
+    slicer = [slice(None)] * 3
+    slicer[axis] = idx
+    vol[tuple(slicer)] = slice_data
+
+
 def run_MICO(IMGdata,outputPath):
     data = nii.load(IMGdata)
 
     # get UNSCALED img data
     vol = data.get_fdata()
     biasCorrectedVol = np.zeros(vol.shape[0:3])
+    ap_axis = get_ap_axis(data.affine)
+    slice_count = vol.shape[ap_axis]
 
     #1) Scaling factor depending on image intensity
     ImgMe = np.mean(vol)
@@ -56,36 +78,33 @@ def run_MICO(IMGdata,outputPath):
     if nz_all.size > 0:
         #e.g. global median as threshold (50. Perzentil)
         global_thr = np.percentile(nz_all, 50)
-        print(f"Global ROI-threshold of volumen: {global_thr:.3f}")
+        #print(f"Global ROI-threshold of volumen: {global_thr:.3f}")
     else:
         global_thr = 0.0
         print("Warning: No voxels above zero in volume, global_thr = 0")
-
+    '''
     #Debug
     # --- Debug: Test how large the ROI would be for some slices ---
     print("\nROI-Check for example slices:")
-    for idx in [0, vol.shape[2] // 2, vol.shape[2] - 1]:  # first, middle, last slice
-        Img_test = vol_norm[:, :, idx]
+    for idx in [0, slice_count // 2, slice_count - 1]:  # first, middle, last slice
+        Img_test = np.take(vol_norm, idx, axis=ap_axis)
         ROIt_test = Img_test > global_thr
         print(f"Slice {idx}: ROI voxels = {ROIt_test.sum()} of {Img_test.size}")
     print("------------------------------------------------------------\n")
     #--- Ende Debug ---
-
-    progressbar = tqdm(total=vol.shape[2], desc='Biasfieldcorrection')
-
+    '''
+    progressbar = tqdm(total=slice_count, desc='Biasfieldcorrection')
+    '''
     #Debug output
     print(f"Amount of non-zero voxels in total volumen: {nz_all.size}")
     print(
         f"Min/Median/Max of nz_all voxels: {nz_all.min():.3f} / {np.percentile(nz_all, 50):.3f} / {nz_all.max():.3f}")
     print(f"Global ROI-threshold of volume: {global_thr:.3f}")
     #--- Ende Debug output --
-
+    '''
     # 3) loop over slices, ROI with global threshold
-    for idx in range(vol.shape[2]):
-        if np.size(vol.shape) == 4:
-            Img = vol[:, :, idx, 0] / nCvalue
-        else:
-            Img = vol[:, :, idx] / nCvalue
+    for idx in range(slice_count):
+        Img = get_spatial_slice(vol, ap_axis, idx) / nCvalue
 
         iterNum = 50
         N_region = 1
@@ -154,17 +173,18 @@ def run_MICO(IMGdata,outputPath):
         for k in range(N_region):
             seg = seg + k * M[:,:, k] # label  the k-th region
 
-        biasCorrectedVol[:,:,idx]=img_bc
+        set_spatial_slice(biasCorrectedVol, ap_axis, idx, img_bc)
 
         progressbar.update(1)
 
     progressbar.close()
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol.astype(np.float32), data.affine)
     hdrOut = unscaledNiiData.header
+    hdrOut.set_data_dtype(np.float32)
     hdrOut.set_xyzt_units('mm')
 
-    outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'Bias.nii.gz')
+    outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'MicoBias.nii.gz')
     nii.save(unscaledNiiData,outputData)
 
     return outputData

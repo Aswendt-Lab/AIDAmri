@@ -1,0 +1,4 @@
+Dockerfile* text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+requirements.txt text eol=lf

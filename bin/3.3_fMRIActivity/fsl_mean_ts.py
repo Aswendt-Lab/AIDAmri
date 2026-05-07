@@ -22,7 +22,7 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
 
     # Read 4D data file (NIfTI )
     data_img = nib.load(sPathData)
-    data = data_img.get_data()
+    data = data_img.get_fdata(dtype=np.float32)
     data_hdr = data_img.header
     data_dtype = data_hdr.get_data_dtype()
     data_shape = data_hdr.get_data_shape()
@@ -49,7 +49,7 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
 
     # Read 4D mask file (NIfTI)
     mask_img = nib.load(sPathMask)
-    mask = mask_img.get_data()
+    mask = np.asanyarray(mask_img.dataobj).copy()
     mask_hdr = mask_img.header
     #mask_dtype = mask_hdr.get_data_dtype()
     mask_shape = mask_hdr.get_data_shape()
@@ -60,7 +60,7 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     if data_shape[:3] != mask_shape[:3]:
         sys.exit("Error: data %s and mask %s are not the same shape." % (str(data_shape[:3]), str(mask_shape[:3])))
 
-    m = np.zeros((mask_shape[3], data_shape[3]), dtype=data_dtype)
+    m = np.zeros((mask_shape[3], data_shape[3]), dtype=np.float32)
     for k in range(mask_shape[3]):
         msk = np.array(mask[:, :, :, k]) > 0
         maskedData = data[msk, :]
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     # Read 4D data file (NIfTI )
     #print(sPathData)
     data_img = nib.load(sPathData)
-    data = data_img.get_data()
+    data = data_img.get_fdata(dtype=np.float32)
     #data = np.squeeze(data_img.get_data())
     #data = np.cast[np.float32](data_img.get_data())
     #print("data.dtype:", data.dtype)
@@ -134,7 +134,7 @@ if __name__ == '__main__':
     # Read 4D mask file (NIfTI)
     #print(sPathMask)
     mask_img = nib.load(sPathMask)
-    mask = mask_img.get_data()
+    mask = np.asanyarray(mask_img.dataobj).copy()
     #mask = np.squeeze(mask_img.get_data())
     #mask = np.cast[np.float32](mask_img.get_data())
     #print("mask.dtype:", mask.dtype)
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     if data_shape[:3] != mask_shape[:3]:
         sys.exit("Error: data %s and mask %s are not the same shape." % (str(data_shape[:3]), str(mask_shape[:3])))
 
-    m = np.zeros((mask_shape[3], data_shape[3]), dtype=data_dtype)
+    m = np.zeros((mask_shape[3], data_shape[3]), dtype=np.float32)
     for k in range(mask_shape[3]):
         msk = np.array(mask[:,:,:,k]) > 0
         maskedData = data[msk,:]

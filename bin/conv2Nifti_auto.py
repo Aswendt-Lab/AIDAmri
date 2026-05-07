@@ -444,7 +444,7 @@ if __name__ == "__main__":
     mese_scan_data = {}
     mese_scan_ids = []
     fmri_scan_ids = {}
-    dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
+    dataset_csv = glob.glob(os.path.join(pathToRawData, "dataset*.csv"))[0]
     if os.path.exists(dataset_csv):
         with open(dataset_csv, 'r') as csvfile:
             df = pd.read_csv(csvfile, delimiter=',')
@@ -498,8 +498,8 @@ if __name__ == "__main__":
     print('\rT2 mapping \033[0;30;42m COMPLETED \33[0m                            ')
     logging.info(f"Finished creating T2w maps")
 
-    dataset_csv = glob.glob(os.path.join(os.getcwd(), "data*.csv"))[0]
-    dataset_json = glob.glob(os.path.join(os.getcwd(), "data*.json"))[0]
+    dataset_csv = glob.glob(os.path.join(pathToRawData, "dataset*.csv"))[0]
+    dataset_json = glob.glob(os.path.join(pathToRawData, "dataset*.json"))[0]
 
     #os.remove(dataset_csv)
     #os.remove(dataset_json)
