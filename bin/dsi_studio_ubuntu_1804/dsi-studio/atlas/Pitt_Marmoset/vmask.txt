@@ -1,2 +1,0 @@
-1 left_hemisphere
-2 right_hemisphere

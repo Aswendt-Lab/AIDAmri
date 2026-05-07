@@ -35,8 +35,8 @@ def save_csv(sFilename, data):
 def save_nifti(sFilename, data, index, ext_nii):
 
     # save matrix (NIfTI)
-    image = nib.Nifti1Image(data, None)
-    header = image.get_header()
+    image = nib.Nifti1Image(data, np.eye(4))
+    header = image.header
     header.set_xyzt_units(xyz=None, t=None)
     image.to_filename(sFilename + '_%03d' % (index + 1,) + ext_nii)
     print("Output:", image.get_filename())
@@ -47,7 +47,7 @@ def get_seed_stat(sPathMatrix, sPathTS, data, seed, ext_nii, r_to_z=False, save_
         msk = seed[:,:,:,k] > 0
         maskData = data[msk, :]
         if maskData.size == 0:
-            matrix[0] = np.nan
+            matrix = np.array([[np.nan]], dtype=np.float64)
         else:
             matrix = np.corrcoef(maskData, rowvar=True)
         if r_to_z:
@@ -59,6 +59,10 @@ def get_seed_stat(sPathMatrix, sPathTS, data, seed, ext_nii, r_to_z=False, save_
             save_nifti(sPathMatrix, matrix, k, ext_nii)
         # get upper-triangle of matrix as list and set inf to nan
         triu_cc = matrix[np.triu_indices_from(matrix, k=1)]
+        if triu_cc.size == 0:
+            seed_stat[0, k] = matrix.shape[0]
+            seed_stat[1:, k] = np.nan
+            continue
         #triu_cc[np.where(np.isinf(triu_cc))] = np.nan
         triu_cc[np.isinf(triu_cc)] = np.nan
         seed_stat[0,k] = matrix.shape[0]
@@ -127,10 +131,10 @@ if __name__ == '__main__':
     # read 3D data file (NIfTI)
     print("Data:", sPathData)
     data_img = nib.load(sPathData)
-    data_data = data_img.get_data()
+    data_data = data_img.get_fdata(dtype=np.float32)
     #print("data_data.dtype:", data_data.dtype)
     #print("data_data.shape:", data_data.shape)
-    data_hdr = data_img.get_header()
+    data_hdr = data_img.header
     data_shape = data_hdr.get_data_shape()
     #print("data_shape:", data_shape)
     if len(data_shape) != 4:
@@ -139,10 +143,10 @@ if __name__ == '__main__':
     # read 4D seed ROIs file (NIfTI)
     print("Seed:", sPathSeed)
     seed_img = nib.load(sPathSeed)
-    seed_data = seed_img.get_data()
+    seed_data = np.asanyarray(seed_img.dataobj).copy()
     #print("seed_data.dtype:", seed_data.dtype)
     #print("seed_data.shape:", seed_data.shape)
-    seed_hdr = seed_img.get_header()
+    seed_hdr = seed_img.header
     seed_shape = seed_hdr.get_data_shape()
     #print("seed_shape:", seed_shape)
     if len(seed_shape) != 4:

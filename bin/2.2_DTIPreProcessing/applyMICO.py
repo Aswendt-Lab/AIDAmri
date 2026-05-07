@@ -165,12 +165,13 @@ def run_MICO(IMGdata,outputPath):
 
     progressbar.close()
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol.astype(np.float32), data.affine)
     hdrOut = unscaledNiiData.header
+    hdrOut.set_data_dtype(np.float32)
     hdrOut.set_xyzt_units('mm')
 
 
-    outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'Mico.nii.gz')
+    outputData = os.path.join(outputPath,os.path.basename(IMGdata).split('.')[0]+'MicoBias.nii.gz')
     nii.save(unscaledNiiData,outputData)
 
     return outputData
@@ -252,4 +253,5 @@ if __name__ == "__main__":
     if not os.path.exists(input):
         sys.exit("Error: '%s' is not an existing directory of file %s is not in directory." % (input, args.file,))
 
-    result = run_MICO(input)
+    #result = run_MICO(input)
+    result = input

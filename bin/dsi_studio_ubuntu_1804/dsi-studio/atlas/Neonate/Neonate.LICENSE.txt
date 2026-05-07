@@ -1,6 +1,0 @@
-The QA and ISO maps are created from dHCP 758 subjects
-
-The T2W,WM maps are from the following https://www.nitrc.org/projects/pediatricatlas shared under CC4 license
-
-Feng Shi, Pew-Thian Yap, Guorong Wu, Hongjun Jia, John H. Gilmore, Weili Lin, Dinggang Shen,"Infant Brain Atlases from Neonates to 1- and 2-year-olds", PLoS ONE, 6(4): e18746, 2011.
-

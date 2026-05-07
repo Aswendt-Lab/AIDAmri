@@ -11,7 +11,7 @@ from __future__ import print_function
 import csv
 import os
 import sys
-
+import numpy as np
 import nibabel as nib
 
 from datetime import datetime
@@ -223,24 +223,24 @@ def save_text(filename, lines):
 
     print(filename)
 
-def read_data(path_data):
-    image = nib.load(path_data)
-    data = image.get_data()
+def read_data(path_data, as_float=False, dtype=np.float32, copy=True):
+    img = nib.load(path_data)
 
-    header = image.get_header()
-    voxel_dims = header.get_zooms()
-    #print("header.get_data_shape():", header.get_data_shape())
-    #print("header.get_data_dtype():", header.get_data_dtype())
-    #print("header.get_zooms():", header.get_zooms())
-    #print("header.get_data_offset():", header.get_data_offset())
-    #print("header.get_xyzt_units():", header.get_xyzt_units())
+    if as_float:
+        data = img.get_fdata(dtype=dtype)          # scaling correct, float for calculations
+    else:
+        data = np.asanyarray(img.dataobj)          # raw / labels
+        if copy:
+            data = data.copy()
 
-    return (data, voxel_dims)
+    zooms = img.header.get_zooms()
+    voxel_dims = zooms[:min(len(zooms), data.ndim)]# sicher für 3D/4D
+    return data, voxel_dims
 
 def save_data(data, voxel_dims, path_data, dtype='float32'):
     image = nib.Nifti1Image(data, None)
 
-    header = image.get_header()
+    header = image.header
     if dtype is not None:
         header.set_data_dtype(dtype)
     if data.ndim == 3:
