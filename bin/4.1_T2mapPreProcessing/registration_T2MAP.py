@@ -90,7 +90,13 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
 
 
 def find_RefStroke(refStrokePath,inputVolume):
-    path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/anat/*IncidenceData_mask.nii.gz', recursive=False)
+    search_patterns = [
+        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9] + '*', 'anat', 'IncidenceData', 'IncidenceData_Lesion_mask.nii.gz'),
+        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9] + '*', 'anat', '*IncidenceData_mask.nii.gz'),
+    ]
+    path = []
+    for pattern in search_patterns:
+        path.extend(glob.glob(pattern, recursive=False))
     return path
 
 def find_RefAff(inputVolume):
@@ -227,6 +233,5 @@ if __name__ == "__main__":
         continue
 
     print("Registration completed")
-
 
 
