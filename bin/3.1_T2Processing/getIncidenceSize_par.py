@@ -35,6 +35,30 @@ def ensure_same_grid(reference_img, moving_img, moving_description):
         sys.exit("Error: Stroke mask and %s have different affine matrices." % (moving_description,))
 
 
+def nifti_name_without_extension(file_path):
+    file_name = os.path.basename(file_path)
+    if file_name.endswith('.nii.gz'):
+        return file_name[:-len('.nii.gz')]
+    if file_name.endswith('.nii'):
+        return file_name[:-len('.nii')]
+    sys.exit("Error: '%s' is not a NIfTI file." % (file_path,))
+
+
+def find_brkraw_nifti(input_folder):
+    brkraw_folder = os.path.join(input_folder, 'brkraw')
+    matches = sorted(glob.glob(os.path.join(brkraw_folder, '*.nii')) +
+                     glob.glob(os.path.join(brkraw_folder, '*.nii.gz')))
+    if len(matches) == 0:
+        matches = sorted(glob.glob(os.path.join(input_folder, '**', 'brkraw', '*.nii'), recursive=True) +
+                         glob.glob(os.path.join(input_folder, '**', 'brkraw', '*.nii.gz'), recursive=True))
+    if len(matches) == 0:
+        sys.exit("Error: No NIfTI file found in a brkraw folder under '%s'." % (input_folder,))
+    if len(matches) > 1:
+        sys.exit("Error: Multiple NIfTI files found in brkraw folders under '%s': %s" %
+                 (input_folder, ', '.join(matches),))
+    return matches[0]
+
+
 def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_template_file, stroke_mask_file,
                                       incidence_lesion_mask_file, output_folder, label_file):
 
@@ -46,6 +70,31 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     # Load the parental label IDs from the MATLAB label file.
     label_mat = sc.loadmat(label_file)
     parental_label_ids = label_mat['ABLAbelsIDsParental']
+
+    # Save the template-space IncidenceData lesion mask labelled by the parental rsfMRI atlas.
+    incidence_lesion_mask_img = nii.load(incidence_lesion_mask_file)
+    incidence_lesion_mask = incidence_lesion_mask_img.get_fdata()
+    incidence_lesion_mask[incidence_lesion_mask > 0.0] = 1.0
+    incidence_lesion_mask[incidence_lesion_mask <= 0.0] = 0.0
+
+    parental_incidence_atlas_file = os.path.join(REPO_ROOT, 'lib', 'annoVolume+2000_rsfMRI.nii.gz')
+    parental_incidence_atlas_img = nii.load(parental_incidence_atlas_file)
+    ensure_same_grid(incidence_lesion_mask_img, parental_incidence_atlas_img, "parental incidence atlas")
+    parental_incidence_atlas = np.round(parental_incidence_atlas_img.get_fdata())
+
+    labelled_incidence_lesion = parental_incidence_atlas*incidence_lesion_mask
+    labelled_incidence_lesion_img = nii.Nifti1Image(labelled_incidence_lesion, incidence_lesion_mask_img.affine)
+    labelled_incidence_lesion_img.header.set_xyzt_units('mm')
+    incidence_data_dir = os.path.dirname(incidence_lesion_mask_file)
+    incidence_data_name = os.path.basename(incidence_lesion_mask_file)
+    incidence_input_suffix = 'IncidenceData_Lesion_mask.nii.gz'
+    incidence_output_suffix = 'IncidenceData_Anno_parental_lesion_mask.nii.gz'
+    if not incidence_data_name.endswith(incidence_input_suffix):
+        sys.exit("Error: Incidence lesion mask filename must end with '%s'." % (incidence_input_suffix,))
+    incidence_name_prefix = incidence_data_name[:-len(incidence_input_suffix)]
+    output_name = incidence_name_prefix + incidence_output_suffix
+    output_file = os.path.join(incidence_data_dir, output_name)
+    nii.save(labelled_incidence_lesion_img, output_file)
 
     # Load and binarize the externally provided stroke mask.
     stroke_mask_img = nii.load(stroke_mask_file)
@@ -63,25 +112,7 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     ensure_same_grid(stroke_mask_img, brain_img, "brain image")
 
     # Keep only parental atlas labels that overlap with the subject-space stroke mask.
-    labelled_stroke_overlap = parental_annotation*stroke_mask
-
-    # Save the template-space IncidenceData lesion mask labelled by the parental rsfMRI atlas.
-    incidence_lesion_mask_img = nii.load(incidence_lesion_mask_file)
-    incidence_lesion_mask = incidence_lesion_mask_img.get_fdata()
-    incidence_lesion_mask[incidence_lesion_mask > 0.0] = 1.0
-    incidence_lesion_mask[incidence_lesion_mask <= 0.0] = 0.0
-
-    parental_incidence_atlas_file = os.path.join(REPO_ROOT, 'lib', 'annoVolume+2000_rsfMRI.nii.gz')
-    parental_incidence_atlas_img = nii.load(parental_incidence_atlas_file)
-    ensure_same_grid(incidence_lesion_mask_img, parental_incidence_atlas_img, "parental incidence atlas")
-    parental_incidence_atlas = np.round(parental_incidence_atlas_img.get_fdata())
-
-    labelled_incidence_lesion = parental_incidence_atlas*incidence_lesion_mask
-    labelled_incidence_lesion_img = nii.Nifti1Image(labelled_incidence_lesion, incidence_lesion_mask_img.affine)
-    labelled_incidence_lesion_img.header.set_xyzt_units('mm')
-    incidence_data_dir = os.path.dirname(incidence_lesion_mask_file)
-    output_file = os.path.join(incidence_data_dir, 'IncidenceData_Anno_parental_lesion_mask.nii.gz')
-    nii.save(labelled_incidence_lesion_img, output_file)
+    labelled_stroke_overlap = parental_annotation * stroke_mask
 
     # Extract the unique non-zero parental labels affected by the stroke.
     affected_labels = np.unique(labelled_stroke_overlap)
@@ -96,7 +127,7 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
         region_percent = (affected_voxels / total_region_voxels) * 100
         region_percent_by_label[int(label_id)] = min(region_percent, 100)
 
-    # Keep only label IDs that are actually present in the affected-label list.
+    # Keep only label IDs that are actually affected by stroke (in the affected-label list)
     affected_label_ids = np.array(sorted(region_percent_by_label))
     affected_label_mask = np.isin(parental_label_ids[:, 0], affected_label_ids)
     parental_label_ids = parental_label_ids[affected_label_mask,0]
@@ -114,7 +145,10 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     # Save the affected parental regions as a NIfTI overlay.
     affected_regions_img = nii.Nifti1Image(affected_template_labels, ara_template_img.affine)
     affected_regions_img.header.set_xyzt_units('mm')
-    output_file = os.path.join(output_folder, 'affectedRegions_Parental.nii.gz')
+    brkraw_nifti_file = find_brkraw_nifti(output_folder)
+    affected_regions_prefix = '%s_%s_' % (nifti_name_without_extension(brkraw_nifti_file),
+                                          nifti_name_without_extension(ara_template_file))
+    output_file = os.path.join(output_folder, affected_regions_prefix + 'affectedRegions_Parental.nii.gz')
     nii.save(affected_regions_img, output_file)
 
     # Stroke volume calculation
@@ -132,7 +166,7 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
 
     # Load label names and write the text summary of affected parental regions.
     lines =open(os.path.join(REPO_ROOT, 'lib', 'annoVolume.nii.txt')).readlines()
-    o=open(os.path.join(output_folder, 'affectedRegions_Parental.txt'), 'w')
+    o=open(os.path.join(output_folder, affected_regions_prefix + 'affectedRegions_Parental.txt'), 'w')
     o.write("Stroke: %0.2f %% - Stroke Volume: %0.4f mm^3\n"  % (((strokeVolumeInCubicMM/brainVolumeInCubicMM)*100),strokeVolumeInCubicMM,))
     affected_label_names_by_id = {}
     labelNames = ["" for x in range(np.size(lines))]
@@ -214,7 +248,7 @@ if __name__ == "__main__":
     stroke_mask_file = find_single_file(input_folder, '*Stroke_mask.nii.gz', 'stroke mask')
     brain_file = find_single_file(input_folder, '*Bet.nii.gz', 'BET image')
     parental_annotation_file = find_single_file(input_folder, '*_AnnoSplit_parental.nii.gz', 'parental annotation')
-    incidence_lesion_mask_file = find_single_file(input_folder, 'IncidenceData_Lesion_mask.nii.gz', 'incidence lesion mask')
+    incidence_lesion_mask_file = find_single_file(input_folder, '*IncidenceData_Lesion_mask.nii.gz', 'incidence lesion mask')
 
     print("1 folder will be processed...")
 
