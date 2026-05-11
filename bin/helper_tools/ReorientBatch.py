@@ -268,6 +268,47 @@ def copy_non_nifti(src_path: str, dst_path: str, log):
     shutil.copy2(src_path, dst_path)
 
 
+def is_nifti_file(fname: str) -> bool:
+    return fname.endswith(".nii") or fname.endswith(".nii.gz")
+
+
+def find_nifti_files(src_root: str):
+    nifti_files = []
+    for root, dirs, files in os.walk(src_root):
+        for fname in files:
+            if is_nifti_file(fname):
+                nifti_files.append(os.path.join(root, fname))
+    return nifti_files
+
+
+def check_nifti_orientations(nifti_files, src_root: str, target_ori: str, log=None):
+    """
+    Check all found NIfTI orientations before batch processing.
+
+    Returns True if every readable NIfTI already matches target_ori.
+    """
+    all_match = True
+
+    if log:
+        log("")
+        log("Pre-checking NIfTI orientations:")
+
+    for src_path in nifti_files:
+        img = nib.load(src_path)
+        current_ori, ori_src, _ = get_current_orientation(img)
+        rel_path = os.path.relpath(src_path, src_root)
+        matches_target = current_ori == target_ori
+        all_match = all_match and matches_target
+
+        status = "matches target" if matches_target else "needs reorientation"
+        msg = f"  {rel_path}: current={current_ori} ({ori_src}), target={target_ori} -> {status}"
+        print(msg)
+        if log:
+            log(msg)
+
+    return all_match
+
+
 
 def validate_target_ori(ori: str) -> str:
     ori = ori.strip().upper()
@@ -345,6 +386,8 @@ def main():
     )
     target_ori = validate_target_ori(target_ori)
 
+    nifti_files = find_nifti_files(src_root)
+
     # --- Count total files for progress bar ---
     total_files = 0
     for root, dirs, files in os.walk(src_root):
@@ -370,6 +413,17 @@ def main():
         log(f"Source root: {src_root}")
         log(f"Destination root: {dst_root}")
         log(f"Total files (NIfTI + non-NIfTI): {total_files}")
+        log(f"Total NIfTI files found: {len(nifti_files)}")
+
+        if nifti_files and check_nifti_orientations(nifti_files, src_root, target_ori, log=log):
+            msg = (
+                "\nAll found NIfTI files already match the target orientation "
+                f"({target_ori}). No reorientation is necessary. Aborting batch processing."
+            )
+            print(msg)
+            log(msg.strip())
+            print(f"Log file written to:         {log_path}")
+            return
 
         for root, dirs, files in os.walk(src_root):
             for fname in files:
@@ -379,7 +433,7 @@ def main():
 
                 os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
-                is_nifti = fname.endswith(".nii") or fname.endswith(".nii.gz")
+                is_nifti = is_nifti_file(fname)
                 is_sidecar = fname.endswith(".bvec") or fname.endswith(".bval")
 
                 try:
