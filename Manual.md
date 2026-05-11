@@ -468,10 +468,9 @@ python getIncidenceSize.py -i .../testData/T2w
 The results, such as affected regions and ROI volume, are stored in the folder `.../T2w` in the following files:
 
 ```text
-affectedRegions.txt
-affectedRegions.nii.gz
-affectedRegions_Parental.txt
-affectedRegions_Parental.nii.gz
+*affectedRegions.csv
+*affectedRegions.nii.gz
+*labelCount_par.mat
 ```
 
 ### Processing of ROI stroke mask data
