@@ -76,44 +76,45 @@ def thresholding(volumeMR,maskImg,thres,k):
 
 
 def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incidenceMask ,thres, outfile,labels):
-
-    araDataTemplate  = nii.load(araDataTemplate)
+    #path_listMR is Bet file
+    
+    araDataTemplate  = nii.load(araDataTemplate)#annoVolume.nii.gz from lib folder
     realAraImg = araDataTemplate.get_data()
     coloredAraLabels = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
 
     matFile = sc.loadmat(labels)
     labMat = matFile['ABLAbelsIDsParental']
 
-    maskData = nii.load(incidenceMask)
+    maskData = nii.load(incidenceMask)#Stroke-Mask
     maskImg = maskData.get_data()
     oneValues = maskImg > 0.0
     maskImg[oneValues] = 1.0
     fileIndex = 0
 
     # get warped annos of the current mr
-    dataAnno = nii.load(path_listAnno[fileIndex])
+    dataAnno = nii.load(path_listAnno[fileIndex]) #AnnoSplit_parental
     volumeAnno = np.round(dataAnno.get_data())
-    dataMR = nii.load(path_listInc[fileIndex])
+    dataMR = nii.load(path_listInc[fileIndex]) #IncidenceData-file
     volumeMR = dataMR.get_data()
 
     strokeVolume = thresholding(volumeMR, maskImg, thres,1)
 
-    fValues_Anno = volumeAnno*strokeVolume
+    fValues_Anno = volumeAnno*strokeVolume #affected Atlas-IDs
 
     scaledNiiData = nii.Nifti1Image(fValues_Anno, dataAnno.affine)
     hdrIn = scaledNiiData.header
     hdrIn.set_xyzt_units('mm')
-    output_file =  os.path.join(outfile,os.path.basename(path_listMR[fileIndex]).split('.')[0]+ 'Anno_parmask.nii.gz')
+    output_file =  os.path.join(outfile,os.path.basename(path_listMR[fileIndex]).split('.')[0]+ 'Anno_parmask.nii.gz') 
     nii.save(scaledNiiData, output_file)
 
     ref_Image = fValues_Anno
-    fValues_Anno = np.unique(fValues_Anno)
+    fValues_Anno = np.unique(fValues_Anno) #gets all Atlas-IDs that are affected
     nullValues = np.argwhere(fValues_Anno<=0.0)
     fValues_Anno = np.delete(fValues_Anno, nullValues)
 
     regionAffectPercent = np.zeros(np.size(fValues_Anno))
     for i in range(np.size(fValues_Anno)):
-        regionAffectPercent[i] = (np.sum(ref_Image == fValues_Anno[i]) / np.sum(volumeAnno == fValues_Anno[i])) * 200
+        regionAffectPercent[i] = (np.sum(ref_Image == fValues_Anno[i]) / np.sum(volumeAnno == fValues_Anno[i])) * 200 # Lesion voxel in region / total voxel in region
         regionAffectPercent[regionAffectPercent > 100] = 100
     labCounterList = np.isin(labMat[:, 0], fValues_Anno)
     labMat = labMat[labCounterList,0]
