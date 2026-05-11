@@ -168,9 +168,6 @@ def reorient_image(img: nib.Nifti1Image, target_ori: str, current_ori: str, base
     data = img.get_fdata(dtype=np.float32)
     data = np.ascontiguousarray(data, dtype=np.float32)
 
-    if log:
-        log(f"  Target orientation: {target_ori}")
-
     if current_ori == target_ori:
         if log:
             log("  Current orientation already matches target. No reorientation is applied.")
