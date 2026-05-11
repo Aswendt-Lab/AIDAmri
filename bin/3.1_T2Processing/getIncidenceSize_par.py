@@ -11,6 +11,7 @@ University Hospital Cologne
 """
 
 
+import csv
 import os,sys
 import nibabel as nii
 import glob
@@ -120,12 +121,14 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
 
     # Calculate how much of each affected parental region is covered by the stroke.
     region_percent_by_label = {}
+    region_affected_voxels_by_label = {}
     for label_id in affected_labels:
         # Percentage of the parental region covered by stroke voxels.
         affected_voxels = np.sum(labelled_stroke_overlap == label_id)
         total_region_voxels = np.sum(parental_annotation == label_id)
         region_percent = (affected_voxels / total_region_voxels) * 100
         region_percent_by_label[int(label_id)] = min(region_percent, 100)
+        region_affected_voxels_by_label[int(label_id)] = affected_voxels
 
     # Keep only label IDs that are actually affected by stroke (in the affected-label list)
     affected_label_ids = np.array(sorted(region_percent_by_label))
@@ -164,34 +167,46 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     if brainVolumeInCubicMM == 0:
         sys.exit("Error: Brain mask volume is zero.")
 
-    # Load label names and write the text summary of affected parental regions.
+    # Load label names and write the CSV summary of affected parental regions.
     lines =open(os.path.join(REPO_ROOT, 'lib', 'annoVolume.nii.txt')).readlines()
-    o=open(os.path.join(output_folder, affected_regions_prefix + 'affectedRegions_Parental.txt'), 'w')
-    o.write("Stroke: %0.2f %% - Stroke Volume: %0.4f mm^3\n"  % (((strokeVolumeInCubicMM/brainVolumeInCubicMM)*100),strokeVolumeInCubicMM,))
+    csv_file = open(os.path.join(output_folder, affected_regions_prefix + 'affectedRegions_Parental.csv'), 'w', newline='')
+    csv_writer = csv.writer(csv_file)
+    csv_writer.writerow(['stroke_percent_of_brain', 'stroke_volume_mm3'])
+    csv_writer.writerow(["%0.2f" % ((strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100),
+                         "%0.4f" % strokeVolumeInCubicMM])
+    csv_writer.writerow([])
+    csv_writer.writerow(['Label_id', 'Brain region', 'Affected region percentage', 'Stroke volume_mm3'])
     affected_label_names_by_id = {}
-    labelNames = ["" for x in range(np.size(lines))]
-    for i in range(len(lines)):
+    labelNames = ["" for x in range(np.size(lines))] #first creates list with empt strings as long as annoVolume.nii.txt
+    for i in range(len(lines)): #code goes through all lines in label file
+        # first part of line is label id, second part is label name (seperated by tabulator)
         label_id = int(lines[i].split('\t')[0])
         label_name = lines[i].split('\t')[1]
         labelNames[i] = label_name
+        # Only write rows for labels that are actually affected by stroke and are in the parental label set.
         if label_id in region_percent_by_label and label_id in parental_label_id_set:
-            # Write label ID, label name, and affected percentage for each matched region.
-            o.write(lines[i][:-1] + "\t %0.2f %%\n" % region_percent_by_label[label_id])
+            # Write label ID, label name, affected percentage, and absolute affected volume for each matched region.
+            region_stroke_volume_mm3 = region_affected_voxels_by_label[label_id] * strokeVoxelVolumeMM3
+            csv_writer.writerow([label_id, label_name, "%0.2f" % region_percent_by_label[label_id],
+                                 "%0.4f" % region_stroke_volume_mm3])
             affected_label_names_by_id[label_id] = label_name
 
             #o.write(str(int(lines[i].split('	')[0]) + 2000) + '	R_' + lines[i].split('	')[1])
-    o.close()
+    csv_file.close()
 
     # Store the same region statistics in a MATLAB file for downstream workflows.
     regionAffectPercent = np.array([region_percent_by_label[int(label_id)] for label_id in parental_label_ids])
+    regionStrokeVolumeMM3 = np.array([region_affected_voxels_by_label[int(label_id)] * strokeVoxelVolumeMM3
+                                      for label_id in parental_label_ids])
     affected_label_names = [affected_label_names_by_id.get(int(label_id), "") for label_id in parental_label_ids]
     parental_label_ids = np.stack((parental_label_ids, regionAffectPercent))
     label_mat['ABLAbelsIDsParental'] = parental_label_ids
     label_mat['ABANamesPar'] = affected_label_names
     label_mat['ABAlabels'] = labelNames
+    label_mat['regionStrokeVolumeMM3'] = regionStrokeVolumeMM3
     label_mat['volumePer'] = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
     label_mat['volumeMM'] = strokeVolumeInCubicMM
-    sc.savemat(os.path.join(output_folder, 'labelCount_par.mat'), label_mat)
+    sc.savemat(os.path.join(output_folder, affected_regions_prefix + 'labelCount_par.mat'), label_mat)
 
 
 
