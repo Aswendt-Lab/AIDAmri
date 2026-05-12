@@ -60,6 +60,28 @@ def find_brkraw_nifti(input_folder):
     return matches[0]
 
 
+def load_label_table(label_file):
+    label_ids = []
+    label_names_by_id = {}
+    label_names = []
+
+    with open(label_file, 'r') as label_handle:
+        for line in label_handle:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split('\t', 1)
+            if len(parts) != 2:
+                sys.exit("Error: Invalid label line in '%s': %s" % (label_file, line,))
+            label_id = int(parts[0])
+            label_name = parts[1]
+            label_ids.append(label_id)
+            label_names_by_id[label_id] = label_name
+            label_names.append(label_name)
+
+    return np.array(label_ids, dtype=int), label_names_by_id, label_names
+
+
 def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_template_file, stroke_mask_file,
                                       incidence_lesion_mask_file, output_folder, label_file):
 
@@ -68,9 +90,9 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     ara_template_labels = ara_template_img.get_fdata()
     affected_template_labels = np.zeros([np.size(ara_template_labels, 0), np.size(ara_template_labels, 1), np.size(ara_template_labels, 2)])
 
-    # Load the parental label IDs from the MATLAB label file.
-    label_mat = sc.loadmat(label_file)
-    parental_label_ids = label_mat['ABLAbelsIDsParental']
+    # Load label IDs and names from the left/right-separated parental rsfMRI label table.
+    all_label_ids, label_names_by_id, labelNames = load_label_table(label_file)
+    parental_label_ids = all_label_ids.copy()
 
     # Save the template-space IncidenceData lesion mask labelled by the parental rsfMRI atlas.
     incidence_lesion_mask_img = nii.load(incidence_lesion_mask_file)
@@ -78,10 +100,8 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     incidence_lesion_mask[incidence_lesion_mask > 0.0] = 1.0
     incidence_lesion_mask[incidence_lesion_mask <= 0.0] = 0.0
 
-    parental_incidence_atlas_file = os.path.join(REPO_ROOT, 'lib', 'annoVolume+2000_rsfMRI.nii.gz')
-    parental_incidence_atlas_img = nii.load(parental_incidence_atlas_file)
-    ensure_same_grid(incidence_lesion_mask_img, parental_incidence_atlas_img, "parental incidence atlas")
-    parental_incidence_atlas = np.round(parental_incidence_atlas_img.get_fdata())
+    ensure_same_grid(incidence_lesion_mask_img, ara_template_img, "parental incidence atlas")
+    parental_incidence_atlas = np.round(ara_template_labels)
 
     labelled_incidence_lesion = parental_incidence_atlas*incidence_lesion_mask
     labelled_incidence_lesion_img = nii.Nifti1Image(labelled_incidence_lesion, incidence_lesion_mask_img.affine)
@@ -132,18 +152,13 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
 
     # Keep only label IDs that are actually affected by stroke (in the affected-label list)
     affected_label_ids = np.array(sorted(region_percent_by_label))
-    affected_label_mask = np.isin(parental_label_ids[:, 0], affected_label_ids)
-    parental_label_ids = parental_label_ids[affected_label_mask,0]
+    affected_label_mask = np.isin(parental_label_ids, affected_label_ids)
+    parental_label_ids = parental_label_ids[affected_label_mask]
     parental_label_id_set = set(int(label_id) for label_id in parental_label_ids)
 
     # Create an affected-region overlay in the reference atlas space.
     affected_template_mask = np.isin(ara_template_labels, affected_label_ids)
     affected_template_labels[affected_template_mask] = ara_template_labels[affected_template_mask]
-
-    # Offset one hemisphere by 2000 to preserve left/right label separation.
-    xdim = np.size(affected_template_labels, 0)
-    affected_template_labels[int(xdim / 2):xdim, :, :] = affected_template_labels[int(xdim / 2):xdim, :, :] + 2000
-    affected_template_labels[affected_template_labels == 2000] = 0
 
     # Save the affected parental regions as a NIfTI overlay.
     affected_regions_img = nii.Nifti1Image(affected_template_labels, ara_template_img.affine)
@@ -151,7 +166,10 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     brkraw_nifti_file = find_brkraw_nifti(output_folder)
     affected_regions_prefix = '%s_%s_' % (nifti_name_without_extension(brkraw_nifti_file),
                                           nifti_name_without_extension(ara_template_file))
-    output_file = os.path.join(output_folder, affected_regions_prefix + 'affectedRegions_Parental.nii.gz')
+    #Create affected Regions folder
+    affected_regions_dir = os.path.join(output_folder, 'affected Regions')
+    os.makedirs(affected_regions_dir, exist_ok=True)
+    output_file = os.path.join(affected_regions_dir, affected_regions_prefix + 'affectedRegions_Parental.nii.gz')
     nii.save(affected_regions_img, output_file)
 
     # Stroke volume calculation
@@ -167,31 +185,32 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     if brainVolumeInCubicMM == 0:
         sys.exit("Error: Brain mask volume is zero.")
 
-    # Load label names and write the CSV summary of affected parental regions.
-    lines =open(os.path.join(REPO_ROOT, 'lib', 'annoVolume.nii.txt')).readlines()
-    csv_file = open(os.path.join(output_folder, affected_regions_prefix + 'affectedRegions_Parental.csv'), 'w', newline='')
+    # Write the CSV summary of affected parental regions.
+    csv_file = open(os.path.join(affected_regions_dir, affected_regions_prefix + 'affectedRegions_Parental.csv'), 'w', newline='')
     csv_writer = csv.writer(csv_file)
-    csv_writer.writerow(['stroke_percent_of_brain', 'stroke_volume_mm3'])
-    csv_writer.writerow(["%0.2f" % ((strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100),
-                         "%0.4f" % strokeVolumeInCubicMM])
-    csv_writer.writerow([])
-    csv_writer.writerow(['Label_id', 'Brain region', 'Affected region percentage', 'Stroke volume_mm3'])
+    strokePercentOfBrain = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
+    csv_writer.writerow(['Label_id', 'Brain region', 'Affected region percentage', 'Region stroke volume_mm3', '',
+                         'Stroke percent of brain', 'Total stroke volume_mm3'])
     affected_label_names_by_id = {}
-    labelNames = ["" for x in range(np.size(lines))] #first creates list with empt strings as long as annoVolume.nii.txt
-    for i in range(len(lines)): #code goes through all lines in label file
-        # first part of line is label id, second part is label name (seperated by tabulator)
-        label_id = int(lines[i].split('\t')[0])
-        label_name = lines[i].split('\t')[1]
-        labelNames[i] = label_name
+    wrote_total_stroke_values = False
+    for label_id in all_label_ids:
+        label_name = label_names_by_id[label_id]
         # Only write rows for labels that are actually affected by stroke and are in the parental label set.
         if label_id in region_percent_by_label and label_id in parental_label_id_set:
             # Write label ID, label name, affected percentage, and absolute affected volume for each matched region.
             region_stroke_volume_mm3 = region_affected_voxels_by_label[label_id] * strokeVoxelVolumeMM3
+            if wrote_total_stroke_values:
+                total_stroke_percent = ''
+                total_stroke_volume = ''
+            else:
+                total_stroke_percent = "%0.2f" % strokePercentOfBrain
+                total_stroke_volume = "%0.4f" % strokeVolumeInCubicMM
+                wrote_total_stroke_values = True
             csv_writer.writerow([label_id, label_name, "%0.2f" % region_percent_by_label[label_id],
-                                 "%0.4f" % region_stroke_volume_mm3])
+                                 "%0.4f" % region_stroke_volume_mm3, '', total_stroke_percent,
+                                 total_stroke_volume])
             affected_label_names_by_id[label_id] = label_name
 
-            #o.write(str(int(lines[i].split('	')[0]) + 2000) + '	R_' + lines[i].split('	')[1])
     csv_file.close()
 
     # Store the same region statistics in a MATLAB file for downstream workflows.
@@ -200,13 +219,14 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
                                       for label_id in parental_label_ids])
     affected_label_names = [affected_label_names_by_id.get(int(label_id), "") for label_id in parental_label_ids]
     parental_label_ids = np.stack((parental_label_ids, regionAffectPercent))
+    label_mat = {}
     label_mat['ABLAbelsIDsParental'] = parental_label_ids
     label_mat['ABANamesPar'] = affected_label_names
     label_mat['ABAlabels'] = labelNames
     label_mat['regionStrokeVolumeMM3'] = regionStrokeVolumeMM3
     label_mat['volumePer'] = (strokeVolumeInCubicMM / brainVolumeInCubicMM) * 100
     label_mat['volumeMM'] = strokeVolumeInCubicMM
-    sc.savemat(os.path.join(output_folder, affected_regions_prefix + 'labelCount_par.mat'), label_mat)
+    sc.savemat(os.path.join(affected_regions_dir, affected_regions_prefix + 'labelCount_par.mat'), label_mat)
 
 
 
@@ -229,12 +249,12 @@ def find_single_file(input_folder, pattern, description):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='Calculate incidence sizes of parental regions. You do not need to enter single files, but the path to the .../T2w folder')
+    parser = argparse.ArgumentParser(description='Calculate incidence sizes of parental regions. You do not need to enter single files, but the path to the .../anat folder which includes the T2 data')
     requiredNamed = parser.add_argument_group('Required named arguments')
-    requiredNamed.add_argument('-i', '--inputFolder', help='.../T2w', required=True)
+    requiredNamed.add_argument('-i', '--inputFolder', help='.../anat', required=True)
 
-    parser.add_argument('-a', '--allenBrain_anno', help='File: parental Allen/ARA annotation template', nargs='?', type=str,
-                        default=os.path.join(REPO_ROOT, 'lib', 'annoVolume.nii.gz'))
+    parser.add_argument('-a', '--allenBrain_anno', help='File: left/right-separated parental rsfMRI annotation template', nargs='?', type=str,
+                        default=os.path.join(REPO_ROOT, 'lib', 'annoVolume+2000_rsfMRI.nii.gz'))
 
     input_folder = None
     allen_template_file = None
@@ -256,7 +276,7 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing file." % (allen_template_file,))
 
     # Resolve static label resources from the repository lib folder.
-    label_file = os.path.join(REPO_ROOT, 'lib', 'rsfMRILablelID.mat')
+    label_file = os.path.join(REPO_ROOT, 'lib', 'annoVolume+2000_rsfMRI.nii.txt')
     ara_template_file = allen_template_file
 
     # Collect exactly one required subject file from the input folder.
