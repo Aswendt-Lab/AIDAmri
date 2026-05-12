@@ -167,7 +167,7 @@ def calculate_parental_stroke_overlap(brain_file, parental_annotation_file, ara_
     affected_regions_prefix = '%s_%s_' % (nifti_name_without_extension(brkraw_nifti_file),
                                           nifti_name_without_extension(ara_template_file))
     #Create affected Regions folder
-    affected_regions_dir = os.path.join(output_folder, 'affected Regions')
+    affected_regions_dir = os.path.join(output_folder, 'affected_Regions')
     os.makedirs(affected_regions_dir, exist_ok=True)
     output_file = os.path.join(affected_regions_dir, affected_regions_prefix + 'affectedRegions_Parental.nii.gz')
     nii.save(affected_regions_img, output_file)
