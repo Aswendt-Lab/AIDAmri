@@ -13,7 +13,6 @@ import atexit
 import argparse
 import os
 import glob
-import dsi_tools
 import shutil
 import gzip
 import subprocess
@@ -55,23 +54,29 @@ def should_enable_process_log():
         return False
     return os.isatty(sys.stdout.fileno()) and os.isatty(sys.stderr.fileno())
 
+
+def normalize_track_params(values):
+    if len(values) == 1:
+        return values[0]
+    if len(values) != 8:
+        raise argparse.ArgumentTypeError(
+            "-t/--track_params expects one preset name or exactly 8 custom values: "
+            "tract_count step_size turning_angle check_ending fa_threshold smoothing min_length max_length"
+        )
+    return values
+
+
+def positive_int(value):
+    try:
+        parsed = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{value} is not an integer")
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be >= 1")
+    return parsed
+
+
 if __name__ == '__main__':
-    # Resolve helper files relative to this script so the mounted repo can be
-    # executed directly without depending on the shell's current directory.
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Keep the DSI Studio binary path in a sidecar file next to this script.
-    dsi_path_file = os.path.join(script_dir, "dsi_studioPath.txt")
-    with open(dsi_path_file, "r") as f:
-        dsi_studio = f.read().splitlines()[0]
-
-    # Use explicit b-table paths only when the user asks for them. In auto
-    # mode, the pipeline now requires a real .bval/.bvec pair.
-    b_table = None
-    gradient_pair = None
-
-    # Connectivity outputs are written relative to the DWI directory.
-    connectivity_dir_name = r'connectivity'
-
     # Defining CLI flags
     parser = argparse.ArgumentParser(description='Get connectivity of DTI dataset')
     requiredNamed = parser.add_argument_group('Required named arguments')
@@ -109,12 +114,13 @@ if __name__ == '__main__':
                        )
     parser.add_argument('-t',
                         '--track_params',
-                        default='default',
+                        nargs='+',
+                        default=['default'],
                         help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
                         required=False
                        )
     parser.add_argument('--thread_count',
-                        type=int,
+                        type=positive_int,
                         default=1,
                         help='Specify the number of threads to use for fiber tracking. Default is 1.',
                         required=False
@@ -132,9 +138,44 @@ if __name__ == '__main__':
     parser.add_argument('-o',
                         '--optional',
                         nargs = '*',
+                        choices=['fa0', 'nii_gz'],
                         help = 'Optional arguments.\n\t"fa0": Renames the FA metric data to the former DSI naming convention.\n\t"nii_gz": Compresses legacy .nii files in DSI_studio to .nii.gz.'
                         )
     args = parser.parse_args()
+
+    try:
+        args.track_params = normalize_track_params(args.track_params)
+    except argparse.ArgumentTypeError as e:
+        parser.error(str(e))
+
+    if str(args.make_isotropic).lower() == 'auto':
+        make_isotropic = 'auto'
+    else:
+        try:
+            make_isotropic = float(args.make_isotropic)
+        except ValueError:
+            parser.error(
+                f'Invalid --make_isotropic value "{args.make_isotropic}". '
+                'Use 0, "auto", or a voxel size in mm, e.g. 0.2.'
+            )
+
+    import dsi_tools
+
+    # Resolve helper files relative to this script so the mounted repo can be
+    # executed directly without depending on the shell's current directory.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Keep the DSI Studio binary path in a sidecar file next to this script.
+    dsi_path_file = os.path.join(script_dir, "dsi_studioPath.txt")
+    with open(dsi_path_file, "r") as f:
+        dsi_studio = f.read().splitlines()[0]
+
+    # Use explicit b-table paths only when the user asks for them. In auto
+    # mode, the pipeline now requires a real .bval/.bvec pair.
+    b_table = None
+    gradient_pair = None
+
+    # Connectivity outputs are written relative to the DWI directory.
+    connectivity_dir_name = r'connectivity'
 
     dwi_dir = os.path.dirname(args.file_in)
     process_log = os.path.join(dwi_dir, "process.log")
@@ -169,11 +210,6 @@ if __name__ == '__main__':
 
     brain_mask_file = mask_candidates[0]
     dwi_output_anchor = args.file_in
-
-    if str(args.make_isotropic).lower() == 'auto':
-        make_isotropic = 'auto'
-    else:
-        make_isotropic = float(args.make_isotropic)
 
     # Prefer denoised DWI data when the preprocessing step created it.
     dwi_input_file = args.file_in
