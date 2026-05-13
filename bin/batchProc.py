@@ -533,7 +533,7 @@ if __name__ == "__main__":
         choices=["none", "mico", "ants"],
         type=str.lower,
         default = "mico",
-        help="Bias field correction method for T2 (none, mico or ants)"
+        help="Bias field correction method for T2 (none, mico or ants). Default: mico"
     )
     t2.add_argument(
         "--t2-bet-skip",
