@@ -92,6 +92,12 @@ def _log_base_from_input(input_path: str) -> str:
     # If input is a file -> log in its parent dir
     return input_path if os.path.isdir(input_path) else os.path.dirname(input_path)
 
+def _quote(value) -> str:
+    '''
+    Safely quote a value for shell command usage, handling spaces and special characters.
+    '''
+    return shlex.quote(str(value))
+
 def run_subprocess(command, datatype, step, anat_process=False):
     timeout = 3600
     command_args = shlex.split(command)
@@ -174,7 +180,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*T2w.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python preProcessing_T2.py -i {currentFile[0]}'
+                    command = f'python preProcessing_T2.py -i {_quote(currentFile[0])}'
 
                     # Bias field correction for T2: none | mico | ants
                     if cfg.get("t2_bias_method"):
@@ -211,12 +217,10 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '2.1_T2PreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python registration_T2.py -i {currentFile[0]}'
-                    r1 = run_subprocess(f'python registration_T2.py -i {currentFile[0]}', dataFormat, step)
+                    r1 = run_subprocess(f'python registration_T2.py -i {_quote(currentFile[0])}', dataFormat, step)
                     if r1 != 0:
                         errorList.append(r1)
-                    command = f'python t2_value_extraction.py -i {currentFile[0]}'
-                    r2 = run_subprocess(f'python t2_value_extraction.py -i {currentFile[0]}', dataFormat, step)
+                    r2 = run_subprocess(f'python t2_value_extraction.py -i {_quote(currentFile[0])}', dataFormat, step)
                     if r2 != 0:
                         errorList.append(r2)
                 else:
@@ -233,17 +237,17 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     #print(message, flush=True)
                     return 0
                 os.chdir(os.path.join(cwd, '3.1_T2Processing'))
-                command = f'python getIncidenceSize_par.py -i {str(currentPath_wData)}'
+                command = f'python getIncidenceSize_par.py -i {_quote(currentPath_wData)}'
                 result = run_subprocess(command, dataFormat, step)
                 if isinstance(result, tuple) and len(result) == 4:
                     os.chdir(os.path.join(cwd, '3.1_T2Processing'))
 
-                    r_par = run_subprocess(f'python getIncidenceSize_par.py -i {str(currentPath_wData)}',
+                    r_par = run_subprocess(f'python getIncidenceSize_par.py -i {_quote(currentPath_wData)}',
                                            dataFormat, step)
 
                     if r_par != 0:
                         errorList.append(r_par)
-                        r_ser = run_subprocess(f'python getIncidenceSize.py -i {str(currentPath_wData)}',
+                        r_ser = run_subprocess(f'python getIncidenceSize.py -i {_quote(currentPath_wData)}',
                                                dataFormat, step, anat_process=True)
                         if r_ser != 0:
                             errorList.append(r_ser)
@@ -256,7 +260,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python preProcessing_fMRI.py -i {currentFile[0]}'
+                    command = f'python preProcessing_fMRI.py -i {_quote(currentFile[0])}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -269,7 +273,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '2.3_fMRIPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*SmoothBet.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python registration_rsfMRI.py -i {currentFile[0]}'
+                    command = f'python registration_rsfMRI.py -i {_quote(currentFile[0])}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -282,7 +286,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
-                    command = f'python process_fMRI.py -i {currentFile[0]} -stc {stc}'
+                    command = f'python process_fMRI.py -i {_quote(currentFile[0])} -stc {stc}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -292,7 +296,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*MEMS.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python preProcessing_T2MAP.py -i {currentFile[0]}'
+                    command = f'python preProcessing_T2MAP.py -i {_quote(currentFile[0])}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -305,7 +309,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*SmoothMicoBet.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python registration_T2MAP.py -i {currentFile[0]}'
+                    command = f'python registration_T2MAP.py -i {_quote(currentFile[0])}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -315,9 +319,10 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     errorList.append(message)
                 os.chdir(cwd)
             elif step == "process":
+                os.chdir(os.path.join(cwd, '4.1_T2mapPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*T2w_MAP.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python t2map_data_extract.py -i {currentFile[0]}'
+                    command = f'python t2map_data_extract.py -i {_quote(currentFile[0])}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -331,7 +336,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*dwi.nii.gz"))
                 if len(currentFile) > 0:
-                    command = f'python preProcessing_DTI.py -i {currentFile[0]}'
+                    command = f'python preProcessing_DTI.py -i {_quote(currentFile[0])}'
 
                     # DWI BET parameter (only append if set, otherwise use script defaults)
                     if cfg.get("dwi_frac") is not None:
@@ -361,7 +366,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                         command += ' --average_b0'
 
                     if cfg.get("dwi_skip_min"):
-                        command += ' --skip_min'
+                        command += ' --skip_min_projection'
 
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
@@ -375,7 +380,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 os.chdir(os.path.join(cwd, '2.2_DTIPreProcessing'))
                 currentFile = sorted(currentPath_wData.glob("*Smooth*Bet.nii.gz"))
                 if len(currentFile)>0:
-                    command = f'python registration_DTI.py -i {currentFile[0]}'
+                    command = f'python registration_DTI.py -i {_quote(currentFile[0])}'
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -392,25 +397,32 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 if len(currentFile)>0:
                     # Pull values from cfg (with defaults)
                     track_param = cfg.get("dsi_track_param", "default")
+                    if isinstance(track_param, (list, tuple)):
+                        track_param_args = ' '.join(_quote(item) for item in track_param)
+                    else:
+                        track_param_args = _quote(track_param)
                     recon_method = cfg.get("dsi_recon_method", "dti")
                     vivo = cfg.get("dsi_vivo", "in_vivo")
                     make_iso = cfg.get("dsi_make_isotropic", "0")
-                    template_val = str(cfg.get("dsi_template", "mouse"))
+                    b_table = cfg.get("dsi_b_table", "auto")
+                    optional = cfg.get("dsi_optional")
                     thread_count = cfg.get("num_processes", 1)
                     legacy = bool(cfg.get("dsi_legacy", False))
-                    no_mcf = bool(cfg.get("dsi_no_mcf", False))
+                    skip_motion_correction = bool(cfg.get("dsi_skip_motion_correction", False))
 
                     cli_str = (
-                        f'dsi_main.py -i {currentFile[0]} '
-                        f'-t {track_param} -r {recon_method} -v {vivo} -m {make_iso} '
-                        f'-template {template_val} -thread_count {thread_count}'
+                        f'dsi_main.py -i {_quote(currentFile[0])} '
+                        f'-b {_quote(b_table)} '
+                        f'-t {track_param_args} -r {_quote(recon_method)} '
+                        f'-v {_quote(vivo)} -m {_quote(make_iso)} '
+                        f'--thread_count {thread_count}'
                     )
-                    if cfg.get("dsi_flip_image_y", cfg.get("flip_image_y", False)):
-                        cli_str += ' -y'
                     if legacy:
                         cli_str += ' -l'
-                    if no_mcf:
-                        cli_str += ' ---no_motion_correction'
+                    if skip_motion_correction:
+                        cli_str += ' --skip_motion_correction'
+                    if optional:
+                        cli_str += ' -o ' + ' '.join(_quote(item) for item in optional)
 
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
@@ -453,8 +465,7 @@ if __name__ == "__main__":
             "Example:\n"
             "python batchProc.py -i /path/to/proc_data -t anat dwi "
             "--t2-frac 0.15 --t2-bias-method mico "
-            "--dwi-denoiser patch2self "
-            "--dsi-template mouse"
+            "--dwi-denoiser patch2self"
         ),
         formatter_class=argparse.RawTextHelpFormatter
     )
@@ -595,10 +606,10 @@ if __name__ == "__main__":
     )
     dwi.add_argument(
         "--dwi-bias-method",
-        choices=["mico", "ants"],
+        choices=["none", "mico", "ants"],
         type=str.lower,
         default=None,
-        help="Bias field correction for DWI: MICO or ANTs (default: None)"
+        help="Bias field correction for DWI: none, MICO or ANTs (default: None)"
     )
     # ============================================================
     # BET / ANIMAL-SPECIFIC
@@ -614,6 +625,11 @@ if __name__ == "__main__":
     # DSI STUDIO / TRACTOGRAPHY (dsi_main.py)
     # ============================================================
     dsi = parser.add_argument_group("DSI Studio / tractography (dsi_main.py)")
+    dsi.add_argument(
+        "--dsi-b-table",
+        default="auto",
+        help='Diffusion gradient source: "auto" or explicit b-table path'
+    )
     dsi.add_argument(
         "--dsi-recon-method",
         default="dti",
@@ -634,31 +650,27 @@ if __name__ == "__main__":
         help="Voxel size (mm) for isotropic resampling (0 = off, auto = header)"
     )
     dsi.add_argument(
-        "--dsi-flip-image-y",
-        action="store_true",
-        help="Flip image in Y direction before DSI processing"
-    )
-    dsi.add_argument(
-        "--dsi-template",
-        choices = ["mouse", "rat"],
-        type=str.lower,
-        default="mouse",
-        help="DSI template (mouse or rat)"
-    )
-    dsi.add_argument(
         "--dsi-track-param",
+        nargs="+",
         default="default",
-        help="Tracking parameter preset (default, mouse, rat, aida_optimized)"
+        help="Tracking parameter preset or 8 custom values"
     )
     dsi.add_argument(
-        "--dsi-no-mcf",
+        "--dsi-skip-motion-correction",
+        dest="dsi_skip_motion_correction",
         action="store_true",
-        help="Skip slice-wise MCFLIRT motion correction"
+        help="Skip slice-wise motion correction"
     )
     dsi.add_argument(
         "--dsi-legacy",
         action="store_true",
         help="Enable legacy .fib.gz / .src.gz support"
+    )
+    dsi.add_argument(
+        "--dsi-optional",
+        nargs="*",
+        choices=["fa0", "nii_gz"],
+        help="Optional dsi_main compatibility outputs (fa0, nii_gz)"
     )
 
     args = parser.parse_args()
@@ -712,15 +724,15 @@ if __name__ == "__main__":
     cfg = vars(args)
     cfg["num_processes"] = num_processes
     logging.info(
-        "DSI settings: recon=%s vivo=%s make_isotropic=%s flip_y=%s template=%s track_param=%s no_mcf=%s legacy=%s",
+        "DSI settings: b_table=%s recon=%s vivo=%s make_isotropic=%s track_param=%s skip_motion_correction=%s legacy=%s optional=%s",
+        args.dsi_b_table,
         args.dsi_recon_method,
         args.dsi_vivo,
         args.dsi_make_isotropic,
-        args.dsi_flip_image_y,
-        args.dsi_template,
         args.dsi_track_param,
-        args.dsi_no_mcf,
-        args.dsi_legacy)
+        args.dsi_skip_motion_correction,
+        args.dsi_legacy,
+        args.dsi_optional)
 
     for key, value in all_files.items():
         if value:
