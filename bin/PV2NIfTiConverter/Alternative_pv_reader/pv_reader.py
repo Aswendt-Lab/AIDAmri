@@ -324,7 +324,7 @@ class ParaVision:
         self.nifti_image = nii.Nifti1Image(data.reshape(data_dims, order='F'), None)
 
         # NIfTI header
-        header = self.nifti_image.get_header()
+        header = self.nifti_image.header
         header.set_data_dtype(data.dtype)
         header.set_data_shape(data_dims)
         #header.set_zooms(voxel_dims)

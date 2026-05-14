@@ -17,7 +17,7 @@ import glob
 import shutil
 import regress
 import getSingleRegTable
-import scipy.misc as mc
+import cv2
 import create_seed_rois
 import fsl_mean_ts
 from pathlib import Path 
@@ -39,7 +39,11 @@ def imgScaleResize(img):
     newImg = np.zeros([128,128,20,355])
     for i in range(img.shape[3]):
         for j in range(img.shape[2]):
-            newImg[:,:,j,i]=mc.imresize(img[:,:,j,i],1.34,interp='nearest')
+            newImg[:, :, j, i] = cv2.resize(
+                img[:, :, j, i],
+                (newImg.shape[1], newImg.shape[0]),
+                interpolation=cv2.INTER_NEAREST
+            )
 
     return newImg
 
@@ -199,7 +203,7 @@ def copyRawPhysioData(file_name,i32_Path):
 
     if len(relatedPhysioData)>1:
         sys.exit("Warning: '%s' has no unique physio data for scan %s." % (physioPath, scanid,))
-    if len(relatedPhysioData) is 0:
+    if len(relatedPhysioData) == 0:
         print("Error: '%s' has no related physio data for scan %s." % (physioPath, scanid,))
         return []
 
@@ -270,7 +274,7 @@ def startProcess(Rawfile_name):
     relatedPhysioFolder = copyRawPhysioData(Rawfile_name,i32_Path)
 
     # get Regression Values
-    if len(relatedPhysioFolder) is not 0:
+    if len(relatedPhysioFolder) != 0:
         getSingleRegTable.getRegrTable(os.path.dirname(Rawfile_name),relatedPhysioFolder,par_Path)
     else:
         print("Error: Processing not possible, because either there is no folder called Physio or the related physio data for the scan is missing there.")
