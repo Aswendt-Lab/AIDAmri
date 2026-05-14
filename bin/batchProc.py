@@ -99,7 +99,7 @@ def _quote(value) -> str:
     return shlex.quote(str(value))
 
 def run_subprocess(command, datatype, step, anat_process=False):
-    timeout = 3600
+    timeout = 5400 #timeout (sec) for subprocess
     command_args = shlex.split(command)
 
     inp = _get_arg_after(["-i", "--input", "--input_file"], command_args)
