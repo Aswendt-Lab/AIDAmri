@@ -134,7 +134,7 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 def findIncData(path):
     regMR_list = []
 
-    for filename in glob.iglob(path+'*/*IncidenceData.nii.gz', recursive=False):
+    for filename in glob.iglob(os.path.join(path, '**', '*IncidenceData.nii.gz'), recursive=True):
         regMR_list.append(filename)
 
     return regMR_list

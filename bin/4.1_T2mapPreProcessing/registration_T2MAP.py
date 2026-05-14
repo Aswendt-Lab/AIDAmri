@@ -90,7 +90,13 @@ def regABA2T2map(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,b
 
 
 def find_RefStroke(refStrokePath,inputVolume):
-    path =  glob.glob(refStrokePath+'/' + os.path.basename(inputVolume)[0:9]+'*/anat/*IncidenceData_mask.nii.gz', recursive=False)
+    search_patterns = [
+        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9] + '*', 'anat', 'IncidenceData', 'IncidenceData_Lesion_mask.nii.gz'),
+        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9] + '*', 'anat', '*IncidenceData_mask.nii.gz'),
+    ]
+    path = []
+    for pattern in search_patterns:
+        path.extend(glob.glob(pattern, recursive=False))
     return path
 
 def find_RefAff(inputVolume):
@@ -149,31 +155,31 @@ if __name__ == "__main__":
 
     # find related  data
     pathT2, pathStroke_mask, pathAnno, pathTemplate, bsplineMatrix = find_relatedData(os.path.dirname(outfile))
-    if len(pathT2) is 0:
+    if len(pathT2) == 0:
         T2data = []
         sys.exit("Error: %s' has no reference T2 template." % (os.path.basename(inputVolume),))
     else:
         T2data = pathT2[0]
 
-    if len(pathStroke_mask) is 0:
+    if len(pathStroke_mask) == 0:
         pathStroke_mask = []
         print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
     else:
         stroke_mask = pathStroke_mask[0]
 
-    if len(pathAnno) is 0:
+    if len(pathAnno) == 0:
         pathAnno = []
         sys.exit("Error: %s' has no reference annotations." % (os.path.basename(inputVolume),))
     else:
         brain_anno = pathAnno[0]
 
-    if len(pathTemplate) is 0:
+    if len(pathTemplate) == 0:
         pathTemplate = []
         sys.exit("Error: %s' has no reference template." % (os.path.basename(inputVolume),))
     else:
         brain_template = pathTemplate[0]
 
-    if len(bsplineMatrix) is 0:
+    if len(bsplineMatrix) == 0:
         bsplineMatrix = []
         sys.exit("Error: %s' has no bspline Matrix." % (os.path.basename(inputVolume),))
     else:
@@ -189,7 +195,7 @@ if __name__ == "__main__":
         if not os.path.exists(refStrokePath):
             sys.exit("Error: '%s' is not an existing directory." % (refStrokePath,))
         refStroke_mask = find_RefStroke(refStrokePath, inputVolume)
-        if len(refStroke_mask) is 0:
+        if len(refStroke_mask) == 0:
             refStroke_mask = []
             print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
         else:
@@ -227,6 +233,4 @@ if __name__ == "__main__":
         continue
 
     print("Registration completed")
-
-
 

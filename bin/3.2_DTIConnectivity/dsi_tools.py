@@ -239,6 +239,78 @@ def strip_nifti_suffix(path):
     return os.path.splitext(name)[0]
 
 
+def create_stroke_mask_label_file(stroke_mask_anno_path):
+    """
+    Create the DSI Studio label file for a labelled stroke ROI image.
+
+    DSI Studio looks for a .txt file with the same basename as the ROI NIfTI.
+    The stroke_mask_anno image contains atlas grey values only inside the
+    stroke mask, so keep just the matching lines from the parental atlas LUT
+    in the same folder.
+    """
+    roi_stem = strip_nifti_suffix(stroke_mask_anno_path)
+    if not roi_stem.endswith("Stroke_mask_anno"):
+        return None
+
+    roi_dir = os.path.dirname(stroke_mask_anno_path)
+    label_path = os.path.join(roi_dir, roi_stem + ".txt")
+    lut_candidates = sorted(glob.glob(os.path.join(roi_dir, "*AnnoSplit_parental.txt")))
+
+    if not lut_candidates:
+        print(f"WARNING: No '*AnnoSplit_parental.txt' label file found in {roi_dir}")
+        return None
+
+    if len(lut_candidates) > 1:
+        print(
+            "WARNING: Multiple '*AnnoSplit_parental.txt' label files found. "
+            f"Using {lut_candidates[0]}"
+        )
+
+    lut_path = lut_candidates[0]
+
+    data = nib.load(stroke_mask_anno_path).get_fdata()
+    finite_values = data[np.isfinite(data)] #only keep finite numbers exclude NaN or infinite
+    unique_values = np.unique(finite_values[finite_values > 0]) #exclude background
+    unique_labels = {int(round(value)) for value in unique_values} #make integer
+
+    if not unique_labels:
+        print(f"WARNING: No non-zero labels found in {stroke_mask_anno_path}")
+        return None
+
+    #Look for matching line in *AnnoSplit_parental.txt
+    matched_lines = []
+    with open(lut_path, "r") as lut_file:
+        for line in lut_file:
+            stripped = line.strip()
+            if not stripped:
+                continue
+
+            label_parts = stripped.split(None, 1)
+            label_token = label_parts[0] #Grey value
+            try:
+                label_id = int(float(label_token))
+            except ValueError:
+                continue
+
+            if label_id in unique_labels: #filter
+                label_name = label_parts[1] if len(label_parts) > 1 else ""
+                matched_lines.append(f"{label_token} Stroke_{label_name}".rstrip("_"))
+
+    if not matched_lines:
+        print(
+            f"WARNING: No labels from {stroke_mask_anno_path} were found in "
+            f"{lut_path}"
+        )
+        return None
+
+    #write Stroke_mask_anno.txt
+    with open(label_path, "w") as label_file:
+        label_file.write("\n".join(matched_lines) + "\n")
+
+    print(f"Created stroke mask label file: {label_path}")
+    return label_path
+
+
 def reorient_nifti_to_lip(nifti_path):
     """
     Reorder a NIfTI image to LIP orientation in-place.
@@ -430,13 +502,14 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     # param0 is currently reported for traceability only. The active DSI Studio
     # command below does not pass it unless the reconstruction command is extended.
+    '''
     param_zero='1.25'
     if vivo == "ex_vivo":
         param_zero='0.60'
         print(f'Using param0 value {param_zero} recommended for ex vivo data')
     elif vivo == "in_vivo":
         print(f'Using param0 value {param_zero} recommended for in vivo data')
-
+    '''
     min_vox_size_mm = get_min_voxel_size_mm(source_image_file)
 
     if str(make_isotropic).lower() == "auto":
@@ -751,6 +824,9 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
         )
 
         seed_file = resampled_seeds_path
+
+    create_stroke_mask_label_file(seed_file)
+
     # Performs analysis on every connectivity value and type. DSI Studio reuses
     # the same default connectivity filename, so each result must be renamed
     # immediately after the corresponding command finishes.

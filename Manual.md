@@ -465,13 +465,26 @@ python getIncidenceSize_par.py -i .../testData/T2w
 python getIncidenceSize.py -i .../testData/T2w
 ```
 
-The results, such as affected regions and ROI volume, are stored in the folder `.../T2w` in the following files:
+The parental affected-region results from `getIncidenceSize_par.py` are stored in `.../anat/affected Regions`:
 
 ```text
-affectedRegions.txt
+*affectedRegions_Parental.csv
+*affectedRegions_Parental.nii.gz
+*labelCount_par.mat
+```
+
+The labelled parental incidence lesion mask is stored in `.../anat/IncidenceData`:
+
+```text
+*IncidenceData_Anno_parental_lesion_mask.nii.gz
+```
+
+The non-parental results from `getIncidenceSize.py` are stored directly in `.../anat`:
+
+```text
 affectedRegions.nii.gz
-affectedRegions_Parental.txt
-affectedRegions_Parental.nii.gz
+affectedRegions.txt
+labelCount.mat
 ```
 
 ### Processing of ROI stroke mask data

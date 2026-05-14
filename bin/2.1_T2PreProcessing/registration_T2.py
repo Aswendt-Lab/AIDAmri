@@ -30,7 +30,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         raise
 
     # Inverse registration
-    outputInc = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
+    incidence_outfile = os.path.join(outfile, 'IncidenceData')
+    os.makedirs(incidence_outfile, exist_ok=True)
+    outputInc = os.path.join(incidence_outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
     outputIncAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixInv.txt')
 
     command = f"reg_aladin -ref {allenBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
@@ -44,7 +46,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
 
     # if region such as stroke_mask is defined
     if len(stroke_mask) > 0:
-        outputIncStrokeMask = os.path.join(outfile, os.path.basename(outputInc).split('.')[0] + '_mask.nii.gz')
+        outputIncStrokeMask = os.path.join(incidence_outfile,os.path.basename(outputInc).split('.')[0] + '_Lesion_mask.nii.gz')
 
         command = f"reg_resample -ref {allenBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
         command_args = shlex.split(command)
@@ -276,6 +278,5 @@ if __name__ == "__main__":
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
         
     print("Registration completed")
-
 
 

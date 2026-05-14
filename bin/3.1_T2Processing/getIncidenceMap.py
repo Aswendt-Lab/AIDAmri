@@ -95,8 +95,13 @@ def incidenceMap2(path_listInc, araTemplate, inputLocation, outputLocation, pref
 
 def findIncData(path):
     regMR_list = []
-    for filename in glob.iglob(os.path.join(path,"*","*",'anat', '*IncidenceData_mask.nii.gz')):
-        regMR_list.append(filename)
+    search_patterns = [
+        os.path.join(path, "*", "*", "anat", "IncidenceData", "IncidenceData_Lesion_mask.nii.gz"),
+        os.path.join(path, "*", "*", "anat", "*IncidenceData_mask.nii.gz"),
+    ]
+    for pattern in search_patterns:
+        for filename in glob.iglob(pattern):
+            regMR_list.append(filename)
     return regMR_list
 
 
