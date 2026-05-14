@@ -31,7 +31,7 @@ def circle_mask(n=8):
     return circle
 
 def dilate_repeat(image, connectivity=1, n=8):
-    dilated = np.copy(image).astype(np.bool)
+    dilated = np.copy(image).astype(bool)
     struct = ndimage.generate_binary_structure(2, connectivity)
     for _ in zrange(n):
         dilated = ndimage.binary_dilation(dilated, structure=struct)
@@ -40,7 +40,7 @@ def dilate_repeat(image, connectivity=1, n=8):
     return dilated
 
 def dilate_struct(image, struct):
-    dilated = np.copy(image).astype(np.bool)
+    dilated = np.copy(image).astype(bool)
     dilated = ndimage.binary_dilation(dilated, structure=struct)
     dilated = np.subtract(dilated.astype(image.dtype), image)
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     struct = circle_mask()
     for k in zrange(data.shape[2]):
         image = data[:, :, k]
-        if np.any(image.astype(np.bool)):
+        if np.any(image.astype(bool)):
             #data[:, :, k] = dilate_repeat(image)
             data[:, :, k] = dilate_struct(image, struct)
 

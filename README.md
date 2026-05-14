@@ -52,122 +52,6 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 
 We fully moved to the containerized version of AIDAmri via [Docker](https://docs.docker.com/get-docker/). All information can be found in the manual above. Please report issues and bugs directly in the issue section of this repository or at gitter (Link below in the contact section).
 
-<details>
-<summary>Note for Linux Users</summary></b>
-When building the AIDAmri Docker image on a Linux system, you may encounter warning messages related to undefined environment variables. Specifically, the following warnings may appear:
-
-```
-3 warnings found (use docker --debug to expand):
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
- - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
-```
-
-These warnings indicate that certain environment variables referenced in the Dockerfile are either not defined or not properly initialized during the build process.
-
-### Recommended Solution:
-To ensure compatibility and suppress these warnings, edit the `Dockerfile` in the AIDAmri directory. Replace lines **30–93** with the corrected version below, ensuring that all relevant environment variables are explicitly declared and exported: 
-
-```
-# NiftyReg preparation and installation
-RUN apt update && apt install -y gcc-7 g++-7
-
-RUN mkdir -p /aida/NiftyReg/niftyreg_source /aida/NiftyReg/niftyreg_build /aida/NiftyReg/niftyreg_install
-
-WORKDIR /aida/NiftyReg
-
-RUN git clone git://git.code.sf.net/p/niftyreg/git niftyreg_source && \
-    cd niftyreg_source && \
-    git reset --hard 83d8d1182ed4c227ce4764f1fdab3b1797eecd8d
-
-WORKDIR /aida/NiftyReg/niftyreg_build
-
-RUN cmake -D CMAKE_BUILD_TYPE=Release \
-          -D CMAKE_INSTALL_PREFIX=/aida/NiftyReg/niftyreg_install \
-          -D CMAKE_C_COMPILER=/usr/bin/gcc-7 \
-          ../niftyreg_source && \
-    make -j$(nproc) && \
-    make install
-
-ENV NIFTYREG_INSTALL=/aida/NiftyReg/niftyreg_install
-ENV PATH="${PATH}:${NIFTYREG_INSTALL}/bin"
-ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/lib:/lib:${NIFTYREG_INSTALL}/lib"
-
-WORKDIR /aida
-# download DSI studio
-RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2023.07.08/dsi_studio_ubuntu1804.zip &&\
-	unzip dsi_studio_ubuntu1804.zip -d dsi_studio_ubuntu1804 &&\
-	rm dsi_studio_ubuntu1804.zip
-
-# Python setup
-RUN apt install -y python3.7 python3-pip &&\
-	python3 -m pip install --user --upgrade pip &&\
-	apt-get install -y python3.7-venv &&\
-	apt clean &&\
-	rm -rf /var/lib/apt/lists/*
-ENV VIRTUAL_ENV=/opt/env
-RUN python3.7 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN	python3 -m pip install --upgrade setuptools
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip &&\
-	pip install -r requirements.txt
-
-# installation of FSL 5.0.11 with modified installer 
-# (disabling interactive allocation query)
-COPY fslinstaller_mod.py ./
-RUN python3 fslinstaller_mod.py -V 5.0.11
-
-# Configure environment
-ENV FSLDIR=/usr/local/fsl
-RUN . ${FSLDIR}/etc/fslconf/fsl.sh
-ENV FSLOUTPUTTYPE=NIFTI_GZ
-ENV PATH=${FSLDIR}/bin:${PATH}
-RUN export FSLDIR PATHs
-
-
-# copy bin/ and lib/ from AIDAmri into image
-COPY bin/ bin/
-RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
-ENV PATH=/aida/bin/3.2_DTIConnectivity:$PATH
-RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
-COPY lib/ lib/
-RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
-```
-
-</details>
-
-<details>
-<summary>Note for Users with ARM processors (Apple)</summary></b>
-If you intend to install AIDAmri on a system equipped with an ARM processor (e.g., Apple Silicon Macs from 2020 onwards), the Docker build command requires a slight modification.
-
-To build the Docker image, run the following command in your terminal (note the period at the end):
-
-```
-docker build --platform linux/amd64 -t aidamri:latest -f Dockerfile .
-```
-
-This command forces Docker to emulate an x86_64 environment on ARM-based systems. This build process takes some time—this is normal.
-During the build, you may encounter the following warnings:
-```
-3 warnings found (use docker --debug to expand):`
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
- - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
-```
-These warnings are non-critical and can be safely ignored.
-When creating a container from the image, you may also see:
-
-```
-WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
-```
-This warning appears because the image was built for a different architecture than your host system. 
-It can also be ignored and does not affect the functionality of the container.
-
-With these adjustments, AIDAmri can be used on ARM-based systems. However, if an x86_64 (non-ARM) system is available, 
-we recommend using it for better performance, as emulation may result in a general slowdown.
-</details>
-
 ## BRANCHES
 
 AIDAmri is organized into multiple branches to support development, collaboration, and species-specific adaptations:
@@ -190,10 +74,15 @@ rs-fMRI (functional connectivity scan).
 ## Data Format and Orientation Requirements
 
 AIDAmri supports data processing exclusively for datasets in NIfTI (.nii/.nii.gz) or Bruker formats. To ensure accurate registration and reproducible results, 
-all input data for preprocessing must be in LIP (Left-Inferior-Posterior) orientation.
+all input data for preprocessing must be in <ins>**LIP (Left-Inferior-Posterior)**</ins> orientation.
 Furthermore, the image header information must be consistent with the physical orientation of the data array. 
-Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation.
+Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation. 
+Please use FSL eyes for visual inspection and fslhd for checking the header information. FSL is already installed inside AIDAmri. More Information about FSL can be find [here](https://fsl.fmrib.ox.ac.uk/fsl/docs/).
 If your data is in a different orientation than LIP please use our ReorientBatch.py script in the helpertools folder. The script should be used after convert2Nifti script and can reorient the whole proc_data folder. 
+It is important that the folder contains only the NIFTI files to be reoriented. The folder must not contain any NIFTI files that have already been processed. 
+Furthermore, please note that after reorientation, tools such as Fiji or other tools that do not read the header of a NIFTI file will display the images only as the data was saved after reorientation. 
+For this reason, we recommend FSL Eyes, as this tool provides more information about the orientation. 
+
 
 ## Troubleshooting / Common Issues
 
@@ -242,7 +131,7 @@ AIDAmri expects LIP orientation for preprocessing.
 
 **Solution**
 
-We recommend verifying the NIfTI header information and the actual image orientation using the FSL tools `fsleyes` and `fslhd`. Installation instructions for FSL on the **host** system are available [here](https://fsl.fmrib.ox.ac.uk/fsl/docs/).
+We recommend verifying the NIfTI header information and the actual image orientation using the FSL tools `fsleyes` and `fslhd`.
 
 In cases where the images are not in a consistent LIP orientation, the provided reorientation script should be applied **after** `convert2nifti` and **prior to preprocessing**.:
 
@@ -347,7 +236,7 @@ If you encounter problems, report directly in [![Gitter](https://badges.gitter.i
 
 or 
 
-join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Google Meet](https://img.shields.io/badge/Google%20Meet-00897B?style=for-the-badge&logo=google-meet&logoColor=white)](https://meet.google.com/hsk-bmpj-meg)
+join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
 
 
 For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)

@@ -87,7 +87,7 @@ class Bruker2Nifti:
 
         # NIfTI header
         #header = nim.header
-        header = nim.get_header()
+        header = nim.header
         #print("header:"); print(header)
         header['pixdim'] = [0.0, hdr[5], hdr[6], hdr[7], hdr[8], 0.0, 0.0, 0.0]
         #nim.setXYZUnit('mm')
@@ -335,7 +335,7 @@ if __name__ == "__main__":
     listOfDirs = os.listdir(input_folder)
     listOfScans = [s for s in listOfDirs if s.isdigit()]
 
-    if len(listOfScans) is 0:
+    if len(listOfScans) == 0:
         sys.exit("Error: '%s' contains no numbered scans." % (input_folder,))
 
     print('Start to process ' + str(len(listOfScans)) + ' scans...')

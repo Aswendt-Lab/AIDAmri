@@ -18,19 +18,28 @@ import scipy.ndimage as ndimage
 
 
 def thresholding(volumeMR,maskImg,thres,k):
+    # Gaussian smoothing to reduce noise and enhance stroke regions
     volumeMR=ndimage.gaussian_filter(volumeMR, sigma=(1.3, 1.3, 1))
+
+    # Bool-Array: True for non-zero voxels in volumeMR, False for zero voxels
     zvalues = volumeMR != 0
 
     if k==1:
+        # Apply mask to focus on relevant brain regions, setting non-brain areas to zero
         volumeMR = volumeMR * maskImg[:, :, :]#, 0]
 
     if thres == 0:
+        # Calculate threshold as mean + 2*std of non-zero voxels, to separate stroke from non-stroke areas
         thres = np.mean(volumeMR[zvalues]) + 2*np.std(volumeMR[zvalues])
 
+    # bvalues true for voxels below threshold, false for voxels above threshold
     bvalues = volumeMR < thres
+    # Set voxels below threshold to zero, effectively removing non-stroke areas
     volumeMR[bvalues] = 0
 
+    # fvalues true for voxels above threshold, false for voxels below threshold
     fvalues = volumeMR >= thres
+    # Set voxels above threshold to 1, creating a binary mask of stroke regions
     volumeMR[fvalues] = 1
 
 
@@ -40,23 +49,23 @@ def thresholding(volumeMR,maskImg,thres,k):
 def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incidenceMask ,thres, outfile, labels):
 
     araDataTemplate  = nii.load(araDataTemplate)
-    realAraImg = araDataTemplate.get_data()
+    realAraImg = araDataTemplate.get_fdata()
     coloredAraLabels = np.zeros([np.size(realAraImg, 0), np.size(realAraImg, 1), np.size(realAraImg, 2)])
 
     matFile = sc.loadmat(labels)
     labMat = matFile['ABALabelIDs']
 
     maskData = nii.load(incidenceMask)
-    maskImg = maskData.get_data()
+    maskImg = maskData.get_fdata()
     oneValues = maskImg > 0.0
     maskImg[oneValues] = 1.0
     fileIndex = 0
 
     # get warped annos of the current mr
     dataAnno = nii.load(path_listAnno[fileIndex])
-    volumeAnno = np.round(dataAnno.get_data())
+    volumeAnno = np.round(dataAnno.get_fdata())
     dataMR = nii.load(path_listInc[fileIndex])
-    volumeMR = dataMR.get_data()
+    volumeMR = dataMR.get_fdata()
 
     strokeVolume = thresholding(volumeMR, maskImg, thres,1)
 
@@ -92,7 +101,7 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 
     # Stroke volume calculation
     betMask = nii.load(os.path.join(outfile,os.path.basename(path_listInc[fileIndex]).split('.')[0]+'_mask.nii.gz'))
-    betMaskImg = betMask.get_data()
+    betMaskImg = betMask.get_fdata()
     oneValues = betMaskImg > 0.0
     betMaskImg[oneValues] = 1.0
     strokeVolumeInCubicMM = np.sum(maskImg * (dataMR.affine[0, 0] * dataMR.affine[1, 1] * dataMR.affine[2, 2]))
@@ -125,7 +134,7 @@ def incidenceMap(path_listInc,path_listMR ,path_listAnno, araDataTemplate,incide
 def findIncData(path):
     regMR_list = []
 
-    for filename in glob.iglob(path+'*/*IncidenceData.nii.gz', recursive=False):
+    for filename in glob.iglob(os.path.join(path, '**', '*IncidenceData.nii.gz'), recursive=True):
         regMR_list.append(filename)
 
     return regMR_list

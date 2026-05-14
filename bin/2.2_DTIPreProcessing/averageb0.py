@@ -68,8 +68,20 @@ def averageb0(input_file, b0_thresh=100, use_mcflirt=False):
     if b0.shape[3] > 1:
         b0_filename = os.path.join(os.path.dirname(input_file),
                                    os.path.basename(input_file).split('.')[0] + '_b0.nii.gz')
-        b0_nii = nii.Nifti1Image(b0, data.affine)
-        b0_nii.header.set_xyzt_units('mm')
+        b0_nii = nii.Nifti1Image(b0.astype(np.float32), data.affine, header=data.header.copy())
+        b0_nii.set_qform(data.affine, code=1)
+        b0_nii.set_sform(data.affine, code=1)
+
+        hdr = b0_nii.header
+        hdr.set_data_dtype(np.float32)
+
+        space_unit, time_unit = hdr.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
+        hdr.set_xyzt_units(space_unit, time_unit)
+
         nii.save(b0_nii, b0_filename)
         if use_mcflirt is True:
             # use FSL mcflirt to align each b0 volume to the first b0 volume
@@ -82,15 +94,16 @@ def averageb0(input_file, b0_thresh=100, use_mcflirt=False):
             b0_mc = nii.load(b0_filename.replace(
                 '.nii.gz', '_mcflirt.nii.gz')).get_fdata()
             # average the b0 volumes
-            b0mean = np.mean(b0_mc, axis=3)
+            b0mean = np.mean(b0_mc, axis=3).astype(np.float32)
         elif use_mcflirt is False:
             # average the b0 volumes without mcflirt alignment
-            b0mean = np.mean(b0, axis=3)
+            b0mean = np.mean(b0, axis=3).astype(np.float32)
     else:
-        b0mean = np.mean(b0, axis=3)
+        b0mean = np.mean(b0, axis=3).astype(np.float32)
     unscaledNiiData = nii.Nifti1Image(b0mean, data.affine)
     hdrOut = unscaledNiiData.header
-    hdrOut.set_xyzt_units('mm')
+    hdrOut.set_data_dtype(np.float32)
+    #hdrOut.set_xyzt_units('mm')
     output_file = os.path.join(os.path.dirname(input_file),
                                os.path.basename(input_file).split('.')[0] + 'B0mean.nii.gz')
     nii.save(unscaledNiiData, output_file)

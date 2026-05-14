@@ -30,7 +30,9 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         raise
 
     # Inverse registration
-    outputInc = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
+    incidence_outfile = os.path.join(outfile, 'IncidenceData')
+    os.makedirs(incidence_outfile, exist_ok=True)
+    outputInc = os.path.join(incidence_outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
     outputIncAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixInv.txt')
 
     command = f"reg_aladin -ref {allenBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
@@ -44,7 +46,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
 
     # if region such as stroke_mask is defined
     if len(stroke_mask) > 0:
-        outputIncStrokeMask = os.path.join(outfile, os.path.basename(outputInc).split('.')[0] + '_mask.nii.gz')
+        outputIncStrokeMask = os.path.join(incidence_outfile,os.path.basename(outputInc).split('.')[0] + '_Lesion_mask.nii.gz')
 
         command = f"reg_resample -ref {allenBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
         command_args = shlex.split(command)
@@ -148,13 +150,13 @@ def find_nearest(array,value):
 
 def clearAnno(araAnno,realBrain_anno,outfile):
     araData = nii.load(araAnno)
-    araVol = araData.get_data()
+    araVol = np.asanyarray(araData.dataobj)
     nullValues = araVol < 0.0
     araVol[nullValues] = 0.0
     araVol = np.memmap.round(araVol)
 
     realData = nii.load(realBrain_anno)
-    realVal = realData.get_data()
+    realVal = np.asanyarray(realData.dataobj)
     realVal = realVal.tolist()
     uniqueList = np.unique(realVal)
 
@@ -254,7 +256,7 @@ if __name__ == "__main__":
         os.makedirs(outfile)
 
     stroke_mask = find_mask(inputVolume)
-    if len(stroke_mask) is 0:
+    if len(stroke_mask) == 0:
         stroke_mask = []
         print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
     else:
@@ -276,6 +278,5 @@ if __name__ == "__main__":
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
         
     print("Registration completed")
-
 
 
