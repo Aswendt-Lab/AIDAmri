@@ -8,6 +8,7 @@ University Hospital Cologne
 
 """
 import os
+import sys
 from math import *
 from lmfit import  Minimizer, Parameters
 import matplotlib.pyplot as plt
@@ -82,8 +83,8 @@ def t2_fitmonoexp1(slice,te,snrMap,snrLim, model,uplim):
     nx = dims[1]
     ny = dims[0]
 
-    T2 = np.zeros([nx,ny],dtype='int8') #Temporary store T2 map
-    S0 = np.zeros([nx,ny],dtype='int8') #Temporary store S0 map
+    T2 = np.zeros([nx,ny],dtype=np.float32) #Temporary store T2 map
+    S0 = np.zeros([nx,ny],dtype=np.float32) #Temporary store S0 map
 
 
     # // FITTING PROCEDURE //
@@ -115,9 +116,9 @@ def t2_fitmonoexp2(slice,te,snrMap,snrLim, model,uplim):
     nx = dims[1]
     ny = dims[0]
 
-    T2 = np.zeros([nx, ny],dtype='int8')  # Temporary store T2 map
-    S0 = np.zeros([nx, ny],dtype='int8')  # Temporary store S0 map
-    Y0 = np.zeros([nx, ny],dtype='int8')  # Temporary storeY0 map
+    T2 = np.zeros([nx, ny],dtype=np.float32)  # Temporary store T2 map
+    S0 = np.zeros([nx, ny],dtype=np.float32)  # Temporary store S0 map
+    Y0 = np.zeros([nx, ny],dtype=np.float32)  # Temporary storeY0 map
 
     # // FITTING PROCEDURE //
     bar = progressbar.ProgressBar()
@@ -146,7 +147,7 @@ def t2_fitmonoexp2(slice,te,snrMap,snrLim, model,uplim):
 def t2_mapping(data,echoTime, model, uplim, snrLim, SNRMethod):
 
 
-    imgData = data.get_data()
+    imgData = data.get_fdata(dtype=np.float32)
 
 
     nx = imgData.shape[0] # Images size in x - direction
@@ -156,7 +157,7 @@ def t2_mapping(data,echoTime, model, uplim, snrLim, SNRMethod):
 
     if 'T2_2p' in model:
          # Array to store the T2, S0 and Y0 maps
-         pvMaps = np.zeros([nx, ny, ns, 3],dtype=data.get_data_dtype())
+         pvMaps = np.zeros([nx, ny, ns, 3],dtype=np.float32)
 
 
          #Loop to go through all slices
@@ -188,7 +189,7 @@ def t2_mapping(data,echoTime, model, uplim, snrLim, SNRMethod):
 
     elif 'T2_3p' in model:
         # Array to store the T2, S0 maps
-        pvMaps = np.zeros([nx, ny, ns, 4],dtype=data.get_data_dtype())
+        pvMaps = np.zeros([nx, ny, ns, 4],dtype=np.float32)
 
         # Loop to go through all slices
         for slc in range(ns):
@@ -334,10 +335,7 @@ def getT2mapping(path,model,upLim,snrLim,SNRMethod,echoTime,output_path):
     pathT2Map = os.path.split(path)[0]
     t2map = t2map[:, :, :, 0] #delete this line if you want more outputdata
     t2map = np.flip(t2map, 2)
-    mapNii =  nii.as_closest_canonical(nii.Nifti1Image(t2map, data.affine))
+    mapNii =  nii.as_closest_canonical(nii.Nifti1Image(t2map.astype(np.float32), data.affine))
     hdr = mapNii.header
     hdr.set_xyzt_units('mm')
     nii.save(mapNii, output_path)
-
-
-

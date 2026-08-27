@@ -118,3 +118,37 @@ venv.bak/
 
 # tmp files
 *.csv\#
+
+# OS and editor metadata
+.DS_Store
+**/.DS_Store
+.idea/
+**/.idea/
+*.code-workspace
+
+# Python runtime caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
+# Office lock files
+.~lock.*#
+**/.~lock.*#
+
+# Local build artifacts
+CMakeCache.txt
+CMakeFiles/
+**/CMakeCache.txt
+**/CMakeFiles/
+
+.DS_Store
+*.m~
+.codex/
+
+.DS_Store
+*.m~
+.codex/
+
+.codex
+.codex/
+/Publication_AIDAmri_based_on_mouse.pdf

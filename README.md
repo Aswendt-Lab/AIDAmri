@@ -1,14 +1,18 @@
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Aswendt-Lab/AIDAmri/docker-image.yml) ![Static Badge](https://img.shields.io/badge/Docker_image-11.97_GB-blue) [![Static Badge](https://img.shields.io/badge/data_structure-BIDS-yellow)](https://bids.neuroimaging.io/news.html) [![Static Badge](https://img.shields.io/badge/Niftyreg-CBSI-orange)](https://github.com/KCL-BMEIS/niftyreg) [![Static Badge](https://img.shields.io/badge/DSI--Studio-2023-orange)](https://dsi-studio.labsolver.org/) [![Static Badge](https://img.shields.io/badge/FSL-5.0.11-orange)]([https://dsi-studio.labsolver.org/](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki)) ![Static Badge](https://img.shields.io/badge/Python-3.7-orange)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Aswendt-Lab/AIDAmri/docker-image.yml) [![Static Badge](https://img.shields.io/badge/data_structure-BIDS-yellow)](https://bids.neuroimaging.io/news.html) [![Static Badge](https://img.shields.io/badge/NiftyReg-CBSI-orange)](https://github.com/KCL-BMEIS/niftyreg) [![Static Badge](https://img.shields.io/badge/DSI--Studio-2025.04.16-orange)](https://dsi-studio.labsolver.org/) [![Static Badge](https://img.shields.io/badge/ANTs-2.6.2-orange)](https://github.com/ANTsX/ANTs) [![Static Badge](https://img.shields.io/badge/FSL-5.0.11-orange)](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki) ![Static Badge](https://img.shields.io/badge/Python-3.10-orange)
 
 [1.2]: http://i.imgur.com/wWzX9uB.png
 [1]: http://www.twitter.com/AswendtMarkus
 <!--social icon from https://github.com/carlsednaoui/gitsocial -->
 
-<img align="left" src="https://github.com/maswendt/AIDAmri/blob/master/AIDA_Logo.png" width="120">
 <h1>AIDA<i>mri</i></h1>
 
+<img align="left" src="assets/AIDA_Logo.png" width="120">
 Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional MRI of the mouse brain
 <br/>
+<br/>
+Please read this README completely before using AIDAmri. Here you will find the detailed user <a href="./Manual.md"><strong>manual</strong></a>.
+<br clear="left"/>
+
 ## Key Features of AIDA<em>mri</em>
 
 1. **Automated Preprocessing**  
@@ -27,7 +31,7 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
    The output of the pipeline includes connectivity matrices that can be used for further analysis of brain network changes in health and disease.
 
 <p align="center">
-  <img src="https://github.com/maswendt/AIDAmri/blob/master/AIDAmri_drawing.png" style="max-width: 100%; height: auto;">
+  <img src="assets/AIDAmri_drawing.png" style="max-width: 100%; height: auto;">
 </p>
 
 Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042)
@@ -36,10 +40,10 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 
 ## Version history
 
-[Information latest Version 2.0](https://github.com/maswendt/AIDAmri/releases/tag/v2.0)
+[Information latest Version 3.0](Release_note.md)
 
-[**Manual**](https://github.com/maswendt/AIDA/blob/master/manual.pdf)
-
+[Information about Version 2.0](https://github.com/maswendt/AIDAmri/releases/tag/v2.0)
+<br/>
 [Information about Version 1.2 (Docker stable release)](https://github.com/maswendt/AIDAmri/releases/tag/v1.2)
 <br/>
 [Information about Version 1.1.1 (Docker pre-release)](https://github.com/maswendt/AIDAmri/releases/tag/1.1.1)
@@ -48,150 +52,228 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 <br/>
 [Information about Version 1.0](https://github.com/maswendt/AIDAmri/releases/tag/v1.0)
 
-<h3><b>Important note: read this before you install AIDAmri for the first time</h3></b>
 
-We fully moved to the containerized version of AIDAmri via [Docker](https://docs.docker.com/get-docker/). All information can be found in the manual above. Please report issues and bugs directly in the issue section of this repository or at gitter (Link below in the contact section).
+## BRANCHES
 
-<details>
-<summary>Note for Linux Users</summary></b>
-When building the AIDAmri Docker image on a Linux system, you may encounter warning messages related to undefined environment variables. Specifically, the following warnings may appear:
+AIDAmri is organized into multiple branches to support development, collaboration, and species-specific adaptations:
 
+- **`main`** – the stable branch containing officially released and validated versions of AIDAmri for mice.  
+- **`open-dev`** – the public development branch that can be used by external contributors to implement code modifications, enhancements, or bug fixes.  
+  *Researchers and developers are welcome to fork the repository, work within the `open-dev` branch, and submit pull requests for review.*  
+- **`rat`** – a dedicated branch for rat MRI data, including modified atlas and template versions optimized for rat brain imaging and analysis. **Note: that this branch is based on AIDAmri version 2.**
+
+Each branch is continuously synchronized to ensure compatibility with the core AIDAmri framework and Docker-based environment.
+Use git switch to change between branches:
 ```
-3 warnings found (use docker --debug to expand):
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
- - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
+git switch rat
 ```
-
-These warnings indicate that certain environment variables referenced in the Dockerfile are either not defined or not properly initialized during the build process.
-
-### Recommended Solution:
-To ensure compatibility and suppress these warnings, edit the `Dockerfile` in the AIDAmri directory. Replace lines **30–93** with the corrected version below, ensuring that all relevant environment variables are explicitly declared and exported: 
-
-```
-# NiftyReg preparation and installation
-RUN apt update && apt install -y gcc-7 g++-7
-
-RUN mkdir -p /aida/NiftyReg/niftyreg_source /aida/NiftyReg/niftyreg_build /aida/NiftyReg/niftyreg_install
-
-WORKDIR /aida/NiftyReg
-
-RUN git clone git://git.code.sf.net/p/niftyreg/git niftyreg_source && \
-    cd niftyreg_source && \
-    git reset --hard 83d8d1182ed4c227ce4764f1fdab3b1797eecd8d
-
-WORKDIR /aida/NiftyReg/niftyreg_build
-
-RUN cmake -D CMAKE_BUILD_TYPE=Release \
-          -D CMAKE_INSTALL_PREFIX=/aida/NiftyReg/niftyreg_install \
-          -D CMAKE_C_COMPILER=/usr/bin/gcc-7 \
-          ../niftyreg_source && \
-    make -j$(nproc) && \
-    make install
-
-ENV NIFTYREG_INSTALL=/aida/NiftyReg/niftyreg_install
-ENV PATH="${PATH}:${NIFTYREG_INSTALL}/bin"
-ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/lib:/lib:${NIFTYREG_INSTALL}/lib"
-
-WORKDIR /aida
-# download DSI studio
-RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2023.07.08/dsi_studio_ubuntu1804.zip &&\
-	unzip dsi_studio_ubuntu1804.zip -d dsi_studio_ubuntu1804 &&\
-	rm dsi_studio_ubuntu1804.zip
-
-# Python setup
-RUN apt install -y python3.7 python3-pip &&\
-	python3 -m pip install --user --upgrade pip &&\
-	apt-get install -y python3.7-venv &&\
-	apt clean &&\
-	rm -rf /var/lib/apt/lists/*
-ENV VIRTUAL_ENV=/opt/env
-RUN python3.7 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN	python3 -m pip install --upgrade setuptools
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip &&\
-	pip install -r requirements.txt
-
-# installation of FSL 5.0.11 with modified installer 
-# (disabling interactive allocation query)
-COPY fslinstaller_mod.py ./
-RUN python3 fslinstaller_mod.py -V 5.0.11
-
-# Configure environment
-ENV FSLDIR=/usr/local/fsl
-RUN . ${FSLDIR}/etc/fslconf/fsl.sh
-ENV FSLOUTPUTTYPE=NIFTI_GZ
-ENV PATH=${FSLDIR}/bin:${PATH}
-RUN export FSLDIR PATHs
-
-
-# copy bin/ and lib/ from AIDAmri into image
-COPY bin/ bin/
-RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
-ENV PATH=/aida/bin/3.2_DTIConnectivity:$PATH
-RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
-COPY lib/ lib/
-RUN echo "/aida/bin/dsi_studio_ubuntu_1804/dsi-studio/dsi_studio" > bin/3.2_DTIConnectivity/dsi_studioPath.txt
-```
-
-</details>
-
-<details>
-<summary>Note for Users with ARM processors (Apple)</summary></b>
-If you intend to install AIDAmri on a system equipped with an ARM processor (e.g., Apple Silicon Macs from 2020 onwards), the Docker build command requires a slight modification.
-
-To build the Docker image, run the following command in your terminal (note the period at the end):
-
-```
-docker build --platform linux/amd64 -t aidamri:latest -f Dockerfile .
-```
-
-This command forces Docker to emulate an x86_64 environment on ARM-based systems. This build process takes some time—this is normal.
-During the build, you may encounter the following warnings:
-
-```
-3 warnings found (use docker --debug to expand):
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 43)
- - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 44)
- - UndefinedVar: Usage of undefined variable '$NIFTYREG_INSTALL' (line 44)
-```
-
-These warnings are non-critical and can be safely ignored.
-When creating a container from the image, you may also see:
-
-```
-WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8)
-```
-This warning appears because the image was built for a different architecture than your host system. 
-It can also be ignored and does not affect the functionality of the container.
-
-With these adjustments, AIDAmri can be used on ARM-based systems. However, if an x86_64 (non-ARM) system is available, 
-we recommend using it for better performance, as emulation may result in a general slowdown.
-</details>
 
 ## EXAMPLE FILES
 
-Download [**here**](https://gin.g-node.org/Aswendt_Lab/testdata_AIDA) (you probably have to clone the dataset from the gin repo. The files are annexed files, also use the raw_data folder as the test data).\
+Download the example dataset [**here**](https://next.hessenbox.de/index.php/s/3tRzc5rCC8GWCAc).
+You can test AIDAmri using either the raw_data folder or the already converted nifti folder. The results can then be compared with the preprocessed data provided in the proc_folder.\
 Mouse MRI data, acquired with Bruker 9.4T - cryo coil setup: adult C57BL7/6 mouse, 
 T2-weighted (anatomical scan),
 DTI (structural connectivity scan),
 rs-fMRI (functional connectivity scan).
 
-## ARA CREATOR
-[Matlab script](https://github.com/maswendt/AIDAmri/ARA) to generate a custom version of the Allen Mouse Brain Atlas.
+## Current Docker Environment
 
-[<h3><b>CONTACT</h3></b>](https://neurologie.uk-koeln.de/forschung/ag-neuroimaging-neuroengineering/)
+The current `Dockerfile` builds an AMD64 Ubuntu 22.04 image with Python 3.10 in
+a virtual environment at `/opt/env`. The image includes FSL 5.0.11, NiftyReg
+from the pinned CBSI commit `83d8d1182ed4c227ce4764f1fdab3b1797eecd8d`,
+DSI Studio `2025.04.16`, ANTs `2.6.2`, `bet4animal`, and `immv`.
+Generated timestamps use German local time and are written as
+`DD Month YYYY HH:MM:SS CET/CEST`.
+
+Python dependencies are installed from `requirements.txt` with resolved package
+versions constrained by `constraints.txt`. During the Docker build, repository
+Git metadata is written into `/aida/build/AIDAmri_git_information.txt`. When a
+container starts with `/aida/DATA` mounted, the entrypoint copies this file to
+`/aida/DATA/AIDAmri_git_information.txt` so processed data can be linked to the
+source revision used for the image.
+
+## Data Format and Orientation Requirements
+
+AIDAmri supports data processing exclusively for datasets in NIfTI (.nii/.nii.gz) or Bruker formats. To ensure accurate registration and reproducible results, 
+all input data for preprocessing must be in <ins>**LIP (Left-Inferior-Posterior)**</ins> orientation.
+Furthermore, the image header information must be consistent with the physical orientation of the data array. 
+Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation. 
+Please use FSL eyes for visual inspection and `fslhd` for checking the header information. FSL is already installed inside AIDAmri. More Information about FSL can be find [here](https://fsl.fmrib.ox.ac.uk/fsl/docs/).
+If your data is in a different orientation than LIP please use our ReorientBatch.py script in the [helper tools](bin/helper_tools) folder. The script should be used **after** convert2Nifti script and **before** processing any files. ReorientBatch.py can reorient the whole proc_data folder and supports parallel processing with `--cpu-percent`.
+It is important that the folder contains only the NIFTI files to be reoriented. The folder must not contain any NIFTI files that have already been processed. 
+Furthermore, please note that after reorientation, tools such as Fiji or other tools that do not read the header of a NIFTI file will display the images only as the data was saved after reorientation. 
+For this reason, we recommend FSL Eyes, as this tool provides more information about the orientation. 
+
+
+## Troubleshooting / Common Issues
+
+<details>
+<summary><strong>This section lists frequently encountered problems when using AIDAmri and possible solutions.</strong></summary>
+	
+If your problem is not listed here, please use our Gitter Chat or open an issue on GitHub and include:
+- OS
+- Docker version
+- Command used
+- Full error log
+
+
+---
+<details>
+<summary><strong>Running Container Warning</strong></summary>
+ARM users (e.g. Apple Silicon) may see the following warning when starting the container:
+
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+
+The warning appears because the image was built for the AMD64 architecture, while the host uses ARM64. Docker can run the image using emulation, although performance may be reduced.
+It can be ignored and does not affect the functionality of the container.
+</details>
+
+<details>
+<summary><strong>General debugging tips</strong></summary>
+
+Always process **T2 data** first
+
+Visually inspect outputs after:
+
+- Bias correction
+
+- Brain extraction
+
+- Registration
+
+Check logs instead of relying only on exit codes
+
+</details>
+
+<details>
+<summary><strong>NIfTI orientation problems</strong></summary>
+	
+**Symptom**
+
+- Atlas is flipped or registration fails
+
+- Brain appears flipped or rotated
+
+
+**Explanation**
+
+AIDAmri expects LIP orientation for preprocessing.
+
+**Solution**
+
+We recommend verifying the NIfTI header information and the actual image orientation using the FSL tools `fsleyes` and `fslhd`.
+
+In cases where the images are not in a consistent LIP orientation, the provided reorientation script should be applied **after** `convert2nifti` and **prior to preprocessing**.:
+
+```
+python ReorientBatch.py -i proc_data -o proc_data_reoriented
+```
+
+</details>
+
+
+<details>
+<summary><strong>Docker build takes a very long time, finishes after under 1 min or aborts</strong></summary>
+	
+**Symptom**
+
+docker build hangs for several minutes or fails during apt-get / FSL installation
+
+**Explanation**
+
+- Possible causes
+
+- Slow internet connection
+
+- Docker build cache corrupted
+
+- Insufficient disk space
+
+**Solution**
+```
+docker system prune -a
+
+docker build --no-cache -t aidamri:latest .
+```
+
+</details>
+
+<details>
+<summary><strong>A is singular, uses pseudoinverse in updateB</strong></summary>
+	
+**Symptom**
+
+`Warning: A is singular, uses pseudoinverse in updateB`
+
+**Explanation**
+
+This warning originates from the MICO bias-field correction and usually indicates:
+
+- Low SNR
+
+- Strong intensity inhomogeneities
+
+- Empty or corrupted slices
+
+**Solution**
+
+- Usually safe to ignore if preprocessing finishes successfully
+
+- Check input image for NaNs, zero-only slices or low voxel values
+
+- Verify correct image orientation before preprocessing
+
+</details>
+
+<details>
+<summary><strong>Brain extraction fails (SVD did not converge)</strong></summary>
+	
+**Symptom**
+
+`Error in brain extraction`
+
+`SVD did not converge`
+
+**Explanation**
+
+- Corrupted NIfTI header
+
+- NaN or Inf values in the image
+
+- Extreme bias-field artifacts
+
+**Solution**
+
+- Re-run bias-field correction
+
+- Reorient the image manually before preprocessing
+
+- Check header consistency:
+```
+fslhd input.nii.gz
+```
+
+</details>
+
+</details>
+
+
+## ARA CREATOR
+[Matlab script](ARA/) to generate a custom version of the Allen Mouse Brain Atlas.
+
+## CONTACT
 If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 or 
 
-join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Google Meet](https://img.shields.io/badge/Google%20Meet-00897B?style=for-the-badge&logo=google-meet&logoColor=white)](https://meet.google.com/hsk-bmpj-meg)
+join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
 
+Please note that the Open Office Hour may not take place on public holidays in Germany.
 
-For all other inquiries: Markus Aswendt (markus.aswendt@uk-koeln.de)
+For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)
 
-<h3><b>LICENSE/CITATION</h3></b>
+## LICENSE/CITATION
 GNU General Public License v3.0
 <br/>
 <br/>

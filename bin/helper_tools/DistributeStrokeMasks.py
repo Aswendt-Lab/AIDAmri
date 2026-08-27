@@ -15,7 +15,10 @@ def main(inputPath):
         Subject = tempSplit[-4]
         
         try:
-            IndicdencPath = glob.glob(os.path.join(os.path.dirname(ss), "*IncidenceData.nii.gz"))[0]
+            incidence_matches = glob.glob(os.path.join(os.path.dirname(ss), "IncidenceData", "*IncidenceData.nii.gz"))
+            if len(incidence_matches) == 0:
+                incidence_matches = glob.glob(os.path.join(os.path.dirname(ss), "*IncidenceData.nii.gz"))
+            IndicdencPath = incidence_matches[0]
             TransMatInv = glob.glob(os.path.join(os.path.dirname(ss), "*MatrixInv.txt"))[0]
         except IndexError:
             with open(log_file_path, "a") as log_file:

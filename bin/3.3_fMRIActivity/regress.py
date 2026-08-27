@@ -14,31 +14,37 @@ import numpy as np
 import nipype.interfaces.fsl as fsl
 import glob
 import shutil
-from pathlib import Path
+#makes sure to import bet.py
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+from common.bet import applyBET, skip_bet_function
 
 
 def scaleBy10(input_path,inv):
-    data = nii.load(input_path)
-    imgTemp = data.get_data()
-    if inv == False:
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        fslPath = os.path.join(os.path.dirname(input_path), os.path.basename(input_path).split('.')[0]+'_fslScaleTemp.nii.gz')
-        nii.save(scaledNiiData, fslPath)
-        return fslPath
-    elif inv == True:
-        scale = np.eye(4) / 10
-        scale[3][3] = 1
-        unscaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
+    img = nii.load(input_path)
+    imgTemp = img.get_fdata(dtype=np.float32)
+    aff = img.affine.copy()
 
-        # hdrOut['sform_code'] = 1
-        nii.save(unscaledNiiData, input_path)
-        return input_path
+    factor = 0.1 if inv else 10.0
+    aff[:3, :3] *= factor
+
+    hdr = img.header.copy()
+    hdr.set_data_dtype(np.float32)
+    out_img = nii.Nifti1Image(imgTemp, aff, header=hdr)
+    out_img.header.set_xyzt_units('mm')
+    out_img.set_qform(aff, code=1)
+    out_img.set_sform(aff, code=1)
+
+    if not inv:
+        fslPath = os.path.join(
+            os.path.dirname(input_path),
+            os.path.basename(input_path).split('.')[0] + "_fslScaleTemp.nii.gz"
+        )
+        nii.save(out_img, fslPath)
+        return fslPath
     else:
-        sys.exit("Error: inv - parameter should be a boolean.")
+        nii.save(out_img, input_path)
+        return input_path
+
 
 def findRegData(path):
     regMR_list = []
@@ -213,25 +219,11 @@ def filterFSL(input_file,highpass,tempMean):
     return outputSFRGR
 
 
-def applyBET(input_file,frac,radius,vertical_gradient):
-
-    # scale Nifti data by factor 10
-    fslPath = scaleBy10(input_file,inv=False)
-    # extract brain
-    output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0]) + 'Bet.nii.gz'
-    maskFile = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + 'Bet_mask.nii.gz'
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
-                    vertical_gradient=vertical_gradient,robust=True, mask = True)
-    print(myBet.cmdline)
-    myBet.run()
-    os.remove(fslPath)
-    # unscale result data by factor 10ˆ(-1)
-    output_file = scaleBy10(output_file,inv=True)
-    maskFile = scaleBy10(maskFile,inv=True)
-    return output_file,maskFile
-
-
-def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, costum_timings = None):
+#adjust default parameters if needed
+def startRegression(input_File, FWHM=3.0, cutOff_sec=100.0, TR=1.0, stc=False,
+                    slice_order=None, costum_timings=None,
+                    bet_method="bet", frac=0.35, radius=45,
+                    gradient=0.1, center=None):
     # generate folder regr images
     
     origin_Path = os.path.dirname(os.path.dirname(input_File))
@@ -258,7 +250,18 @@ def startRegression(input_File, FWHM, cutOff_sec, TR, stc, slice_order = None, c
 
     # get mean
     meanRegr_File = getMean(regr_FileReal,'mean2')
-    file_nameEPI_BET, mask_file = applyBET(meanRegr_File, frac=0.35, radius=45, vertical_gradient=0.1)
+    if bet_method == "skip":
+        file_nameEPI_BET, mask_file = skip_bet_function(meanRegr_File, return_mask=True)
+    else:
+        file_nameEPI_BET, mask_file = applyBET(
+            meanRegr_File,
+            frac=frac,
+            radius=radius,
+            horizontal_gradient=gradient,
+            use_bet4animal=bet_method == "bet4animal",
+            center=center,
+            return_mask=True
+        )
     os.remove(meanRegr_File)
     regr_File = applyMask(regr_FileReal,mask_file,'')
 
@@ -318,12 +321,25 @@ if __name__ == "__main__":
 
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i','--input', help='Path to input file',required=True)
+    parser.add_argument('--bet', choices=["skip", "bet", "bet4animal"], type=str.lower, default="bet",
+                        help='Brain extraction method: skip, bet or bet4animal. Default: bet')
+    parser.add_argument('--bet-frac', type=float, default=0.35, help='BET fractional intensity threshold')
+    parser.add_argument('--bet-radius', type=int, default=45, help='BET head radius in mm')
+    parser.add_argument('--bet-gradient', type=float, default=0.1, help='BET horizontal gradient')
+    parser.add_argument('-c', '--center', nargs=3, type=float, default=None, help='BET center as x y z')
     args = parser.parse_args()
 
 
     if args.input is not None and args.input is not None:
         input = args.input
     if not os.path.exists(input):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input, args.file,))
+        sys.exit("Error: '%s' does not exist." % (input,))
 
-    result = startRegression(input)
+    result = startRegression(
+        input,
+        bet_method=args.bet,
+        frac=args.bet_frac,
+        radius=args.bet_radius,
+        gradient=args.bet_gradient,
+        center=args.center
+    )

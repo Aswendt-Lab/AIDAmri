@@ -23,7 +23,7 @@ def snrCalclualtor(input_file, method):
     fileSNR = open(os.path.join(os.path.dirname(input_file),'snr.txt'), 'w')
 
     data = nii.load(input_file)
-    imgData = data.get_data()
+    imgData = data.get_fdata(dtype=np.float32)
 
     #nx = imgData.shape[0] # Images size in x - direction
     #ny = imgData.shape[1] # Images size in y - direction

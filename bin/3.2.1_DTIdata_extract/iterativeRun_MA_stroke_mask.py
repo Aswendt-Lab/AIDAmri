@@ -15,7 +15,7 @@ def findData(path):
 
 
     regAtlas_list = []
-    fileALL = glob.iglob(path + '/GV*/DTI/DSI_studio/*StrokeMask_scaled.nii.gz', recursive=True)
+    fileALL = glob.iglob(path + '/GV*/DTI/DSI_studio/*StrokeMask.nii.gz', recursive=True)
     for filename in fileALL:
         regAtlas_list.append(filename)
 

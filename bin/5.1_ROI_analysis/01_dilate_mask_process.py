@@ -102,13 +102,13 @@ def create_peri_mask(timepoint, group, subject, na=[15]):
             if (model == 1) or (model == 2):
                 for k in zrange(mask.shape[2]):
                     image = mask[:, :, k]
-                    if np.any(image.astype(np.bool)):
+                    if np.any(image.astype(bool)):
                         peri[:, :, k] = dm.dilate_repeat(image, connectivity=model, n=n)
             else:
                 struct = dm.circle_mask(n=n)
                 for k in zrange(mask.shape[2]):
                     image = mask[:, :, k]
-                    if np.any(image.astype(np.bool)):
+                    if np.any(image.astype(bool)):
                         peri[:, :, k] = dm.dilate_struct(image, struct)
 
             pt.save_data(peri.astype(np.float32), mask_dims, path_out_mask, dtype=None)

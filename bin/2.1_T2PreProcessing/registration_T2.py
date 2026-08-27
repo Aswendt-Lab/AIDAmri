@@ -16,6 +16,10 @@ import glob
 import subprocess
 import shlex
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+from common.artifact_manifest import start_output_tracking
+from common.script_logging import setup_script_logging
+
 def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,allenBrain_anno,split_anno,anno_rsfMRI,split_allenBrain_annorsfMRI,outfile,opt):
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
     outputCPPAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixAff.txt')
@@ -26,11 +30,13 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
     # Inverse registration
-    outputInc = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
+    incidence_outfile = os.path.join(outfile, 'IncidenceData')
+    os.makedirs(incidence_outfile, exist_ok=True)
+    outputInc = os.path.join(incidence_outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
     outputIncAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixInv.txt')
 
     command = f"reg_aladin -ref {allenBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
@@ -39,12 +45,12 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
     # if region such as stroke_mask is defined
     if len(stroke_mask) > 0:
-        outputIncStrokeMask = os.path.join(outfile, os.path.basename(outputInc).split('.')[0] + '_mask.nii.gz')
+        outputIncStrokeMask = os.path.join(incidence_outfile,os.path.basename(outputInc).split('.')[0] + '_Lesion_mask.nii.gz')
 
         command = f"reg_resample -ref {allenBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
         command_args = shlex.split(command)
@@ -52,7 +58,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
             print(f"Output of {command}:\n{result.stdout}")
         except Exception as e:
-            print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+            print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
             raise
 
 
@@ -76,7 +82,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
     # resmaple Allen Brain Reference Template
@@ -88,7 +94,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
         
      # resample parental annotations
@@ -100,7 +106,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise    
 
     # resample parental split annotations
@@ -112,7 +118,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
     # resample annotations
@@ -124,7 +130,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
         
     # resample parental split annotations
@@ -136,7 +142,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
-        print(f'Error while executing the command: {command_args}\Errorcode: {str(e)}')
+        print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise    
     
 
@@ -148,13 +154,13 @@ def find_nearest(array,value):
 
 def clearAnno(araAnno,realBrain_anno,outfile):
     araData = nii.load(araAnno)
-    araVol = araData.get_data()
+    araVol = np.asanyarray(araData.dataobj)
     nullValues = araVol < 0.0
     araVol[nullValues] = 0.0
     araVol = np.memmap.round(araVol)
 
     realData = nii.load(realBrain_anno)
-    realVal = realData.get_data()
+    realVal = np.asanyarray(realData.dataobj)
     realVal = realVal.tolist()
     uniqueList = np.unique(realVal)
 
@@ -252,9 +258,11 @@ if __name__ == "__main__":
     outfile = os.path.join(os.path.dirname(inputVolume))
     if not os.path.exists(outfile):
         os.makedirs(outfile)
+    start_output_tracking(outfile, "anat", "registration")
+    setup_script_logging(outfile, "registration.log")
 
     stroke_mask = find_mask(inputVolume)
-    if len(stroke_mask) is 0:
+    if len(stroke_mask) == 0:
         stroke_mask = []
         print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (inputVolume,))
     else:
@@ -276,6 +284,3 @@ if __name__ == "__main__":
         #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
         
     print("Registration completed")
-
-
-

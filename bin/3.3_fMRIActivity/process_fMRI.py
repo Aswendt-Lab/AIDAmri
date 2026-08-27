@@ -17,11 +17,18 @@ import glob
 import shutil
 import regress
 import getSingleRegTable
-import scipy.misc as mc
+import cv2
 import create_seed_rois
 import fsl_mean_ts
 from pathlib import Path 
 import json
+#makes sure to import bet.py
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+from common.bet import applyBET, skip_bet_function
+from common.artifact_manifest import start_output_tracking
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+
 
 def copyAtlasOfData(path,post,labels):
     fileALL = glob.glob(path + '/*' + post + '.nii.gz')
@@ -39,29 +46,38 @@ def imgScaleResize(img):
     newImg = np.zeros([128,128,20,355])
     for i in range(img.shape[3]):
         for j in range(img.shape[2]):
-            newImg[:,:,j,i]=mc.imresize(img[:,:,j,i],1.34,interp='nearest')
+            newImg[:, :, j, i] = cv2.resize(
+                img[:, :, j, i],
+                (newImg.shape[1], newImg.shape[0]),
+                interpolation=cv2.INTER_NEAREST
+            )
 
     return newImg
 
 def scaleBy10(input_path,inv):
-    data = nii.load(input_path)
-    imgTemp = data.get_fdata()
+    img = nii.load(input_path)
+    imgTemp = img.get_fdata(dtype=np.float32)
+    aff = img.affine.copy()
+
+    factor = 0.1 if inv else 10.0
+    aff[:3, :3] *= factor
+
+    hdr = img.header.copy()
+    hdr.set_data_dtype(np.float32)
+    out_img = nii.Nifti1Image(imgTemp, aff, header=hdr)
+    out_img.header.set_xyzt_units('mm')
+    out_img.set_qform(aff, code=1)
+    out_img.set_sform(aff, code=1)
+
     if inv is False:
-        scale = np.eye(4) * 10
-        scale[3][3] = 1
-        scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        fslPath = os.path.join(os.path.dirname(input_path), 'fslScaleTemp.nii.gz')
-        nii.save(scaledNiiData, fslPath)
+        fslPath = os.path.join(
+            os.path.dirname(input_path),
+            os.path.basename(input_path).split('.')[0] + "_fslScaleTemp.nii.gz"
+        )
+        nii.save(out_img, fslPath)
         return fslPath
     elif inv is True:
-        scale = np.eye(4) / 10
-        scale[3][3] = 1
-        unscaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_xyzt_units('mm')
-
-        # hdrOut['sform_code'] = 1
-        nii.save(unscaledNiiData, input_path)
+        nii.save(out_img, input_path)
         return input_path
     else:
         sys.exit("Error: inv - parameter should be a boolean.")
@@ -74,21 +90,11 @@ def findSlicesData(path,pre):
     regMR_list.sort()
     return regMR_list
 
-def getRASorientation(file_name,proc_Path):
-    data = nii.load(file_name)
-    imgData = data.get_fdata()
-
-    imgData = np.flip(imgData, 2)
-    imgData = np.flip(imgData, 0)
-
-    epiData = nii.Nifti1Image(imgData, data.affine)
-    hdrIn = epiData.header
-    hdrIn.set_xyzt_units('mm')
-    epiData_RAS = nii.as_closest_canonical(epiData)
-    print('Orientation:' + str(nii.aff2axcodes(epiData_RAS.affine)))
+def copyEPIToProcessingFolder(file_name, proc_Path):
     output_file = os.path.join(proc_Path, os.path.basename(file_name))
-    nii.save(epiData, output_file)
+    shutil.copyfile(file_name, output_file)
     return output_file
+
 
 def getEPIMean(file_name,proc_Path):
     output_file = os.path.join(proc_Path, os.path.basename(file_name).split('.')[0]) + 'mean.nii.gz'
@@ -97,32 +103,11 @@ def getEPIMean(file_name,proc_Path):
     myMean.run()
     return output_file
 
-def applyBET(input_file,frac,radius,vertical_gradient):
-
-    # scale Nifti data by factor 10
-    fslPath = scaleBy10(input_file,inv=False)
-    # extract brain
-    output_file = os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0]) + 'Bet.nii.gz'
-    maskFile = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + 'Bet_mask.nii.gz'
-    myBet = fsl.BET(in_file=fslPath, out_file=output_file,frac=frac,radius=radius,
-                    vertical_gradient=vertical_gradient,robust=True, mask = True)
-    print(myBet.cmdline)
-    myBet.run()
-    os.remove(fslPath)
-    # unscale result data by factor 10ˆ(-1)
-    output_file = scaleBy10(output_file,inv=True)
-    return output_file,maskFile
-
 def applyMask(input_file,mask_file):
-    fslPath = scaleBy10(input_file, inv=False)
-    # maks apply
     output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0]) + 'BET.nii.gz'
-    myMaskapply = fsl.ApplyMask(in_file=fslPath, out_file=output_file, mask_file=mask_file)
+    myMaskapply = fsl.ApplyMask(in_file=input_file, out_file=output_file, mask_file=mask_file)
     print(myMaskapply.cmdline)
     myMaskapply.run()
-    os.remove(fslPath)
-    # unscale result data by factor 10ˆ(-1)
-    output_file = scaleBy10(output_file, inv=True)
     return output_file
 
 def fsl_SeparateSliceMoCo(input_file,par_folder):
@@ -182,24 +167,36 @@ def copyRawPhysioData(file_name,i32_Path):
     json_file = os.path.join(os.path.dirname(file_name), json_name)
     sub_name = (Path(file_name).name.split("_")[0]).split("-")[1]
     studyName = (Path(os.path.dirname(os.path.dirname(file_name))).name).split("-")[1]
-    
-    relatedPhysioData = []
-    if os.path.exists(json_file):
-        with open(json_file, 'r') as infile:
-            content = json.load(infile)
-            scanid = str(content["ScanID"]) + ".I32"
+    physioPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(file_name)))),'Physio')
+    scanid = None
 
-        physioPath=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(file_name)))),'Physio')
-        
-        conditions = [sub_name , studyName]
-        for file in glob.iglob(os.path.join(physioPath, "**", "*" + scanid), recursive=True):
-            filename = os.path.basename(file)
-            if all(condition in filename for condition in conditions):
-                relatedPhysioData.append(file)
+    relatedPhysioData = []
+    if not os.path.exists(json_file):
+        print("Error: '%s' has no metadata JSON file for physio lookup." % (file_name,))
+        return []
+
+    with open(json_file, 'r') as infile:
+        content = json.load(infile)
+
+    if "ScanID" not in content:
+        print("Error: '%s' has no ScanID in metadata JSON for physio lookup." % (json_file,))
+        return []
+
+    scanid = str(content["ScanID"]) + ".I32"
+
+    if not os.path.exists(physioPath):
+        print("Error: '%s' is not an existing Physio directory." % (physioPath,))
+        return []
+
+    conditions = [sub_name , studyName]
+    for file in glob.iglob(os.path.join(physioPath, "**", "*" + scanid), recursive=True):
+        filename = os.path.basename(file)
+        if all(condition in filename for condition in conditions):
+            relatedPhysioData.append(file)
 
     if len(relatedPhysioData)>1:
         sys.exit("Warning: '%s' has no unique physio data for scan %s." % (physioPath, scanid,))
-    if len(relatedPhysioData) is 0:
+    if len(relatedPhysioData) == 0:
         print("Error: '%s' has no related physio data for scan %s." % (physioPath, scanid,))
         return []
 
@@ -220,7 +217,14 @@ def create_txt_file(file, data):
 def delete_txt_file(file):
     os.remove(file)
 
-def startProcess(Rawfile_name):
+def startProcess(
+    Rawfile_name,
+    bet_method="bet",
+    frac=0.35,
+    radius=45,
+    gradient=0.1,
+    center=None,
+):
     # generate folder for images
     origin_Path = os.path.dirname(Rawfile_name)
     proc_Path = os.path.join(origin_Path, 'rs-fMRI_niiData')
@@ -248,29 +252,40 @@ def startProcess(Rawfile_name):
         shutil.rmtree(i32_Path)
     os.mkdir(i32_Path)
 
-    # bring dataset to RAS orientation
-    file_name = getRASorientation(Rawfile_name,proc_Path)
+    # copy raw EPI without changing voxel array orientation
+    file_name = copyEPIToProcessingFolder(Rawfile_name,proc_Path)
 
     # calculate EPIMean
     file_nameEPI = getEPIMean(file_name,proc_Path)
 
     # apply BET on EPImean
-    file_nameEPI_BET,mask_file = applyBET(file_nameEPI,frac=0.35,radius=45,vertical_gradient=0.1)
+    if bet_method == "skip":
+        file_nameEPI_BET, mask_file = skip_bet_function(file_nameEPI, return_mask=True)
+    else:
+        file_nameEPI_BET,mask_file = applyBET(
+            file_nameEPI,
+            frac=frac,
+            radius=radius,
+            horizontal_gradient=gradient,
+            use_bet4animal=bet_method == "bet4animal",
+            center=center,
+            return_mask=True
+        )
 
     #apply Mask on original dataset
-    maskedFile_data = applyMask(file_name,mask_file)
+    applyMask(file_name,mask_file)
 
     # apply motion correction on original dataset with EPImean as reference
     mcfFile_name=fsl_SeparateSliceMoCo(file_name,par_Path)
 
     # apply mean on motion corrected data
-    meanMcfFile_name = getEPIMean(mcfFile_name, proc_Path)
+    getEPIMean(mcfFile_name, proc_Path)
 
     # copy physio data to rawMonData-Folder
     relatedPhysioFolder = copyRawPhysioData(Rawfile_name,i32_Path)
 
     # get Regression Values
-    if len(relatedPhysioFolder) is not 0:
+    if len(relatedPhysioFolder) != 0:
         getSingleRegTable.getRegrTable(os.path.dirname(Rawfile_name),relatedPhysioFolder,par_Path)
     else:
         print("Error: Processing not possible, because either there is no folder called Physio or the related physio data for the scan is missing there.")
@@ -289,31 +304,39 @@ if __name__ == "__main__":
     requiredNamed.add_argument('-i', '--input', help='Path to the RAW data of rsfMRI NIfTI file', required=True)
 
     parser.add_argument('-t', '--TR', default=TR, help='Current TR value')
-    parser.add_argument('-c', '--cutOff_sec', default=cutOff_sec, help='High-pass filter cutoff sec')
+    parser.add_argument('-c', '--cutOff-sec', default=cutOff_sec, help='High-pass filter cutoff sec')
     parser.add_argument('-f', '--FWHM', default=FWHM, help='Full width at half maximum')
-    parser.add_argument('-stc', '--slicetimecorrection', default="False", type=str, help='choose to perform slice time correction or not')
+    parser.add_argument('-stc', '--slicetimecorrection', action='store_true', help='perform slice time correction')
+    parser.add_argument('--bet', choices=["skip", "bet", "bet4animal"], type=str.lower, default="bet",
+                        help='Brain extraction method for fMRI process: skip, bet or bet4animal. Default: bet')
+    parser.add_argument('--bet-frac', type=float, default=0.35, help='BET fractional intensity threshold')
+    parser.add_argument('--bet-radius', type=int, default=45, help='BET head radius in mm')
+    parser.add_argument('--bet-gradient', type=float, default=0.1, help='BET horizontal gradient')
+    parser.add_argument('-ctr', '--center', nargs=3, type=float, default=None, help='BET center as x y z')
 
     args = parser.parse_args()
 
-    if args.slicetimecorrection == "True":
-        stc = True
-    else:
-        stc = False
+    stc = args.slicetimecorrection
 
-    labels = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs.txt'
-    labelNames = os.path.abspath(os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume.nii.txt'
-    labels2000 = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annotation_50CHANGEDanno_label_IDs+2000.txt'
-    labelNames2000 = os.path.abspath(
-        os.path.join(os.getcwd(), os.pardir, os.pardir)) + '/lib/annoVolume+2000_rsfMRI.nii.txt'
+    labels = os.path.join(REPO_ROOT, 'lib', 'annotation_50CHANGEDanno_label_IDs.txt')
+    labelNames = os.path.join(REPO_ROOT, 'lib', 'annoVolume.nii.txt')
+    labels2000 = os.path.join(REPO_ROOT, 'lib', 'annotation_50CHANGEDanno_label_IDs+2000.txt')
+    labelNames2000 = os.path.join(REPO_ROOT, 'lib', 'annoVolume+2000_rsfMRI.nii.txt')
     input_file = None
     if args.input is not None and args.input is not None:
         input_file = args.input
     if not os.path.exists(input_file):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
+        sys.exit(f"Error: input file does not exist: {input_file}")
+    start_output_tracking(os.path.dirname(input_file), "func", "processing")
 
-    mcfFile_name = startProcess(input_file)
+    mcfFile_name = startProcess(
+        input_file,
+        bet_method=args.bet,
+        frac=args.bet_frac,
+        radius=args.bet_radius,
+        gradient=args.bet_gradient,
+        center=args.center
+    )
 
     
     # if stc is activated find parameters
@@ -339,7 +362,20 @@ if __name__ == "__main__":
         slice_order_path = os.path.join(Path(meta_data_file).parent, "slice_order.txt")
         create_txt_file(slice_order_path, slice_order)
         
-        rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, stc, slice_order_path, costum_timings_path)
+        rgr_file, srgr_file, sfrgr_file = regress.startRegression(
+            mcfFile_name,
+            FWHM,
+            cutOff_sec,
+            TR,
+            stc,
+            slice_order_path,
+            costum_timings_path,
+            bet_method=args.bet,
+            frac=args.bet_frac,
+            radius=args.bet_radius,
+            gradient=args.bet_gradient,
+            center=args.center
+        )
 
         # delete temp txt files
         delete_txt_file(costum_timings_path)
@@ -347,7 +383,18 @@ if __name__ == "__main__":
 
     else:
         print("Starting Regression without slice time correction:")
-        rgr_file, srgr_file, sfrgr_file = regress.startRegression(mcfFile_name, FWHM, cutOff_sec, TR, stc)
+        rgr_file, srgr_file, sfrgr_file = regress.startRegression(
+            mcfFile_name,
+            FWHM,
+            cutOff_sec,
+            TR,
+            stc,
+            bet_method=args.bet,
+            frac=args.bet_frac,
+            radius=args.bet_radius,
+            gradient=args.bet_gradient,
+            center=args.center
+        )
         print(f"sfrgr_file {sfrgr_file}")
 
     

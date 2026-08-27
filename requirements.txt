@@ -1,12 +1,16 @@
+# Direct AIDAmri Python dependencies. Version resolution is constrained by
+# constraints.txt during Docker builds to keep images reproducible.
 numpy
 scipy
 lmfit==1.0.3
 nibabel
-nipype==1.1.2
+nipype==1.7.0
 progressbar33==2.4
-seaborn==0.11.2
+seaborn>=0.13.2
 matplotlib
 scikit-build
 opencv-python
 git+https://github.com/brkraw/bruker@e27c5039c9c3a84ce7cd19c9627360e5a31b4ebc
 openpyxl
+traits==6.3.0
+scikit-learn

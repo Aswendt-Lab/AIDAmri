@@ -6,21 +6,34 @@ Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
 
+Edited by Paul Camacho 2025
+
 """
 
 
 import nipype.interfaces.fsl as fsl
 import os, sys
-import nibabel as nii
+import nibabel as nib
 import numpy as np
 import applyMICO
-import cv2
-from pathlib import Path
+import nipype.interfaces.ants as ants
 import subprocess
 import shutil
+import averageb0
+import dipy.denoise.patch2self as patch2self
+import itertools
+import sys
+import threading
+import time
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
+from common.bet import applyBET, skip_bet_function
+from common.artifact_manifest import start_output_tracking
+from common.script_logging import setup_script_logging
 
-def reset_orientation(input_file):
+FATAL_LIP_HEADER_EXIT_CODE = 86
+
+def creat_brkraw_backup(input_file):
 
     brkraw_dir = os.path.join(os.path.dirname(input_file), "brkraw")
     if os.path.exists(brkraw_dir):
@@ -29,75 +42,219 @@ def reset_orientation(input_file):
     os.mkdir(brkraw_dir)
     dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
 
-    shutil.copyfile(input_file, dst_path)
+    # Keep the original NIfTI in brkraw and process a copy at the input path.
+    shutil.move(input_file, dst_path)
+    shutil.copyfile(dst_path, input_file)
 
-    data = nii.load(input_file)
-    raw_img = data.dataobj.get_unscaled()
+    data = nib.load(input_file)
+    # Preserve nibabel scaling (scl_slope/scl_inter). Using get_unscaled()
+    # would write raw int16 scanner values into the working file.
+    raw_img = data.get_fdata(dtype=np.float32)
 
-    raw_nii = nii.Nifti1Image(raw_img, data.affine)
-    nii.save(raw_nii, input_file)
+    hdr = data.header.copy()
+    hdr.set_data_dtype(np.float32)
+    space_unit, time_unit = hdr.get_xyzt_units()
 
-    delete_orient_command = f"fslorient -deleteorient {input_file}"
-    subprocess.run(delete_orient_command, shell=True)
+    if not space_unit or space_unit.lower() == "unknown":
+        space_unit = "mm"
+    if not time_unit or time_unit.lower() == "unknown":
+        time_unit = "sec"
 
-    # Befehl zum Festlegen der radiologischen Orientierung
-    forceradiological_command = f"fslorient -forceradiological {input_file}"
-    subprocess.run(forceradiological_command, shell=True)
+    hdr.set_xyzt_units(space_unit, time_unit)
 
-def applyBET(input_file: str, frac: float, radius: int, output_path: str) -> str:
+    raw_nii = nib.Nifti1Image(raw_img, data.affine, header=hdr)
+    raw_nii.set_qform(data.affine, code=1)
+    raw_nii.set_sform(data.affine, code=1)
+    nib.save(raw_nii, input_file)
+
+def header_check(input_file):
+    img = nib.load(input_file)
+    axcodes = nib.aff2axcodes(img.affine)
+
+    if axcodes != ("L", "I", "P"):
+        print(
+            f"Fatal header check failure: expected LIP orientation, found {axcodes} in {input_file}",
+            file=sys.stderr,
+        )
+        sys.exit(FATAL_LIP_HEADER_EXIT_CODE)
+
+    data = img.get_fdata(dtype=np.float32)
+
+    out = nib.Nifti1Image(data, img.affine, header=img.header.copy())
+    out.set_qform(img.affine, code=1)
+    out.set_sform(img.affine, code=1)
+
+    hdr = out.header
+    hdr.set_data_dtype(np.float32)
+
+    nib.save(out, input_file)
+    return input_file
+
+def set_default_xyzt_units_if_unknown(target):
     """
-    Performs brain extraction via the FSL Brain Extraction Tool (BET). Requires an appropriate input file (input_file), the fractional intensity threshold (frac), the head radius (radius) and the output path (output_path).
-    """
-    # scale Nifti data by factor 10
-    data = nii.load(input_file)
-    imgTemp = data.get_fdata()
-    scale = np.eye(4)* 10
-    scale[3][3] = 1
-    imgTemp = np.flip(imgTemp, 2)
+       Set NIfTI space/time units to mm/sec only if they are unknown.
 
-    scaledNiiData = nii.Nifti1Image(imgTemp, data.affine * scale)
-    hdrIn = scaledNiiData.header
-    hdrIn.set_xyzt_units('mm')
-    scaledNiiData = nii.as_closest_canonical(scaledNiiData)
+       Accepts either:
+       - a file path to a NIfTI file, or
+       - a nibabel header object
+       """
+    if isinstance(target, str):
+        img = nib.load(target)
+        hdr = img.header
 
-    fsl_path = os.path.join(os.path.dirname(input_file),'fslScaleTemp.nii.gz')
-    nii.save(scaledNiiData, fsl_path)
+        space_unit, time_unit = hdr.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
 
-    # extract brain
-    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Bet.nii.gz')
-    myBet = fsl.BET(in_file=fsl_path, out_file=output_file,frac=frac,radius=radius,robust=True, mask = True)
-    myBet.run()
-    os.remove(fsl_path)
+        hdr.set_xyzt_units(space_unit, time_unit)
+        nib.save(img, target)
+        return target
 
+    if hasattr(target, "get_xyzt_units") and hasattr(target, "set_xyzt_units"):
+        space_unit, time_unit = target.get_xyzt_units()
+        if not space_unit or space_unit.lower() == "unknown":
+            space_unit = "mm"
+        if not time_unit or time_unit.lower() == "unknown":
+            time_unit = "sec"
 
-    # unscale result data by factor 10ˆ(-1)
-    dataOut = nii.load(output_file)
-    imgOut = dataOut.get_fdata()
-    scale = np.eye(4)/ 10
-    scale[3][3] = 1
+        target.set_xyzt_units(space_unit, time_unit)
+        return target
 
-    unscaledNiiData = nii.Nifti1Image(imgOut, dataOut.affine * scale)
-    hdrOut = unscaledNiiData.header
-    hdrOut.set_xyzt_units('mm')
-    nii.save(unscaledNiiData, output_file)
+    raise TypeError("Expected a NIfTI file path or nibabel header object")
+
+def n4biasfieldcorr(input_file):
+    output_file = os.path.join(os.path.dirname(input_file), os.path.basename(input_file).split('.')[0] + 'AntsBias.nii.gz')
+    # Note: shrink_factor is set to 4 to speed up the process, but can be adjusted
+    myAnts = ants.N4BiasFieldCorrection(input_image=input_file,output_image=output_file,
+                                        shrink_factor=4,bspline_fitting_distance=20,
+                                        bspline_order=3,n_iterations=[1000,0],dimension=3)
+    myAnts.run()
+
+    img = nib.load(output_file)
+    hdr = img.header
+    hdr["pixdim"][4:8] = 1
+    nib.save(img, output_file)
+
+    print("Biasfield correction completed")
     return output_file
 
-def smoothIMG(input_file, output_path):
+def spinner(stop_event, message="Working"):
     """
-    Smoothes image via FSL. Only input and output has do be specified. Parameters are fixed to box shape and to the kernel size of 0.1 voxel.
+    Displays a simple terminal spinner while a long-running processing step is active.
+    Does not report the actual progress of external tools such as FSL BET or ANTs.
     """
-    data = nii.load(input_file)
-    vol = data.get_fdata()
-    ImgSmooth = np.min(vol, 3)
+    if os.environ.get("AIDAMRI_DISABLE_SPINNER") == "1" or not sys.stdout.isatty():
+        return
 
-    unscaledNiiData = nii.Nifti1Image(ImgSmooth, data.affine)
+    for ch in itertools.cycle("|/-\\"):
+        if stop_event.is_set():
+            break
+        sys.stdout.write(f"\r{message}... {ch}")
+        sys.stdout.flush()
+        time.sleep(0.1)
+    sys.stdout.write(f"\r{message}... done\n")
+    sys.stdout.flush()
+
+
+def set_xform_codes_to_one(input_file):
+    img = nib.load(input_file)
+    img.set_qform(img.affine, code=1)
+    img.set_sform(img.affine, code=1)
+    nib.save(img, input_file)
+    return input_file
+
+def denoise_patch2self(input_file, output_path, b0_thresh=100):
+    """
+    Denoises the input DTI image using Patch2Self from DIPY.
+    Requires an appropriate input file (input_file) and the output path (output_path).
+    """
+    bvalsname = input_file.replace(".nii.gz", ".bval")
+    if not os.path.exists(bvalsname):
+        try:
+            bvalsname = input_file.replace(".nii.gz", ".btable")
+            btable = np.loadtxt(bvalsname, dtype=float)
+            bvalsname = os.path.splitext(bvalsname)[0] + ".bval"
+            np.savetxt(bvalsname, btable[0, :], fmt='%.6f')
+        except:
+            sys.exit(f"Error: bvals file {bvalsname} not found.")
+    bvals = np.loadtxt(bvalsname, dtype=float)
+    data = nib.load(input_file)
+    img = data.get_fdata()
+    affine = data.affine
+    debug = False
+    if debug:
+        print("Debugging information:")
+        print("Image header:", data.header)
+        print("Affine matrix:", affine)
+        print("Image sform:", data.header.get_sform())
+    if img.ndim != 4:
+        raise ValueError("Input image must be a 4D NIfTI file.")
+    
+    # Apply Patch2Self denoising
+    denoised_img = patch2self.patch2self(img, bvals, b0_threshold=b0_thresh, model='ols', out_dtype=np.float32)
+    
+    # Save the denoised image
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
+    denoised_nii = nib.Nifti1Image(denoised_img, affine)
+    if debug:
+        print("Denoised image header:", denoised_nii.header)
+        print("Denoised affine matrix:", denoised_nii.affine)
+        print("Denoised image sform:", denoised_nii.header.get_sform())
+    nib.save(denoised_nii, output_file)
+
+    # # Copy header from original image to denoised image using fslcpgeom
+    # myFslCpGeom = fsl.utils.CopyGeom(dest_file=output_file, in_file=input_file)
+    # myFslCpGeom.run()
+    # print(f"Denoising completed, output saved to {output_file}")
+    # if debug is True:
+    #     output = nii.load(output_file)
+    #     print("Final denoised image header after copying geometry:", output.header)
+    #     print("Final denoised affine matrix after copying geometry:", output.affine)
+    #     print("Final denoised image sform after copying geometry:", output.header.get_sform())
+    return output_file
+
+def smoothIMG(input_file, output_path, skip_smoothing=False):
+    """
+    Prepare a 3D reference image and optionally apply FSL's median spatial filter.
+    For 4D inputs, a voxel-wise median projection across the 4th dimension is
+    written as *MP.nii.gz. For 3D inputs, the MP image is just a
+    float32/header-normalized copy.
+    """
+    source_base = os.path.basename(input_file).split('.')[0]
+    data = nib.load(input_file)
+    vol = data.get_fdata()
+    if vol.ndim == 4:
+        img_smooth = np.median(vol, axis=3).astype(np.float32)
+        source_base = source_base + 'MP'
+    elif vol.ndim == 3:
+        img_smooth = vol.astype(np.float32)
+    else:
+        raise ValueError(f"Unsupported image dimensionality: {vol.ndim}")
+    unscaledNiiData = nib.Nifti1Image(img_smooth, data.affine)
+    unscaledNiiData.set_qform(data.affine, code=1)
+    unscaledNiiData.set_sform(data.affine, code=1)
+
     hdrOut = unscaledNiiData.header
-    hdrOut.set_xyzt_units('mm')
+    hdrOut.set_data_dtype(np.float32)
+    space_unit, time_unit = hdrOut.get_xyzt_units()
+
+    if not space_unit or space_unit.lower() == "unknown":
+        space_unit = "mm"
+    if not time_unit or time_unit.lower() == "unknown":
+        time_unit = "sec"
+    hdrOut.set_xyzt_units(space_unit, time_unit)
     output_file = os.path.join(os.path.dirname(input_file),
-                               os.path.basename(input_file).split('.')[0] + 'DN.nii.gz')
-    nii.save(unscaledNiiData, output_file)
+                               os.path.basename(input_file).split('.')[0] + 'MP.nii.gz')
+    nib.save(unscaledNiiData, output_file)
     input_file = output_file
-    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
+
+    if skip_smoothing:
+        print("Spatial smoothing skipped")
+        return input_file
+
+    output_file = os.path.join(output_path, source_base + 'Smooth.nii.gz')
     myGauss =  fsl.SpatialFilter(
         in_file = input_file,
         out_file = output_file, 
@@ -106,6 +263,11 @@ def smoothIMG(input_file, output_path):
         kernel_size = 0.1
     )
     myGauss.run()
+
+    img = nib.load(output_file)
+    hdr = img.header
+    hdr["pixdim"][4:8] = 1
+    nib.save(img, output_file)
     return output_file
 
 def thresh(input_file, output_path):
@@ -129,67 +291,240 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Preprocessing of DTI Data')
 
-    requiredNamed = parser.add_argument_group('required named arguments')
-    requiredNamed.add_argument('-i', '--input', help='Path to the raw NIfTI DTI file', required=True)
+    requiredNamed = parser.add_argument_group('Required named arguments')
+    requiredNamed.add_argument(
+        '-i',
+        '--input-file',
+        help='Path to the raw NIfTI DTI file',
+        required=True,
+    )
 
-    parser.add_argument('-f', '--frac', help='Fractional intensity threshold - default=0.3, smaller values give larger brain outline estimates', nargs='?', type=float,default=0.3)
-    parser.add_argument('-r', '--radius', help='Head radius (mm not voxels) - default=45', nargs='?', type=int ,default=45)
-    parser.add_argument('-g', '--vertical_gradient', help='Vertical gradient in fractional intensity threshold - default=0.0, positive values give larger brain outlines at bottom and smaller brain outlines at top', nargs='?',
-                        type=float,default=0.0)
+    parser.add_argument(
+        '-f',
+        '--frac',
+        help='Fractional intensity threshold - default=0.4, smaller values give larger brain outline estimates',
+        type=float,
+        default=0.4,
+    )
+    parser.add_argument(
+        '-r',
+        '--radius',
+        help='Head radius (mm not voxels) - default=45',
+        type=int,
+        default=45,
+    )
+    parser.add_argument(
+        '-g',
+        '--horizontal-gradient',
+        help='Horizontal gradient in fractional intensity threshold - default=0.0. Not for bet4animals! Higher positive values make the BET stricter posterior and less stricter anterior (snout)',
+        type=float,
+        default=0.0,
+    )
+    parser.add_argument(
+        '-c', '--center',
+        help='Brain center in voxel coordinates: x y z',
+        nargs=3,
+        type=float,
+        default=None
+    )
+    parser.add_argument(
+        '-b',
+        '--bias-method',
+        help='Biasfield correction method - default=skip, other options are "mico", "ants"',
+        choices = ["skip", "mico", "ants"],
+        type=str.lower,
+        default="skip",
+    )
+
+    parser.add_argument(
+        '--bet',
+        choices=["skip", "bet", "bet4animal"],
+        type=str.lower,
+        default="bet",
+        help='Brain extraction method for DTI: skip, bet or bet4animal. Default: bet'
+    )
+
+    parser.add_argument(
+        '-d',
+        '--denoiser',
+        help='Denoising method - default=None, other option is "patch2self"',
+        choices = ["patch2self"],
+        type=str.lower,
+        default=None
+    )
+
+    parser.add_argument(
+        '--average-b0',
+        help='Average the b0 volumes',
+        action='store_true'
+    )
+    parser.add_argument(
+        '--skip-smoothing',
+        action='store_true',
+        help='Skip the FSL spatial median smoothing step; still creates the 3D median reference image'
+    )
     args = parser.parse_args()
 
-    # set parameters
-    input_file = None
-    if args.input is not None and args.input is not None:
-        input_file = args.input
-
+    # set Parameters
+    input_file = args.input_file
     if not os.path.exists(input_file):
-        sys.exit("Error: '%s' is not an existing directory or file %s is not in directory." % (input_file, args.file,))
-        
+        sys.exit(f"Error: input file does not exist: {input_file}")
+
     frac = args.frac
     radius = args.radius
-    vertical_gradient = args.vertical_gradient
+    horizontal_gradient = args.horizontal_gradient
+    bias_method = args.bias_method
     output_path = os.path.dirname(input_file)
+    start_output_tracking(output_path, "dwi", "preprocessing")
+    setup_script_logging(output_path, "preprocess.log")
+    b0_thresh=100
 
-    print(f"Frac: {frac} Radius: {radius} Gradient {vertical_gradient}")
+    if args.bet == "bet":
+        print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
 
-    reset_orientation(input_file)
-    print("Orientation resetted to RAS")
+    creat_brkraw_backup(input_file)
+    header_check(input_file)
+    
+    if args.denoiser == "patch2self":
+        # Denoising using Patch2Self
+        print("Starting denoising using patch2self")
+        try:
+            # start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running Denoising with Patch2Self")
+            )
+            thread.start()
+
+            try:
+                denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+                set_xform_codes_to_one(denoised_image)
+                set_default_xyzt_units_if_unknown(denoised_image)
+            finally:
+                stop_event.set()
+                thread.join()
+
+            print("Denoising completed, output saved to", denoised_image)
+        except Exception as e:
+            print(f'Error in Patch2Self denoising\nError message: {str(e)}')
+            raise
+
+
+        input_file = denoised_image
+
+    if args.average_b0:
+        # Average b0 volumes
+        print("Starting averaging b0 volumes")
+        try:
+            # start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event,)
+            )
+            thread.start()
+
+            try:
+                b0image = averageb0.averageb0(input_file,b0_thresh)
+                set_xform_codes_to_one(b0image)
+                set_default_xyzt_units_if_unknown(b0image)
+            finally:
+                stop_event.set()
+                thread.join()
+        # # Copy header with fslcopygeom
+        # myFslCpGeom = fsl.utils.CopyGeom(dest_file=b0image, in_file=input_file)
+        # myFslCpGeom.run()
+            input_file = b0image
+            print("Averaging b0 volumes completed, output saved to", input_file)
+        except Exception as e:
+            print(f'Error in averaging b0 volumes\nError message: {str(e)}')
+            raise
+
 
     try:
-        output_smooth = smoothIMG(input_file = input_file, output_path = output_path)
-        print("Smoothing completed")
+        # start spinner
+        stop_event = threading.Event()
+        thread = threading.Thread(
+            target=spinner,
+            args=(stop_event, "Running smoothing")
+        )
+        thread.start()
+
+        try:
+            output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_smoothing=args.skip_smoothing)
+        finally:
+            stop_event.set()
+            thread.join()
+        print(f"Smoothing completed, output saved to {output_path}")
     except Exception as e:
-        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
+        print(f'Error in smoothing\nError message: {str(e)}')
         raise
 
     # intensity correction using non parametric bias field correction algorithm
-    try:
-        output_mico = applyMICO.run_MICO(output_smooth,output_path)
-        print("Biasfieldcorrecttion was successful")
-    except Exception as e:
-        print(f'Fehler in der Biasfieldcorrecttion\nFehlermeldung: {str(e)}')
-        raise
+    if bias_method == "skip":
+        print("No bias field correction applied")
+        outputBiasCorr = output_smooth
+    elif bias_method == "mico":
+        print("Starting Biasfieldcorrection with MICO:")
+        try:
+            outputBiasCorr = applyMICO.run_MICO(output_smooth, output_path)
+            set_xform_codes_to_one(outputBiasCorr)
+            set_default_xyzt_units_if_unknown(outputBiasCorr)
+            print("Biasfield correction was successful")
+        except Exception as e:
+            print(f'Error in bias field correction\nError message: {str(e)}')
+            raise
+    elif bias_method == "ants":
+        # intensity correction using ANTs N4BiasFieldCorrection
+        print("Starting Biasfieldcorrection with ANTS:")
+        try:
+            #start spinner
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running N4 ANTS bias correction")
+            )
+            thread.start()
 
-    # get rid of your skull         
-    outputBET = applyBET(input_file = output_mico, frac = frac, radius = radius, output_path = output_path)
-    print("Brainextraction was successful")
+            try:
+                outputBiasCorr = n4biasfieldcorr(input_file=output_smooth)
+            finally:
+                stop_event.set()
+                thread.join()
+            print("Biasfield correction was successful")
+        except Exception as e:
+            print(f'Error in bias field correction\nError message: {str(e)}')
+            raise
+    #print(os.path.exists(outputBiasCorr))
 
+    if args.bet == "skip":
+        print("Skipping brain extraction.")
+        outputBET = skip_bet_function(outputBiasCorr)
+    else:
+        # brain extraction
+        print("Starting brain extraction")
+        try:
+            stop_event = threading.Event()
+            thread = threading.Thread(
+                target=spinner,
+                args=(stop_event, "Running Brain extraction")
+            )
+            thread.start()
+            try:
+                outputBET = applyBET(
+                    input_file=outputBiasCorr,
+                    frac=frac,
+                    radius=radius,
+                    horizontal_gradient=horizontal_gradient,
+                    use_bet4animal=args.bet == "bet4animal",
+                    center=args.center)
+            finally:
+                stop_event.set()
+                thread.join()
+            print("Brain extraction was successful")
+        except Exception as e:
+            print(f'Error in brain extraction\nError messsage: {str(e)}')
+            raise
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    print("Preprocessing completed")

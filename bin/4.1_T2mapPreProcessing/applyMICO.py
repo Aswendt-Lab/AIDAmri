@@ -28,8 +28,11 @@ import progressbar
 import cv2
 from tqdm import tqdm
 
+MICO_RANDOM_SEED = int(os.environ.get("AIDAMRI_MICO_SEED", "0"))
+
 
 def run_MICO(IMGdata,outputPath):
+    rng = np.random.RandomState(MICO_RANDOM_SEED)
     data = nii.load(IMGdata)
     v = 8
 
@@ -86,9 +89,9 @@ def run_MICO(IMGdata,outputPath):
         b = np.ones([nrow,ncol])
 
         for ini_num  in range(1):
-            C = np.random.rand(3, 1)
+            C = rng.rand(3, 1)
             C = C * A
-            M = np.random.rand(nrow, ncol, 3)
+            M = rng.rand(nrow, ncol, 3)
             a = np.sum(M, 2)
             for k in range(N_region):
                 M[:,:, k]=M[:,:, k]/ a
@@ -125,8 +128,9 @@ def run_MICO(IMGdata,outputPath):
 
     progressbar.close()
 
-    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol, data.affine)
+    unscaledNiiData = nii.Nifti1Image(biasCorrectedVol.astype(np.float32), data.affine)
     hdrOut = unscaledNiiData.header
+    hdrOut.set_data_dtype(np.float32)
     hdrOut.set_xyzt_units('mm')
 
 

@@ -15,7 +15,11 @@ import os
 import sys
 import numpy as np
 import nibabel as nib
+from calendar import month_name
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 def startSeedPoint(in_labels,in_atlas):
 
@@ -64,7 +68,7 @@ def startSeedPoint(in_labels,in_atlas):
     for k, sPathAtlas in enumerate(PathAtlas):
         # print("Atlas%d:" % (k + 1,), sPathAtlas)
         labels_img.append(nib.load(sPathAtlas))
-        labels_data.append(labels_img[k].get_data())
+        labels_data.append(np.asanyarray(labels_img[k].dataobj))
         # print("labels_data[%d].dtype:" % (k,), labels_data[k].dtype)
         # print("labels_data[%d].shape:" % (k,), labels_data[k].shape)
         labels_hdr.append(labels_img[k].header)
@@ -87,7 +91,6 @@ def startSeedPoint(in_labels,in_atlas):
     niiData = nib.Nifti1Image(rois, dataOrg.affine)
     hdrIn = niiData.header
     hdrIn.set_xyzt_units('mm')
-    scaledNiiData = nib.as_closest_canonical(niiData)
     nib.save(niiData, sPathROIs)
 
     print("Output:", sPathROIs)
@@ -95,10 +98,8 @@ def startSeedPoint(in_labels,in_atlas):
 
 
 def get_date():
-    now = datetime.now()
-    pvDate = now.strftime("%a %d %b %Y")
-    pvTime = now.strftime("%H:%M:%S")
-    return pvDate + ' ' + pvTime
+    now = datetime.now(REPORT_TIMEZONE)
+    return f"{now.day:02d} {month_name[now.month]} {now.year} {now:%H:%M:%S} {now.tzname()}"
 
 def read_csv(sFilename):
     fid = open(sFilename)
@@ -175,7 +176,7 @@ def create_rois_3(iatlas, labels, labels_hdr, labels_data, datatype=None, preser
     else:
         labels_dtype = labels_hdr[0].get_data_dtype()
     labels_shape = labels_hdr[0].get_data_shape()
-    mask = np.zeros(labels_shape, dtype=np.bool)
+    mask = np.zeros(labels_shape, dtype=bool)
     rois = np.zeros(labels_shape + (len(iatlas),), dtype=labels_dtype)
     if preserve:
         for k, index in enumerate(iatlas):
@@ -242,10 +243,10 @@ if __name__ == '__main__':
     for k, sPathAtlas in enumerate(PathAtlas):
         #print("Atlas%d:" % (k + 1,), sPathAtlas)
         labels_img.append(nib.load(sPathAtlas))
-        labels_data.append(labels_img[k].get_data())
+        labels_data.append(np.asanyarray(labels_img[k].dataobj))
         #print("labels_data[%d].dtype:" % (k,), labels_data[k].dtype)
         #print("labels_data[%d].shape:" % (k,), labels_data[k].shape)
-        labels_hdr.append(labels_img[k].get_header())
+        labels_hdr.append(labels_img[k].header)
         labels_shape.append(labels_hdr[k].get_data_shape())
         #print("labels_shape[%d]:" % (k,), labels_shape[k])
         if len(labels_shape[k]) != 3:
@@ -265,7 +266,6 @@ if __name__ == '__main__':
     niiData = nib.Nifti1Image(rois, dataOrg.affine)
     hdrIn = niiData.header
     hdrIn.set_xyzt_units('mm')
-    scaledNiiData = nib.as_closest_canonical(niiData)
     nib.save(niiData, sPathROIs+ext_nifti)
 
     print("Output:", sPathROIs+ext_nifti)

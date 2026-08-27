@@ -66,7 +66,7 @@ def matrix_to_text(mat):
     return '\n'.join('  '.join(str(x) for x in mat[y]) + '  ' for y in range(mat.shape[0]))
 
 def interp_nearest(data, v):
-    vb = np.ones(v.shape[1], dtype=np.bool)
+    vb = np.ones(v.shape[1], dtype=bool)
     v0 = np.int32(np.floor(v))
     for i in range(3):
         v1 = v0[i]
@@ -80,7 +80,7 @@ def interp_nearest(data, v):
     return data[v0[0], v0[1], v0[2]] * vb
 
 def interp_trilinear(data, v):
-    vb = np.ones(v.shape[1], dtype=np.bool)
+    vb = np.ones(v.shape[1], dtype=bool)
     v0 = np.int32(np.floor(v))
     for i in range(3):
         v1 = v0[i]
