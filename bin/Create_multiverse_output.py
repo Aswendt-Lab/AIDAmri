@@ -261,7 +261,9 @@ def downsample_nifti_by_block_mean(
     output_path,
 ):
     """Average 2x2x2 voxel blocks from 0.15 mm to 0.3 mm isotropic."""
-    input_img = nib.load(input_path)
+    # Reuse the gzip stream across successive volumes. Otherwise, without
+    # indexed_gzip, each slice can reopen and decompress from the start.
+    input_img = nib.load(input_path, keep_file_open=True)
     if input_img.ndim not in (3, 4):
         raise ValueError(
             "Expected a 3D or 4D NIfTI file for spatial resampling, but "
@@ -302,6 +304,11 @@ def downsample_nifti_by_block_mean(
             block_shape
         ).mean(axis=(1, 3, 5), dtype=np.float32)
 
+    print(
+        f"Downsampling {input_path}: {input_img.shape} -> "
+        f"{target_shape + input_img.shape[3:]}",
+        flush=True,
+    )
     if input_img.ndim == 3:
         resampled_data = block_mean(input_img.dataobj)
     else:
@@ -309,7 +316,11 @@ def downsample_nifti_by_block_mean(
             target_shape + (input_img.shape[3],),
             dtype=np.float32,
         )
-        for volume_index in range(input_img.shape[3]):
+        for volume_index in tqdm(
+            range(input_img.shape[3]),
+            desc="Downsampling 4D fMRI",
+            unit="volume",
+        ):
             resampled_data[..., volume_index] = block_mean(
                 input_img.dataobj[..., volume_index]
             )
@@ -320,6 +331,7 @@ def downsample_nifti_by_block_mean(
         header=input_img.header,
     )
     output_img.set_data_dtype(np.float32)
+    print(f"Saving downsampled NIfTI: {output_path}", flush=True)
     nib.save(output_img, output_path)
 
     print(
