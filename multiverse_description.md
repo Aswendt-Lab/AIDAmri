@@ -67,6 +67,10 @@ transformation was then applied directly to the native masked 4D EPI with cubic
 interpolation, avoiding two resampling operations in the final data path. A
 final temporal-mean image was calculated from the corrected registered data.
 
+The corrected 4D EPI and its temporal-mean image in SIGMA space were then
+downsampled from 0.15 mm isotropic to 0.3 mm isotropic voxel resolution by
+averaging non-overlapping 2 × 2 × 2 voxel blocks.
+
 The exported EPI is motion and slice-time corrected and has
 the first five volumes removed. It is exported before physiological
 regression, SUSAN smoothing and temporal filtering to preserve the original EPI
@@ -74,9 +78,9 @@ contrast.
 
 The main outputs are:
 
-1. motion-corrected 4D EPI in SIGMA space;
+1. motion-corrected 4D EPI in SIGMA space at 0.3 mm isotropic resolution;
 2. slice-wise MCFLIRT motion parameters;
-3. temporal-mean EPI in SIGMA space; and
+3. temporal-mean EPI in SIGMA space at 0.3 mm isotropic resolution; and
 4. regional time series and functional-connectivity matrices.
 
 ## Graphical summary
@@ -103,6 +107,7 @@ flowchart TD
     COMP --> CORRECTED
     MASK --> CORRECTED
     CORRECTED --> OUTPUT["Corrected 4D EPI + final temporal mean in SIGMA space"]
+    OUTPUT --> DOWNSAMPLE["Downsample 0.15 to 0.3 mm isotropic: 2 × 2 × 2 block averaging"]
 ```
 
 ## Tools used by AIDAmri
