@@ -344,7 +344,9 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg):
                 currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
-                    command = f'python process_fMRI.py -i {_quote(currentFile[0])} --bet {cfg["func_bet"]}'
+                    command = f'python process_fMRI.py -i {_quote(currentFile[0])}'
+                    if cfg.get("func_bet") is not None:
+                        command += f' --bet {cfg["func_bet"]}'
                     if cfg.get("func_stc") is True:
                         command += ' -stc'
                     if cfg.get("func_frac") is not None:
