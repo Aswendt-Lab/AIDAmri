@@ -1254,6 +1254,7 @@ if __name__ == "__main__":
     #configurate the logging module
     log_file_path = os.path.join(pathToData, "batchproc_log.txt")
     configure_logging(log_file_path)
+    logging.info("Explicit command line options: %s", shlex.join(sys.argv[1:]))
     copy_aidamri_git_information_to_proc(pathToData)
 
     if args.data_types is None:
