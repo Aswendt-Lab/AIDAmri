@@ -34,6 +34,7 @@ import sys
 import shutil
 
 from common.artifact_manifest import OutputTracker
+from common.script_logging import build_script_log_path
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
@@ -157,12 +158,12 @@ def run_subprocess(command, datatype, step, anat_process=False):
         output_tracker = OutputTracker.start(base, datatype, step)
 
     # default location
-    log_file = os.path.join(base, f"{step}.log")
+    log_name = f"{step}.log"
 
     # special case: anat/process wants different filenames
     if datatype == "anat" and step == "process":
         log_name = f"{step}.log" if anat_process else f"{step}_par.log"
-        log_file = os.path.join(base, log_name)
+    log_file = build_script_log_path(base, log_name)
 
     #Determine sub / ses
     normalized_path = os.path.normpath(inp)

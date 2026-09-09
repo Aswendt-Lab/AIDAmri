@@ -20,7 +20,11 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
-from common.script_logging import log_explicit_cli_options, script_logging_disabled
+from common.script_logging import (
+    build_script_log_path,
+    log_explicit_cli_options,
+    script_logging_disabled,
+)
 
 
 def enable_process_log(log_path):
@@ -179,7 +183,7 @@ if __name__ == '__main__':
 
     dwi_dir = os.path.dirname(args.file_in)
     start_output_tracking(dwi_dir, "dwi", "processing")
-    process_log = os.path.join(dwi_dir, "process.log")
+    process_log = build_script_log_path(dwi_dir, "process.log")
     if should_enable_process_log():
         enable_process_log(process_log)
         log_explicit_cli_options()

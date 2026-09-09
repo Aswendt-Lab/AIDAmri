@@ -318,7 +318,7 @@ class ArtifactManifestTests(unittest.TestCase):
             raw.write_text("preprocessed", encoding="utf-8")
             preprocessing_output = folder / "preprocessed.nii.gz"
             preprocessing_output.write_text("pre", encoding="utf-8")
-            preprocessing_log = folder / "preprocess.log"
+            preprocessing_log = folder / "sub-01_ses-01_anat_preprocess.log"
             preprocessing_log.write_text("first run", encoding="utf-8")
             preprocessing.finalize()
 
