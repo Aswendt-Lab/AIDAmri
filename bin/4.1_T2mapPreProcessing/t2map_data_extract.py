@@ -131,7 +131,6 @@ if __name__ == "__main__":
 
     print("Extracting T2 values for: %s" % image_file)
     print("Using label file: %s" % args.label_file)
-        sys.exit(f"Error: '{image_file}' is not an existing image nii-file.")
     start_output_tracking(os.path.dirname(image_file), "t2map", "processing")
 
     img_data = nii.load(image_file)
