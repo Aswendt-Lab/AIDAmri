@@ -465,21 +465,26 @@ def build_reset_plan(project_root, mode, phase, delete_unmanaged=False):
     return plans
 
 
-def print_reset_plan(plans, mode, phase):
-    print(f"\nReset plan for mode={mode}, target phase={phase}")
-    print("Only later-stage artifacts registered in the manifest will be deleted.")
-    stroke_mask_folders = {
+def _normal_stroke_mask_folders(plans):
+    return {
         plan["folder"]
         for plan in plans
         if not plan.get("delete_unmanaged")
         and any(_is_stroke_mask(path) for path in plan.get("unknown_files", []))
     }
+
+
+def print_reset_plan(plans, mode, phase):
+    print(f"\nReset plan for mode={mode}, target phase={phase}")
+    print("Only later-stage artifacts registered in the manifest will be deleted.")
+    stroke_mask_folders = _normal_stroke_mask_folders(plans)
     if stroke_mask_folders:
         folder_word = "folder" if len(stroke_mask_folders) == 1 else "folders"
         print(
             f"\n[INFO] Stroke mask files are present in "
             f"{len(stroke_mask_folders)} selected {folder_word}. "
-            "They are preserved and omitted from the per-folder file lists."
+            "They are preserved; individual paths are shown below but omitted "
+            "from the final summary."
         )
     if any(plan.get("delete_unmanaged") for plan in plans):
         print(
@@ -575,6 +580,7 @@ def _summary_protected_unmanaged_files(plan):
 
 def print_issue_summary(plans):
     """Print all actionable warnings and information grouped by dataset."""
+    stroke_mask_folders = _normal_stroke_mask_folders(plans)
     affected_plans = [
         plan
         for plan in plans
@@ -599,8 +605,15 @@ def print_issue_summary(plans):
     ]
 
     print("\nWarning and information summary")
+    if stroke_mask_folders:
+        folder_word = "folder" if len(stroke_mask_folders) == 1 else "folders"
+        print(
+            f"[INFO] Stroke mask files are present in "
+            f"{len(stroke_mask_folders)} selected {folder_word} and were preserved."
+        )
     if not affected_plans:
-        print("No warnings or reportable unmanaged files found.")
+        if not stroke_mask_folders:
+            print("No warnings or reportable unmanaged files found.")
         return
 
     for plan in affected_plans:

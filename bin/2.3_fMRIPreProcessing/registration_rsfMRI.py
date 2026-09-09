@@ -20,10 +20,14 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import (
+    build_script_log_path,
+    log_explicit_cli_options,
+    script_logging_disabled,
+)
 
 
 LOGGER = logging.getLogger(__name__)
-DISABLE_LOG_ENV = "AIDAMRI_DISABLE_SCRIPT_LOG"
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 
@@ -38,12 +42,13 @@ class BerlinTimeFormatter(logging.Formatter):
 
 def setup_logging(outfile):
     handlers = [logging.StreamHandler()]
-    if os.environ.get(DISABLE_LOG_ENV) != "1":
-        handlers.append(logging.FileHandler(os.path.join(outfile, "registration.log"), mode="w"))
+    if not script_logging_disabled():
+        handlers.append(logging.FileHandler(build_script_log_path(outfile, "registration.log"), mode="w"))
     formatter = BerlinTimeFormatter("%(asctime)s %(levelname)s: %(message)s")
     for handler in handlers:
         handler.setFormatter(formatter)
     logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
+    log_explicit_cli_options(LOGGER)
 
 
 def require_single_match(matches, description):

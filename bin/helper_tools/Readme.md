@@ -144,7 +144,9 @@ the process exits. For example, `sub-01/ses-02/anat` uses
 launched directly instead of through `batchProc.py`.
 
 The reset helper deletes only files registered as newly created by stages after
-the requested target phase. Existing files that were modified are reported but
+the requested target phase. Standard BIDS sidecars matching `*_T2w.json`, `*_EPI.json`, `*_dwi.json`, 
+`*.bvec`, or `*.bval` and `*Stroke_mask.nii.gz` are not deleted.
+Existing files that were modified are reported but
 not deleted. Files without any manifest assignment are explicitly reported as
 not managed and are preserved. Tracked directories are removed only when
 empty. Before planning a reset, every existing folder of the selected mode must
@@ -159,18 +161,12 @@ registration, processing, or `batchProc.py`.
 At the end of every dry-run or applied reset, warnings and unmanaged files are
 shown again in a consolidated summary grouped by subject, session, and mode.
 Modified files and unmanaged files are listed with their full paths so the user
-can inspect and handle them manually. Standard BIDS sidecars matching
-`*_T2w.json`, `*_EPI.json`, `*_dwi.json`, `*.bvec`, or `*.bval` remain visible
-in the detailed reset plan but are not repeated in the final summary.
-In normal mode, individual `*Stroke_mask.nii.gz` paths remain visible in their
-folder details but are omitted from the final summary. A single message near
-the start reports how many selected modality folders contain preserved stroke
-masks.
+can inspect and handle them manually.
 
 Use `--delete-unmanaged` only after reviewing a dry-run. It permanently deletes
-files that are not referenced anywhere in the manifest. Files matching
-`MUTED_SUMMARY_SUFFIXES` and `*Stroke_mask.nii.gz` are always protected from
-this deletion. Other manually supplied masks, notes, and user data can still be
+files that are not referenced anywhere in the manifest. Standard BIDS sidecars matching 
+`*_T2w.json`, `*_EPI.json`, `*_dwi.json`, `*.bvec`, or `*.bval` and `*Stroke_mask.nii.gz` 
+are always protected from this deletion. Other manually supplied masks, notes, and user data can still be
 deleted. Unmanaged directories are never removed recursively: their files are
 deleted individually and the directories are removed only when empty. A
 directory containing a protected file is preserved.

@@ -1,11 +1,50 @@
-"""Small stdout/stderr logging helper for standalone pipeline scripts."""
+"""Mirror script output to a log file during standalone execution."""
 
 import os
+import shlex
 import sys
+from pathlib import Path
 
 
 DISABLE_LOG_ENV = "AIDAMRI_DISABLE_SCRIPT_LOG"
 _LOG_FILES = []
+
+
+def build_script_log_path(output_dir, log_name):
+    """Prefix step logs with the enclosing sub/session/modality, if available."""
+    output_path = Path(os.path.abspath(output_dir))
+    for folder in (output_path, *output_path.parents):
+        if folder.name not in {"anat", "dwi", "func", "t2map"}:
+            continue
+        session = folder.parent.name
+        subject = folder.parent.parent.name
+        if subject.startswith("sub-") and session.startswith("ses-"):
+            log_name = f"{subject}_{session}_{folder.name}_{log_name}"
+            break
+    return os.path.join(output_dir, log_name)
+
+
+def script_logging_disabled():
+    """Return whether batchProc.py is responsible for capturing script output."""
+    return any(
+        os.environ.get(name, "").lower() in {"1", "true", "yes"}
+        for name in (DISABLE_LOG_ENV, "AIDAMRI_DISABLE_PROCESS_LOG")
+    )
+
+
+def log_explicit_cli_options(logger=None):
+    """Record only the actual CLI arguments, and only for standalone runs."""
+    if script_logging_disabled():
+        return
+
+    message = (
+        f"Script: {os.path.basename(sys.argv[0])}\n"
+        f"Explicit command line options: {shlex.join(sys.argv[1:])}"
+    )
+    if logger is None:
+        print(message, flush=True)
+    else:
+        logger.info(message)
 
 
 class _TeeStream:
@@ -37,11 +76,12 @@ class _TeeStream:
 
 
 def setup_script_logging(output_dir, log_name):
-    """Mirror console output to a file unless batchProc.py owns the log."""
-    if os.environ.get(DISABLE_LOG_ENV) == "1":
+    """Enable file logging unless batchProc.py already captures the output."""
+    if script_logging_disabled():
         return
 
-    log_file = open(os.path.join(output_dir, log_name), "w", encoding="utf-8")
+    log_file = open(build_script_log_path(output_dir, log_name), "w", encoding="utf-8")
     _LOG_FILES.append(log_file)
     sys.stdout = _TeeStream(sys.stdout, log_file)
     sys.stderr = _TeeStream(sys.stderr, log_file)
+    log_explicit_cli_options()

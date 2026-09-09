@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover - AIDAmri currently targets Linux
 MANIFEST_SUFFIX = "_aidamri_manifest.json"
 LOCK_FILENAME = ".aidamri_manifest.lock"
 MANIFEST_VERSION = 1
+MANIFEST_FILE_MODE = 0o644
 MODES = ("anat", "dwi", "func", "t2map")
 STAGES = ("preprocessing", "registration", "processing")
 MANIFEST_TIMEZONE = ZoneInfo("Europe/Berlin")
@@ -177,13 +178,20 @@ def _write_manifest_unlocked(folder: Path, manifest: dict) -> None:
         text=True,
     )
     try:
-        with os.fdopen(file_descriptor, "w", encoding="utf-8") as stream:
+        # mkstemp defaults to 0600. Make the final manifest readable outside
+        # root-owned containers before atomically moving it into place.
+        os.fchmod(file_descriptor, MANIFEST_FILE_MODE)
+        stream = os.fdopen(file_descriptor, "w", encoding="utf-8")
+        file_descriptor = None
+        with stream:
             json.dump(manifest, stream, indent=2, sort_keys=True)
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temp_name, path)
     finally:
+        if file_descriptor is not None:
+            os.close(file_descriptor)
         try:
             os.unlink(temp_name)
         except FileNotFoundError:
