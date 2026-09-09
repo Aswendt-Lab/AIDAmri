@@ -98,7 +98,7 @@ def run_command(command):
 # use_atlas_mask: If True, mask T2data with a dilated brain_anno mask.
 
 def regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, splitAnno_rsfMRI, anno_rsfMRI,
-                  bsplineMatrix, dref, outfile):
+                  bsplineMatrix, dref, outfile, use_atlas_mask=False):
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
 
@@ -252,6 +252,8 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('required named arguments')
     requiredNamed.add_argument('-i', '--inputVolume', help='Path to rsfMRI data after preprocessing', required=True)
     parser.add_argument('-d', '--dtiasRef', action='store_true', help='use DTI as reference if data quality is low')
+    parser.add_argument('--atlas-mask-t2', action='store_true',
+                        help='mask the T2 BET with the registered atlas annotation before registration')
     parser.add_argument('-r', '--referenceDay', help='Reference Stroke mask', nargs='?', type=str,
                         default=None)
     parser.add_argument('-s', '--splitAnno', help='Split annotations atlas', nargs='?', type=str,
@@ -350,7 +352,7 @@ if __name__ == "__main__":
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
     output = regABA2rsfMRI(inputVolume, T2data, brain_template, brain_anno, splitAnno, splitAnno_rsfMRI,
-                           anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile)
+                           anno_rsfMRI, bsplineMatrix, args.dtiasRef, outfile, use_atlas_mask=args.atlas_mask_t2,)
     sys.stdout = sys.__stdout__
 
     current_dir = os.path.dirname(inputVolume)
