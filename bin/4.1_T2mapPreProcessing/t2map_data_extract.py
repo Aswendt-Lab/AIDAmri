@@ -8,6 +8,7 @@ import sys  # Added import statement for sys module
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import setup_script_logging
 
 def getOutfile(atlas_type, img_file, suffix):
     imgName = os.path.basename(img_file)
@@ -67,8 +68,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     acronyms_files = glob.glob(os.path.join(os.getcwd(), "*.txt"))
-    print(f"Extracting T2 values for: {args.input}")
-    print(f"Acronym files: {acronyms_files}")
 
     # Checking if input file is provided
     if args.input is None:
@@ -78,6 +77,9 @@ if __name__ == '__main__':
     if not os.path.exists(image_file):
         sys.exit(f"Error: '{image_file}' is not an existing image nii-file.")
     start_output_tracking(os.path.dirname(image_file), "t2map", "processing")
+    setup_script_logging(os.path.dirname(image_file), "process.log")
+    print(f"Extracting T2 values for: {args.input}")
+    print(f"Acronym files: {acronyms_files}")
 
     img_data = nii.load(image_file)
     img = img_data.get_fdata()  # Using get_fdata() for compatibility
