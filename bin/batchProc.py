@@ -35,6 +35,7 @@ import shutil
 
 from common.artifact_manifest import OutputTracker
 from common.script_logging import build_script_log_path
+from common.fmri_metadata import positive_tr
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
@@ -346,6 +347,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg):
                 if len(currentFile)>0:
                     os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
                     command = f'python process_fMRI.py -i {_quote(currentFile[0])}'
+                    if cfg.get("func_tr") is not None:
+                        command += f' --tr {positive_tr(cfg["func_tr"])}'
                     if cfg.get("func_bet") is not None:
                         command += f' --bet {cfg["func_bet"]}'
                     if cfg.get("func_stc") is True:
@@ -619,6 +622,7 @@ CLI_DEFAULT_DESCRIPTIONS = {
     "exemptionlist": "no exemptionlist",
     "cpu_percent": "use cpu_cores",
     "func_atlas_mask_t2": "disabled",
+    "func_tr": "JSON RepetitionTime, otherwise 1.42 s",
 }
 
 CLI_DEFAULT_SOURCES = {
@@ -1224,6 +1228,10 @@ if __name__ == "__main__":
     # fMRI OPTIONS
     # ============================================================
     func = parser.add_argument_group("fMRI options")
+    func.add_argument(
+        "--func-tr", type=positive_tr,
+        help="fMRI TR in seconds; priority: --func-tr > JSON RepetitionTime > fallback 1.42 s"
+    )
     func.add_argument(
         "--func-bias-method",
         choices=["skip", "ants"],

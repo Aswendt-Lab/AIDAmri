@@ -21,12 +21,12 @@ import cv2
 import create_seed_rois
 import fsl_mean_ts
 from pathlib import Path 
-import json
 #makes sure to import bet.py
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.bet import applyBET, skip_bet_function
 from common.artifact_manifest import start_output_tracking
 from common.script_logging import setup_script_logging
+from common.fmri_metadata import DEFAULT_TR_SECONDS, positive_tr, read_fmri_metadata, resolve_tr
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 
@@ -161,28 +161,18 @@ def fsl_SeparateSliceMoCo(input_file,par_folder):
 
     return output_file
 
-def copyRawPhysioData(file_name,i32_Path):
-    img_name = Path(file_name).name
-    json_name = img_name.replace(".nii.gz", ".json")
-    
-    json_file = os.path.join(os.path.dirname(file_name), json_name)
+def copyRawPhysioData(file_name,i32_Path,metadata=None):
+    content = read_fmri_metadata(file_name) if metadata is None else metadata
+    if "ScanID" not in content:
+        print("Warning: No ScanID in metadata for '%s'; skipping physio lookup." % (file_name,))
+        return []
+
     sub_name = (Path(file_name).name.split("_")[0]).split("-")[1]
     studyName = (Path(os.path.dirname(os.path.dirname(file_name))).name).split("-")[1]
     physioPath = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(file_name)))),'Physio')
     scanid = None
     
     relatedPhysioData = []
-    if not os.path.exists(json_file):
-        print("Error: '%s' has no metadata JSON file for physio lookup." % (file_name,))
-        return []
-
-    with open(json_file, 'r') as infile:
-        content = json.load(infile)
-
-    if "ScanID" not in content:
-        print("Error: '%s' has no ScanID in metadata JSON for physio lookup." % (json_file,))
-        return []
-
     scanid = str(content["ScanID"]) + ".I32"
 
     if not os.path.exists(physioPath):
@@ -225,6 +215,7 @@ def startProcess(
     radius=60,
     gradient=0.13,
     center=None,
+    metadata=None,
 ):
     # generate folder for images
     origin_Path = os.path.dirname(Rawfile_name)
@@ -283,7 +274,7 @@ def startProcess(
     getEPIMean(mcfFile_name, proc_Path)
 
     # copy physio data to rawMonData-Folder
-    relatedPhysioFolder = copyRawPhysioData(Rawfile_name,i32_Path)
+    relatedPhysioFolder = copyRawPhysioData(Rawfile_name,i32_Path,metadata=metadata)
 
     # get Regression Values
     if len(relatedPhysioFolder) != 0:
@@ -293,9 +284,8 @@ def startProcess(
 
     return mcfFile_name
 
-if __name__ == "__main__":
+def main(argv=None):
 
-    TR = 1.42
     cutOff_sec = 100.0
     FWHM = 3.0
 
@@ -304,7 +294,9 @@ if __name__ == "__main__":
     requiredNamed = parser.add_argument_group('required arguments')
     requiredNamed.add_argument('-i', '--input', help='Path to the RAW data of rsfMRI NIfTI file', required=True)
 
-    parser.add_argument('-t', '--TR', default=TR, help='Current TR value')
+    parser.add_argument('-t', '--TR', '--tr', dest='tr', type=positive_tr, default=None,
+                        help=f'TR in seconds; priority: --tr > JSON RepetitionTime > '
+                             f'fallback {DEFAULT_TR_SECONDS} s')
     parser.add_argument('-c', '--cutOff-sec', default=cutOff_sec, help='High-pass filter cutoff sec')
     parser.add_argument('-f', '--FWHM', default=FWHM, help='Full width at half maximum')
     parser.add_argument('-stc', '--slicetimecorrection', action='store_true', help='perform slice time correction')
@@ -315,7 +307,7 @@ if __name__ == "__main__":
     parser.add_argument('--bet-gradient', type=float, default=0.13, help='BET horizontal gradient')
     parser.add_argument('-ctr', '--center', nargs=3, type=float, default=None, help='BET center as x y z')
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     stc = args.slicetimecorrection
 
@@ -332,37 +324,36 @@ if __name__ == "__main__":
     start_output_tracking(os.path.dirname(input_file), "func", "processing")
     setup_script_logging(os.path.dirname(input_file), "process.log")
 
+    metadata = read_fmri_metadata(input_file)
+    TR = resolve_tr(metadata, args.tr)
+    if stc:
+        missing = [key for key in ('ObjOrderList', 'costum_timings') if key not in metadata]
+        if missing:
+            parser.error('Slice time correction requires JSON fields: ' + ', '.join(missing))
+
     mcfFile_name = startProcess(
         input_file,
         bet_method=args.bet,
         frac=args.bet_frac,
         radius=args.bet_radius,
         gradient=args.bet_gradient,
-        center=args.center
+        center=args.center,
+        metadata=metadata
     )
 
     
     # if stc is activated find parameters
     if stc: 
         print("Starting Regression with slice time correction:")
-        # find meta data json file
-        meta_data_file_name = Path(args.input).name.replace(".nii.gz", ".json")
-        meta_data_file = os.path.join(Path(args.input).parent, meta_data_file_name)
-
-        with open(meta_data_file, "r") as infile:
-            meta_data = json.load(infile)
-            
-        TR = meta_data["RepetitionTime"] / 1000
-        slice_order = meta_data["ObjOrderList"]
-        n_slices = meta_data["n_slices"]
-        costum_timings = meta_data["costum_timings"]
+        slice_order = metadata["ObjOrderList"]
+        costum_timings = metadata["costum_timings"]
 
         # create costum timings txt file
-        costum_timings_path = os.path.join(Path(meta_data_file).parent, "tcostum.txt")
+        costum_timings_path = os.path.join(Path(input_file).parent, "tcostum.txt")
         create_txt_file(costum_timings_path, costum_timings)
         
         # create slice order txt file
-        slice_order_path = os.path.join(Path(meta_data_file).parent, "slice_order.txt")
+        slice_order_path = os.path.join(Path(input_file).parent, "slice_order.txt")
         create_txt_file(slice_order_path, slice_order)
         
         rgr_file, srgr_file, sfrgr_file = regress.startRegression(
@@ -410,3 +401,7 @@ if __name__ == "__main__":
     roisPath = copyAtlasOfData(atlasPath, 'AnnoSplit_parental', labels2000)
 
     fslMeantsFile = fsl_mean_ts.start_fsl_mean_ts(sfrgr_file, roisPath, labelNames2000, 'MasksTCsSplit.')
+
+
+if __name__ == "__main__":
+    main()
