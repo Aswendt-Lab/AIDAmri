@@ -20,6 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import log_explicit_cli_options, script_logging_disabled
 
 
 def enable_process_log(log_path):
@@ -49,13 +50,9 @@ def enable_process_log(log_path):
 
 
 def should_enable_process_log():
-    # batchProc.py already redirects stdout/stderr into its own step log. In
-    # that case dsi_main.py should not create an additional process.log or tee
-    # the same lines twice. Allow an explicit override via environment variable
-    # and otherwise fall back to a TTY check for direct interactive runs.
-    if os.environ.get("AIDAMRI_DISABLE_PROCESS_LOG", "").lower() in {"1", "true", "yes"}:
-        return False
-    return os.isatty(sys.stdout.fileno()) and os.isatty(sys.stderr.fileno())
+    # Direct runs also create a log when stdout/stderr are redirected.
+    # batchProc.py captures the output itself and disables this side log.
+    return not script_logging_disabled()
 
 
 def normalize_track_params(values):
@@ -185,6 +182,7 @@ if __name__ == '__main__':
     process_log = os.path.join(dwi_dir, "process.log")
     if should_enable_process_log():
         enable_process_log(process_log)
+        log_explicit_cli_options()
         print(f"Writing process log to {process_log}")
         
     # Determine the gradient source based on the -b option.
