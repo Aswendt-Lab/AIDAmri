@@ -702,7 +702,7 @@ Check the registration visually by overlaying the brain-extracted fMRI image wit
 
 <h3 id="processing-of-fmri-data">Processing of fMRI data <a href="#contents"><span style="font-size: 1.35em;">↑</span></a></h3>
 
-The activity processing step performs regression, filtering and extraction of regional time series from the registered atlas regions. If physiological recording files or slice timing information are not available, the script proceeds without those correction steps.
+The activity processing step performs regression, filtering and extraction of regional time series from the registered atlas regions. If physiological recording files are not available, the script proceeds without physiological regression. Slice time correction is disabled unless requested with `-stc`; requesting it requires the JSON fields `ObjOrderList` and `costum_timings`.
 
 ```text
 python process_fMRI.py -i .../func/testData_EPI.nii.gz
