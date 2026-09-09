@@ -3,10 +3,25 @@
 import os
 import shlex
 import sys
+from pathlib import Path
 
 
 DISABLE_LOG_ENV = "AIDAMRI_DISABLE_SCRIPT_LOG"
 _LOG_FILES = []
+
+
+def build_script_log_path(output_dir, log_name):
+    """Prefix step logs with the enclosing sub/session/modality, if available."""
+    output_path = Path(os.path.abspath(output_dir))
+    for folder in (output_path, *output_path.parents):
+        if folder.name not in {"anat", "dwi", "func", "t2map"}:
+            continue
+        session = folder.parent.name
+        subject = folder.parent.parent.name
+        if subject.startswith("sub-") and session.startswith("ses-"):
+            log_name = f"{subject}_{session}_{folder.name}_{log_name}"
+            break
+    return os.path.join(output_dir, log_name)
 
 
 def script_logging_disabled():
@@ -65,7 +80,7 @@ def setup_script_logging(output_dir, log_name):
     if script_logging_disabled():
         return
 
-    log_file = open(os.path.join(output_dir, log_name), "w", encoding="utf-8")
+    log_file = open(build_script_log_path(output_dir, log_name), "w", encoding="utf-8")
     _LOG_FILES.append(log_file)
     sys.stdout = _TeeStream(sys.stdout, log_file)
     sys.stderr = _TeeStream(sys.stderr, log_file)
