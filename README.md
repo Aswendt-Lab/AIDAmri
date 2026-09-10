@@ -263,15 +263,15 @@ fslhd input.nii.gz
 [Matlab script](ARA/) to generate a custom version of the Allen Mouse Brain Atlas.
 
 ## CONTACT
-If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+Join our open office hour every **Thursday at 3:00 pm German local time (CET/CEST)** to ask questions and discuss AIDAmri with the team.
 
-or 
+[![Join on Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
 
-join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
+Sessions may be cancelled on public holidays in Germany.
 
-Please note that the Open Office Hour may not take place on public holidays in Germany.
+If you encounter a bug or technical issue, please open an issue on GitHub.
 
-For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)
+For all other inquiries, please contact **Markus Aswendt** at aswendtATmed.uni-frankfurt.de (replace AT with @).
 
 ## LICENSE/CITATION
 GNU General Public License v3.0
