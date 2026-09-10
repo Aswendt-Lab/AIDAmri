@@ -111,7 +111,7 @@ For this reason, we recommend FSL Eyes, as this tool provides more information a
 <details>
 <summary><strong>This section lists frequently encountered problems when using AIDAmri and possible solutions.</strong></summary>
 	
-If your problem is not listed here, please use our Gitter Chat or open an issue on GitHub and include:
+If your problem is not listed here, please use open an issue on GitHub and include:
 - OS
 - Docker version
 - Command used
