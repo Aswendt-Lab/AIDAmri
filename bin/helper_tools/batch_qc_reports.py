@@ -19,6 +19,8 @@ import nibabel as nib
 import numpy as np
 
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
+# Left/right corpus callosum in lib/annoVolume+2000_rsfMRI.nii.txt (Allen atlas).
+CC_ATLAS_LABELS = (776, 2776)
 
 
 def _as_3d(data):
@@ -148,13 +150,24 @@ def _plot_bet_image(bet_path, out_dir, project_dir, n_slices):
     return png_path, shape, zooms, mask_path if mask_path.exists() else None
 
 
-def _plot_registration_overlay(bet_path, anno_path, out_dir, project_dir, n_slices):
+def _plot_registration_overlay(
+    bet_path,
+    anno_path,
+    out_dir,
+    project_dir,
+    n_slices,
+    atlas_labels=None,
+    report_title="Registration Report",
+    filename_suffix="registration_report",
+):
     bet_data, shape, zooms = _load_3d(bet_path)
     anno_data, anno_shape, _ = _load_3d(anno_path)
     if bet_data.shape != anno_data.shape:
         raise ValueError(
             f"Shape mismatch for overlay: BET {bet_data.shape}, annotation {anno_data.shape}"
         )
+    if atlas_labels is not None:
+        anno_data = np.where(np.isin(anno_data, atlas_labels), anno_data, 0)
 
     orientations = ["Axial", "Sagittal", "Coronal"]
     slices = _slice_indices(bet_data, n_slices)
@@ -192,9 +205,13 @@ def _plot_registration_overlay(bet_path, anno_path, out_dir, project_dir, n_slic
             ax.set_title(f"{orientation} {index}", fontsize=9)
             ax.axis("off")
 
-    fig.suptitle(f"Registration Report: {Path(bet_path).name} + {Path(anno_path).name}", fontsize=14)
+    fig.suptitle(f"{report_title}: {Path(bet_path).name} + {Path(anno_path).name}", fontsize=14)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
-    png_path = Path(out_dir) / _safe_png_name(anno_path, project_dir, "registration_report")
+    png_path = Path(out_dir) / _safe_png_name(
+        anno_path,
+        project_dir,
+        filename_suffix,
+    )
     fig.savefig(png_path, dpi=120)
     plt.close(fig)
     return png_path, shape, anno_shape, zooms
@@ -403,6 +420,68 @@ def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=Non
     return html_path, len(entries)
 
 
+def build_cc_qc_report(project_dir, n_slices=10, custom_parameters=None):
+    project_dir = Path(project_dir)
+    out_dir = project_dir / "Report" / "CC"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    entries = []
+    label_text = ", ".join(str(label) for label in CC_ATLAS_LABELS)
+    suffix = "_AnnoSplit_parental.nii.gz"
+    anno_files = sorted(project_dir.glob(f"sub-*/ses-*/*/*{suffix}"))
+    for anno_path in anno_files:
+        bet_name = anno_path.name[: -len(suffix)] + ".nii.gz"
+        bet_path = anno_path.with_name(bet_name)
+        if not bet_path.exists():
+            logging.warning("Skipping CC Report without matching BET file: %s", anno_path)
+            continue
+        try:
+            png_path, bet_shape, anno_shape, zooms = _plot_registration_overlay(
+                bet_path,
+                anno_path,
+                out_dir,
+                project_dir,
+                n_slices,
+                atlas_labels=CC_ATLAS_LABELS,
+                report_title="Corpus Callosum Report",
+                filename_suffix="cc_report",
+            )
+            rel_bet, subject, session, modality = _entry_metadata(bet_path, project_dir)
+            rel_anno = anno_path.resolve().relative_to(project_dir.resolve())
+            info = [
+                ("BET", rel_bet),
+                ("Annotation", rel_anno),
+                ("Atlas labels", label_text),
+                ("Modality", modality),
+                ("BET dimensions", bet_shape),
+                ("Annotation dimensions", anno_shape),
+                ("Voxel size", tuple(round(float(z), 4) for z in zooms)),
+            ]
+            entries.append(
+                {
+                    "subject": subject,
+                    "session": session,
+                    "modality": modality,
+                    "report_img_path": png_path.name,
+                    "image_alt": f"{bet_path.name} + {anno_path.name} (labels {label_text})",
+                    "info": info,
+                }
+            )
+        except Exception as exc:
+            logging.warning("Could not create CC Report for %s: %s", anno_path, exc)
+
+    if not entries:
+        return None, 0
+    html_path = _write_report(
+        entries,
+        out_dir,
+        f"Corpus Callosum Report: BET + AnnoSplit_parental (labels {label_text})",
+        "cc_report.html",
+        custom_parameters=custom_parameters,
+    )
+    return html_path, len(entries)
+
+
 def _positive_int(value):
     value = int(value)
     if value < 1:
@@ -425,7 +504,7 @@ def _custom_parameter(value):
 
 def _build_argument_parser():
     parser = argparse.ArgumentParser(
-        description="Create project-level BET and registration QC reports."
+        description="Create project-level BET, registration and corpus callosum QC reports."
     )
     parser.add_argument(
         "-i",
@@ -437,7 +516,7 @@ def _build_argument_parser():
     )
     parser.add_argument(
         "--report",
-        choices=("all", "bet", "registration"),
+        choices=("all", "bet", "registration", "cc"),
         default="all",
         help="Report to create (default: all).",
     )
@@ -475,6 +554,8 @@ def main(argv=None):
         report_builders.append(("BET", build_bet_qc_report))
     if args.report in ("all", "registration"):
         report_builders.append(("Registration", build_registration_qc_report))
+    if args.report in ("all", "cc"):
+        report_builders.append(("CC", build_cc_qc_report))
 
     for report_label, report_builder in report_builders:
         html_path, count = report_builder(

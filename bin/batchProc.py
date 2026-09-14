@@ -560,6 +560,7 @@ def create_qc_reports(project_path, steps, custom_parameters=None):
     try:
         from helper_tools.batch_qc_reports import (
             build_bet_qc_report,
+            build_cc_qc_report,
             build_registration_qc_report,
         )
     except Exception as exc:
@@ -604,6 +605,24 @@ def create_qc_reports(project_path, steps, custom_parameters=None):
         except Exception as exc:
             logging.warning("Registration report generation failed: %s", exc)
             print(f"Registration report generation failed: {exc}")
+
+        try:
+            print("Creating CC report...")
+            logging.info("Creating CC report...")
+            html_path, count = build_cc_qc_report(
+                project_path,
+                n_slices=7,
+                custom_parameters=custom_parameters,
+            )
+            if html_path:
+                print(f"CC report written to {html_path} ({count} image(s))")
+                logging.info("CC report written to %s (%s images)", html_path, count)
+            else:
+                print("CC report skipped: no BET/AnnoSplit_parental pairs found.")
+                logging.info("CC report skipped: no BET/AnnoSplit_parental pairs found.")
+        except Exception as exc:
+            logging.warning("CC report generation failed: %s", exc)
+            print(f"CC report generation failed: {exc}")
 
 
 def format_step_label(step):
