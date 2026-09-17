@@ -371,8 +371,8 @@ if __name__ == "__main__":
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/sigma/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
     parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/DTI', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/sigma/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
-    parser.add_argument('--SigBrain_anno', help='Original unsplit SIGMA Brain annotation in atlas space', type=str,
-                        default=os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "lib", "SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz"))
+    parser.add_argument('--sigBrain_anno', help='Original unsplit SIGMA Brain annotation in atlas space', type=str,
+                        default=os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "lib", "sigma", "SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz"))
     )
 
     args = parser.parse_args()
@@ -445,6 +445,6 @@ if __name__ == "__main__":
     if not os.path.exists(anno_rsfMRI):
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
-    regSIG2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, bsplineMatrix,outfile, SigBrain_anno=args.SigBrain_anno)
+    regSIG2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, bsplineMatrix,outfile, sigBrain_anno=args.sigBrain_anno)
 
     print("Registration completed")
