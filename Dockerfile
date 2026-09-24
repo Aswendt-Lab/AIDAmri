@@ -127,7 +127,7 @@ ENV PATH=${FSLDIR}/bin:${PATH}
 # copy bin/ and lib/ from AIDAmri into image
 COPY bin/ bin/
 RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
-ENV PATH=/aida/bin:/aida/bin/3.2_DTIConnectivity:$PATH
+ENV PATH=/aida/bin:/aida/bin/common:/aida/bin/3.2_DTIConnectivity:$PATH
 RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
 COPY lib/ lib/
 # make install_immv executable and run it
@@ -139,5 +139,5 @@ RUN test -x /aida/dsi_studio_ubuntu2204/dsi-studio-cpu/dsi_studio
 
 RUN pip install -c constraints.txt dipy scikit-learn
 RUN pip install -c constraints.txt fslpy
-RUN wget -O /aida/bin/bet4animal "https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false" && \
-    chmod +x /aida/bin/bet4animal
+RUN wget -O /aida/bin/common/bet4animal "https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false" && \
+    chmod +x /aida/bin/common/bet4animal

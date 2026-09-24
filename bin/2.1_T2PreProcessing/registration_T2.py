@@ -24,6 +24,8 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAff.nii.gz')
     outputCPPAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixAff.txt')
 
+    #affine registration
+    # Estimate affine MRI-template(in-house)-to-T2 BET registration; save the matrix and resampled template.
     command = f"reg_aladin -ref {inputVolume} -flo {brain_template} -res {output} -aff {outputCPPAff}" 
     command_args = shlex.split(command)
     try:
@@ -33,12 +35,12 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
-    # Inverse registration
     incidence_outfile = os.path.join(outfile, 'IncidenceData')
     os.makedirs(incidence_outfile, exist_ok=True)
     outputInc = os.path.join(incidence_outfile, os.path.basename(inputVolume).split('.')[0] + '_IncidenceData.nii.gz')
     outputIncAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixInv.txt')
 
+    # Independently estimate affine T2-to-Allen registration for incidence maps (not a matrix inversion).
     command = f"reg_aladin -ref {allenBrain_template} -flo {inputVolume} -res {outputInc} -aff {outputIncAff}"
     command_args = shlex.split(command)
     try:
@@ -52,6 +54,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
     if len(stroke_mask) > 0:
         outputIncStrokeMask = os.path.join(incidence_outfile,os.path.basename(outputInc).split('.')[0] + '_Lesion_mask.nii.gz')
 
+        # Resample the T2-space stroke mask onto the Allen atlas grid using outputIncAff.
         command = f"reg_resample -ref {allenBrain_template} -flo {stroke_mask} -trans {outputIncAff} -res {outputIncStrokeMask}"
         command_args = shlex.split(command)
         try:
@@ -73,9 +76,13 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
 
     outputCPP = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'MatrixBspline.nii')
 
-    # resample in-house developed template
     output = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Template.nii.gz')
 
+    #non-linear registration
+    # Refine MRI-template(in-house)-to-T2 alignment with B-splines, initialized by outputCPPAff.
+    #sx,sy,sz: Distances between B-spline control points along the x, y, and z axes; positive values are in millimeters.
+    #-aff {outputCPPAff} previously estimated affine transformation is used to initialize the B-spline registration.
+    # outputCPP encodes the final B-spline transform, including the initial affine alignment.
     command = f"reg_f3d -ref {inputVolume} -flo {brain_template} -sx {s[0]} -sy {s[1]} -sz {s[2]} -jl {jac} -res {output} -cpp {outputCPP} -aff {outputCPPAff}"
     command_args = shlex.split(command)
     try:
@@ -85,7 +92,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
-    # resmaple Allen Brain Reference Template
+    # Resample the Allen reference template onto the T2 grid using the estimated B-spline transform.
     outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_TemplateAllen.nii.gz')
 
     command = f"reg_resample -ref {inputVolume} -flo {allenBrain_template} -cpp {outputCPP} -res {outputAnno}"
@@ -97,7 +104,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
         
-     # resample parental annotations
+    # Resample the parental atlas labels into T2 space with the B-spline transform and nearest-neighbor interpolation.
     outputAnnorsfMRI = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno_parental.nii.gz')
 
     command = f"reg_resample -ref {inputVolume} -flo {anno_rsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI}"
@@ -109,7 +116,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise    
 
-    # resample parental split annotations
+    # Resample the hemisphere-split parental atlas labels into T2 space, preserving region IDs (-inter 0).
     outputAnnorsfMRI_split = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
 
     command = f"reg_resample -ref {inputVolume} -flo {split_allenBrain_annorsfMRI} -inter 0 -cpp {outputCPP} -res {outputAnnorsfMRI_split}"
@@ -121,7 +128,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
 
-    # resample annotations
+    # Resample the original unsplit Allen annotation into T2 space with the B-spline transform (-inter 0).
     outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
 
     command = f"reg_resample -ref {inputVolume} -flo {allenBrain_anno} -inter 0 -cpp {outputCPP} -res {outputAnno}"
@@ -133,7 +140,7 @@ def BET_2_MPIreg(inputVolume, stroke_mask,brain_template, allenBrain_template,al
         print(f'Error while executing the command: {command_args}\nErrorcode: {str(e)}')
         raise
         
-    # resample parental split annotations
+    # Resample the hemisphere-split Allen annotation into T2 space with the same B-spline transform (-inter 0).
     outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
 
     command = f"reg_resample -ref {inputVolume} -flo {split_anno} -inter 0 -cpp {outputCPP} -res {outputAnnoSplit}"

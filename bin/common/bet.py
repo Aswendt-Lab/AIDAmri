@@ -242,7 +242,7 @@ def applyBET(
         cx, cy, cz = center
 
         cmd = [
-            "/aida/bin/bet4animal",
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "bet4animal"),
             bet_in,
             tmp_bet,
             "-m",  # mask
