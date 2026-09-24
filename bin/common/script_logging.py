@@ -75,6 +75,14 @@ class _TeeStream:
         return getattr(self.stream, name)
 
 
+def get_terminal_stream():
+    """Return stdout without our log mirrors, or None for redirected output."""
+    stream = sys.stdout
+    while isinstance(stream, _TeeStream):
+        stream = stream.stream
+    return stream if stream.isatty() else None
+
+
 def setup_script_logging(output_dir, log_name):
     """Enable file logging unless batchProc.py already captures the output."""
     if script_logging_disabled():

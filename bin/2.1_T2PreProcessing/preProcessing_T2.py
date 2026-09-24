@@ -25,7 +25,7 @@ import time
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.bet import applyBET, skip_bet_function
 from common.artifact_manifest import start_output_tracking
-from common.script_logging import setup_script_logging
+from common.script_logging import get_terminal_stream, setup_script_logging
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 
@@ -141,17 +141,18 @@ def spinner(stop_event, message="Working"):
     Displays a simple terminal spinner while a long-running processing step is active.
     Does not report the actual progress of external tools such as FSL BET or ANTs.
     """
-    if os.environ.get("AIDAMRI_DISABLE_SPINNER") == "1" or not sys.stdout.isatty():
+    stream = get_terminal_stream()
+    if os.environ.get("AIDAMRI_DISABLE_SPINNER") == "1" or stream is None:
         return
 
     for ch in itertools.cycle("|/-\\"):
         if stop_event.is_set():
             break
-        sys.stdout.write(f"\r{message}... {ch}")
-        sys.stdout.flush()
+        stream.write(f"\r{message}... {ch}")
+        stream.flush()
         time.sleep(0.1)
-    sys.stdout.write(f"\r{message}... done\n")
-    sys.stdout.flush()
+    stream.write(f"\r{message}... done\n")
+    stream.flush()
 
 
 def set_xform_codes_to_one(input_file):

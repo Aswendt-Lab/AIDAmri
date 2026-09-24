@@ -6,18 +6,6 @@ Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
 
-
-Documentation preface, added 23/05/09 by Victor Vera Frazao:
-This document is currently in revision for improvement and fixing.
-Specifically changes are made to allow compatibility of the pipeline with Ubuntu 18.04 systems 
-and Ubuntu 18.04 Docker base images, respectively, as well as adapting to appearent changes of 
-DSI-Studio that were applied since the AIDAmri v.1.1 release. As to date the DSI-Studio version 
-used is the 2022/08/03 Ubuntu 18.04 release.
-All changes and additional documentations within this script carry a signature with the writer's 
-initials (e.g. VVF for Victor Vera Frazao) and the date at application, denoted after '//' at 
-the end of the comment line. If code segments need clearance the comment line will be prefaced 
-by '#?'. Changes are prefaced by '#>' and other comments are prefaced ordinalrily 
-by '#'.
 """
 
 import sys,os
@@ -27,16 +15,47 @@ import shutil
 import glob
 import subprocess
 import shlex
+import shutil as sh
+import logging
+from calendar import month_name
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
 from common.script_logging import setup_script_logging
 
-def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile):
+LOGGER = logging.getLogger(__name__)
+DISABLE_LOG_ENV = "AIDAMRI_DISABLE_SCRIPT_LOG"
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
+POSTERIOR_CROP_FRACTION = 0.50
+
+
+class BerlinTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        timestamp = datetime.fromtimestamp(record.created, REPORT_TIMEZONE)
+        return (
+            f"{timestamp.day:02d} {month_name[timestamp.month]} {timestamp.year} "
+            f"{timestamp:%H:%M:%S} {timestamp.tzname()}"
+        )
+
+def setup_logging(outfile):
+    handlers = [logging.StreamHandler()]
+    if os.environ.get(DISABLE_LOG_ENV) != "1":
+        handlers.append(logging.FileHandler(os.path.join(outfile, "registration.log"), mode="w"))
+    formatter = BerlinTimeFormatter("%(asctime)s %(levelname)s: %(message)s")
+    for handler in handlers:
+        handler.setFormatter(formatter)
+    logging.basicConfig(level=logging.INFO, handlers=handlers, force=True)
+
+def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, bsplineMatrix, outfile, sigBrain_anno):
+    if not os.path.isfile(sigBrain_anno):
+        raise FileNotFoundError(f"Original Sigma Brain annotation not found: {sigBrain_anno}")
     outputT2w = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_T2w.nii.gz')
     outputAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + 'transMatrixAff.txt')
-    
-    
+
+    # NiftyReg directly registers the floating T2 image to the DTI (BET)
+    # reference grid and writes a NiftyReg affine
     command = f"reg_aladin -ref {inputVolume} -flo {T2data} -res {outputT2w} -rigOnly -aff {outputAff}"
     command_args = shlex.split(command)
     try:
@@ -52,47 +71,45 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         print("STDERR:\n", result.stderr)
         raise RuntimeError(f"Command failed: {command}")
 
-    # resample Annotation
-    #outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
-    #os.system(
-    #    'reg_resample -ref ' + inputVolume + ' -flo ' + brain_anno +
-    #    ' -cpp ' + outputAff + ' -inter 0 -res ' + outputAnno)
-
-    # resample split  Annotation
-    outputAnnoSplit = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit.nii.gz')
-    
-    command = f"reg_resample -ref {inputVolume} -flo {splitAnno} -trans {outputAff} -inter 0 -res {outputAnnoSplit}"
-    command_args = shlex.split(command)
+    # Compose transformation: DTI -> T2 -> atlas, i.e. bsplineMatrix(outputAff(x)).
+    outputComposite = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AtlasToDTI_deformation.nii.gz')
+    command_args = [
+        "reg_transform", "-ref", inputVolume, "-ref2", T2data,
+        "-comp", outputAff, bsplineMatrix, outputComposite,
+    ]
+    command = shlex.join(command_args)
     try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
         print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise
-    # Check for errors in reg_resample
     if result.returncode != 0:
         print(f"\nCommand failed: {command}\n")
         print("STDOUT:\n", result.stdout)
         print("STDERR:\n", result.stderr)
         raise RuntimeError(f"Command failed: {command}")
 
-    # resample split par Annotation
-    outputAnnoSplit_par = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_AnnoSplit_parental.nii.gz')
-    
-    command = f"reg_resample -ref {brain_anno} -flo {splitAnno_rsfMRI} -trans {bsplineMatrix} -inter 0 -res {outputAnnoSplit_par}"
-    command_args = shlex.split(command)
+    # Resample the original unsplit Allen atlas once onto the DTI BET grid.
+    outputAnno = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_Anno.nii.gz')
+    command_args = [
+        "reg_resample", "-ref", inputVolume, "-flo", sigBrain_anno,
+        "-trans", outputComposite, "-inter", "0", "-res", outputAnno,
+    ]
+    command = shlex.join(command_args)
     try:
-        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
+        result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         print(f"Output of {command}:\n{result.stdout}")
     except Exception as e:
         print(f'Error while executing the command: {command_args}Errorcode: {str(e)}')
         raise
-    # Check for errors in reg_resample
     if result.returncode != 0:
         print(f"\nCommand failed: {command}\n")
         print("STDOUT:\n", result.stdout)
         print("STDERR:\n", result.stderr)
         raise RuntimeError(f"Command failed: {command}")
+
+    ''' Atlas files are all the same the following steps are redundant but are kept for clarity and future flexibility
         
     command = f"reg_resample -ref {inputVolume} -flo {outputAnnoSplit_par} -trans {outputAff} -inter 0 -res {outputAnnoSplit_par}"
     command_args = shlex.split(command)
@@ -165,6 +182,18 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         print("STDOUT:\n", result.stdout)
         print("STDERR:\n", result.stderr)
         raise RuntimeError(f"Command failed: {command}")
+    '''
+    #Create pipline downstream compatible output (copies of fMRI anno)
+    prefix = os.path.basename(inputVolume).split('.')[0]
+    outputAnnoSplit = os.path.join(outfile, prefix + '_AnnoSplit.nii.gz')
+    outputAnnoSplit_par = os.path.join(outfile, prefix + '_AnnoSplit_parental.nii.gz')
+    outputAnno_par = os.path.join(outfile, prefix + '_Anno_parental.nii.gz')
+
+    # The split/parental atlas inputs are currently identical to outputAnno, so
+    # create downstream-compatible filenames as direct copies.
+    for target in [outputAnnoSplit, outputAnnoSplit_par, outputAnno_par]:
+        sh.copyfile(outputAnno, target)
+        LOGGER.info("Copied %s to %s", outputAnno, target)
 
     # Some scaled data for DSI Studio
     outfileDSI = os.path.join(os.path.dirname(inputVolume), 'DSI_studio')
@@ -172,12 +201,17 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         shutil.rmtree(outfileDSI) #? script-based removal of directories not recommended. Maybe change? // VVF 23/10/05
     os.makedirs(outfileDSI)
     outputRefStrokeMaskAff = None
+    #only done if a reference stroke mask is provided
     if refStroke_mask is not None and len(refStroke_mask) > 0 and os.path.exists(refStroke_mask):
         refMatrix = find_RefAff(inputVolume)[0]
         refMTemplate = find_RefTemplate(inputVolume)[0]
         outputRefStrokeMaskAff = os.path.join(outfile, os.path.basename(inputVolume).split('.')[0] + '_refStrokeMaskAff.nii.gz')
-            
-        command = f"reg_resample -ref {refMTemplate} -flo {refStroke_mask} -trans {refMatrix} -res {outputRefStrokeMaskAff}"
+
+        #transform the reference stroke mask from atlas space to T2 space
+        #refMTemplate: anat/*TemplateAff.nii.gz
+        #refStroke_mask: Stroke mask in atlas space
+        #refMatrix: affine matrix atlas to T2 space (anat/*MatrixAff.txt)
+        command = f"reg_resample -ref {refMTemplate} -flo {refStroke_mask} -trans {refMatrix} -inter 0 -res {outputRefStrokeMaskAff}"
         command_args = shlex.split(command)
         try:
             result = subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,text=True)
@@ -200,7 +234,8 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     if stroke_mask is not None and len(stroke_mask) > 0 and os.path.exists(stroke_mask):
         outputStrokeMask = os.path.join(outfile,
                                         os.path.basename(inputVolume).split('.')[0] + 'Stroke_mask.nii.gz')
-         
+
+        #resample the stroke mask to the DTI space using the affine T2-DTI transformation
         command = f"reg_resample -ref {inputVolume} -flo {stroke_mask} -inter 0 -trans {outputAff} -res {outputStrokeMask}"
         command_args = shlex.split(command)
         try:
@@ -219,12 +254,12 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
         # Binary mask of the split annotation.
         dataAnno = nib.load(outputAnnoSplit)
-        imgAnno = dataAnno.get_fdata()
-        imgAnno[imgAnno > 0] = 1
-        imgAnno[imgAnno == 0] = 0
-        imgAnno = imgAnno.astype(np.uint8)
+        imgAnno_mask = dataAnno.get_fdata()
+        imgAnno_mask[imgAnno_mask > 0] = 1
+        imgAnno_mask[imgAnno_mask == 0] = 0
+        imgAnno_mask = imgAnno_mask.astype(np.uint8)
 
-        unscaledNiiData = nib.Nifti1Image(imgAnno, dataAnno.affine)
+        unscaledNiiData = nib.Nifti1Image(imgAnno_mask, dataAnno.affine)
         hdrOut = unscaledNiiData.header
         hdrOut.set_xyzt_units('mm')
         nib.save(unscaledNiiData,
@@ -254,21 +289,12 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
     #os.makedirs(outfileDSI, exist_ok=True)
 
     bet_mask_path = os.path.join(outfile, f"{base}_mask.nii.gz")
-    anno_path = os.path.join(outfile, f"{base}_AnnoSplit.nii.gz")
-    annop_path = os.path.join(outfile, f"{base}_AnnoSplit_parental.nii.gz")
 
     #Textfiles for DSI Studio lookup
     script_dir = os.path.dirname(os.path.abspath(__file__))
     lib_dir = os.path.abspath(os.path.join(script_dir, os.pardir, os.pardir, "lib"))
     anno_lut_src = os.path.join(lib_dir, "sigma", "SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt")
     annop_lut_src = os.path.join(lib_dir, "sigma", "SIGMA_InVivo_Anatomical_Brain_Atlas_Labels.txt")
-
-    needed = [anno_path, annop_path]
-    missing = [p for p in needed if not os.path.exists(p)]
-    if missing:
-        print("Notice: Missing DSI Studio connectivity inputs:")
-        for p in missing:
-            print("  -", p)
 
     if not os.path.exists(bet_mask_path):
         raise RuntimeError(
@@ -277,9 +303,9 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
         )
 
     # --- DSI Studio LUTs for original DWI-space annotation files ---
-    missing_core = [p for p in [anno_path, annop_path] if not os.path.exists(p)]
+    missing_core = [p for p in [outputAnnoSplit, outputAnnoSplit_par] if not os.path.exists(p)]
     if missing_core:
-        print("Notice: Missing Anno/Template for DSI Studio connectivity:")
+        print("Notice: Missing annotations for DSI Studio connectivity:")
         for p in missing_core:
             print("  -", p)
     else:
@@ -302,8 +328,8 @@ def regSIG2DTI(inputVolume,stroke_mask,refStroke_mask,T2data, brain_template,bra
 
 def find_RefStroke(refStrokePath,inputVolume):
     search_patterns = [
-        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9], '*', 'anat', 'IncidenceData', 'IncidenceData_Lesion_mask.nii.gz'),
-        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9], '*', 'anat', '*', 'IncidenceData_mask.nii.gz'),
+        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9], '*', 'anat', 'IncidenceData', '*IncidenceData_Lesion_mask.nii.gz'),
+        os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9], '*', 'anat', '*', '*IncidenceData_mask.nii.gz'),
         os.path.join(refStrokePath, os.path.basename(inputVolume)[0:9], '*', 'anat', '*IncidenceData_mask.nii.gz'),
     ]
     path = []
@@ -325,14 +351,8 @@ def find_RefTemplate(inputVolume):
 def find_relatedData(pathBase):
     pathT2 = glob.glob(pathBase+'*/anat/*Bet.nii.gz', recursive=False)
     pathStroke_mask = glob.glob(pathBase + '*/anat/*Stroke_mask.nii.gz', recursive=False)
-    pathAnno = glob.glob(pathBase + '*/anat/*Anno.nii.gz', recursive=False)
-
-    pathTemplate = glob.glob(pathBase + '*/anat/*TemplateAff.nii.gz', recursive=False)
-    if len(pathTemplate) == 0:
-        pathTemplate = glob.glob(pathBase + '*/anat/*Template.nii.gz', recursive=False)
-
     bsplineMatrix = glob.glob(pathBase + '*/anat/*MatrixBspline.nii', recursive=False)
-    return pathT2, pathStroke_mask, pathAnno, pathTemplate, bsplineMatrix
+    return pathT2, pathStroke_mask, bsplineMatrix
 
 
 if __name__ == "__main__":
@@ -351,12 +371,14 @@ if __name__ == "__main__":
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/sigma/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
     parser.add_argument('-a', '--anno_rsfMRI', help='Parental Annotations atlas for rsfMRI/DTI', nargs='?', type=str,
                         default=os.path.abspath(os.path.join(os.getcwd(), os.pardir,os.pardir))+'/lib/sigma/SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz')
+    parser.add_argument('--sigBrain_anno', help='Original unsplit SIGMA Brain annotation in atlas space', type=str,
+                        default=os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir, "lib", "sigma", "SIGMA_InVivo_Anatomical_Brain_Atlas.nii.gz"))
+    )
 
     args = parser.parse_args()
 
     stroke_mask = None
     inputVolume = None
-    refStrokePath = None
     splitAnno = None
     splitAnno_rsfMRI = None
     anno_rsfMRI = None
@@ -373,7 +395,7 @@ if __name__ == "__main__":
     setup_script_logging(outfile, "registration.log")
 
     # find related  data
-    pathT2, pathStroke_mask, pathAnno, pathTemplate, bsplineMatrix = find_relatedData(os.path.dirname(outfile)) #this will be something like E:\CRC_data\proc_data\sub-GVsT3c3m2
+    pathT2, pathStroke_mask, bsplineMatrix = find_relatedData(os.path.dirname(outfile)) #this will be something like E:\CRC_data\proc_data\sub-GVsT3c3m2
     if len(pathT2) == 0:
         T2data = []
         sys.exit("Error: %s' has no reference T2 template." % (os.path.basename(inputVolume),))
@@ -385,18 +407,6 @@ if __name__ == "__main__":
         print("Notice: '%s' has no defined reference (stroke) mask - will proceed without." % (os.path.basename(inputVolume),))
     else:
         stroke_mask = pathStroke_mask[0]
-
-    if len(pathAnno) == 0:
-        pathAnno = []
-        sys.exit("Error: %s' has no reference annotations." % (os.path.basename(inputVolume),))
-    else:
-        brain_anno = pathAnno[0]
-
-    if len(pathTemplate) == 0:
-        pathTemplate = []
-        sys.exit("Error: %s' has no reference template." % (os.path.basename(inputVolume),))
-    else:
-        brain_template = pathTemplate[0]
 
     if len(bsplineMatrix) == 0:
         bsplineMatrix = []
@@ -435,22 +445,6 @@ if __name__ == "__main__":
     if not os.path.exists(anno_rsfMRI):
         sys.exit("Error: '%s' is not an existing directory." % (anno_rsfMRI,))
 
-    output = regSIG2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, brain_template, brain_anno, splitAnno,splitAnno_rsfMRI,anno_rsfMRI,bsplineMatrix,outfile)
-
-    current_dir = os.path.dirname(inputVolume)
-    # look for denoised data and register if found
-    currentFile = glob.glob(os.path.join(current_dir, "*Patch2SelfDenoised.nii.gz"))
-    if len(currentFile) == 0:
-        currentFile = glob.glob(os.path.join(current_dir, "*dwi.nii.gz"))
-
-    search_string = os.path.join(current_dir, "*.nii*")
-    created_imgs = glob.glob(search_string, recursive=True)
-
-    os.chdir(os.path.dirname(os.getcwd()))
-    for idx, img in enumerate(created_imgs):
-        if img == None:
-            continue
-        #os.system('python adjust_orientation.py -i '+ str(img) + ' -t ' + currentFile[0])
-        continue
+    regSIG2DTI(inputVolume, stroke_mask, refStroke_mask, T2data, bsplineMatrix,outfile, sigBrain_anno=args.sigBrain_anno)
 
     print("Registration completed")
