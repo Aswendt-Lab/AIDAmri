@@ -605,7 +605,7 @@ The DTI preprocessing step prepares the diffusion data for registration and trac
 python preProcessing_DTI.py -i .../dwi/testData_dwi.nii.gz
 ```
 
-Several preprocessing options can be adjusted, for example the BET mode with `--bet {skip,bet,bet4animal}`, the BET parameters `-f`, `-r` and `-g`, the bias-field method with `-b`, or the denoising method with `--denoiser patch2self`. Please note that the BET parameters `-f`, `-r` and `-g` can only be used with FSL BET not with bet4animal. If `--bet skip` is selected, compatibility files ending in `*Bet.nii.gz` and `*_mask.nii.gz` are still created.
+Several preprocessing options can be adjusted, for example the BET mode with `--bet {skip,bet,bet4animal}`, the BET parameters `-f`, `-r` and `-g`, the bias-field method with `-b`, or the denoising method with `--denoiser {patch2self,dwidenoise}`. Please note that the BET parameters `-f`, `-r` and `-g` can only be used with FSL BET not with bet4animal. If `--bet skip` is selected, compatibility files ending in `*Bet.nii.gz` and `*_mask.nii.gz` are still created.
 
 <h3 id="registration-of-dti-data">Registration of DTI data <a href="#contents"><span style="font-size: 1.35em;">↑</span></a></h3>
 
