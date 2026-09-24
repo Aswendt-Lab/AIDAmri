@@ -20,7 +20,6 @@ import nipype.interfaces.ants as ants
 import subprocess
 import shutil
 import averageb0
-import dipy.denoise.patch2self as patch2self
 import itertools
 import sys
 import threading
@@ -171,6 +170,8 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     Denoises the input DTI image using Patch2Self from DIPY.
     Requires an appropriate input file (input_file) and the output path (output_path).
     """
+    import dipy.denoise.patch2self as patch2self
+
     bvalsname = input_file.replace(".nii.gz", ".bval")
     if not os.path.exists(bvalsname):
         try:
@@ -197,7 +198,7 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     denoised_img = patch2self.patch2self(img, bvals, b0_threshold=b0_thresh, model='ols', out_dtype=np.float32)
     
     # Save the denoised image
-    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'P2SDenoised.nii.gz')
     denoised_nii = nib.Nifti1Image(denoised_img, affine)
     if debug:
         print("Denoised image header:", denoised_nii.header)
@@ -214,6 +215,34 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     #     print("Final denoised image header after copying geometry:", output.header)
     #     print("Final denoised affine matrix after copying geometry:", output.affine)
     #     print("Final denoised image sform after copying geometry:", output.header.get_sform())
+    return output_file
+
+def denoise_mrtrix3(input_file, output_path):
+    """Run MP-PCA on the original 4D DWI, before averaging or interpolation."""
+    executable = shutil.which("dwidenoise")
+    if executable is None:
+        raise FileNotFoundError(
+            "MRtrix3 dwidenoise was not found in PATH. Install MRtrix3 or rebuild the AIDAmri Docker image."
+        )
+    if len(nib.load(input_file).shape) != 4:
+        raise ValueError("Input image must be a 4D NIfTI file.")
+
+    stem = os.path.basename(input_file).split('.')[0]
+    output_file = os.path.join(output_path, stem + 'MR3Denoised.nii.gz')
+    noise_file = os.path.join(output_path, stem + 'MR3Noise.nii.gz')
+    command = [
+        executable, input_file, output_file, '-noise', noise_file,
+        '-datatype', 'float32', '-force',
+    ]
+    try:
+        result = subprocess.run(
+            command, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        print(error.stdout or "", end="")
+        raise
+    print(result.stdout or "", end="")
+    print("MRtrix3 noise map saved to", noise_file)
     return output_file
 
 def smoothIMG(input_file, output_path, skip_smoothing=False):
@@ -348,8 +377,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '-d',
         '--denoiser',
-        help='Denoising method - default=None, other option is "patch2self"',
-        choices = ["patch2self"],
+        help='Denoising method: patch2self or MRtrix3 dwidenoise (MP-PCA). Default: disabled',
+        choices = ["patch2self", "dwidenoise"],
         type=str.lower,
         default=None
     )
@@ -386,20 +415,22 @@ if __name__ == "__main__":
     creat_brkraw_backup(input_file)
     header_check(input_file)
     
-    if args.denoiser == "patch2self":
-        # Denoising using Patch2Self
-        print("Starting denoising using patch2self")
+    if args.denoiser is not None:
+        print("Starting denoising using", args.denoiser)
         try:
             # start spinner
             stop_event = threading.Event()
             thread = threading.Thread(
                 target=spinner,
-                args=(stop_event, "Running Denoising with Patch2Self")
+                args=(stop_event, f"Running denoising with {args.denoiser}")
             )
             thread.start()
 
             try:
-                denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+                if args.denoiser == "patch2self":
+                    denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+                else:
+                    denoised_image = denoise_mrtrix3(input_file, output_path)
                 set_xform_codes_to_one(denoised_image)
                 set_default_xyzt_units_if_unknown(denoised_image)
             finally:
@@ -408,7 +439,7 @@ if __name__ == "__main__":
 
             print("Denoising completed, output saved to", denoised_image)
         except Exception as e:
-            print(f'Error in Patch2Self denoising\nError message: {str(e)}')
+            print(f'Error in {args.denoiser} denoising\nError message: {str(e)}')
             raise
 
 
