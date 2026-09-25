@@ -486,7 +486,7 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg):
                     currentFile = sorted(currentPath_wData.glob("*P2SDenoised.nii.gz"))
                     if not currentFile:
                         currentFile = sorted(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
-                elif cfg.get("dwi_denoiser") == "dwidenoise":
+                elif cfg.get("dwi_denoiser") == "mrtrix3":
                     currentFile = sorted(currentPath_wData.glob("*MR3Denoised.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
@@ -1184,9 +1184,9 @@ if __name__ == "__main__":
     dwi = parser.add_argument_group("DWI options")
     dwi.add_argument(
         "--dwi-denoiser",
-        choices=["patch2self", "dwidenoise"],
+        choices=["patch2self", "mrtrix3"],
         type=str.lower,
-        help="DWI denoising method: patch2self or MRtrix3 dwidenoise (MP-PCA)"
+        help="DWI denoising method: patch2self or MRtrix3 (MP-PCA)"
     )
     dwi.add_argument(
         "--dwi-average-b0",
