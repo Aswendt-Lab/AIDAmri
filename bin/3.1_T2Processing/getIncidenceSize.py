@@ -20,6 +20,7 @@ import scipy.io as sc
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import setup_script_logging
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
 
@@ -284,6 +285,7 @@ if __name__ == "__main__":
     if not os.path.exists(input_folder):
         sys.exit("Error: '%s' is not an existing directory." % (input_folder,))
     start_output_tracking(output_folder, "anat", "processing")
+    setup_script_logging(output_folder, "process.log")
 
 
     if args.RefBrain_anno is not None:

@@ -1,5 +1,6 @@
 """Mirror script output to a log file during standalone execution."""
 
+import atexit
 import os
 import shlex
 import sys
@@ -7,7 +8,44 @@ from pathlib import Path
 
 
 DISABLE_LOG_ENV = "AIDAMRI_DISABLE_SCRIPT_LOG"
+GIT_INFO_FILENAME = "AIDAmri_git_information.txt"
+BUILD_GIT_INFO_PATH = Path("/aida/build") / GIT_INFO_FILENAME
 _LOG_FILES = []
+
+
+def _git_information_paths(output_dir):
+    paths = [BUILD_GIT_INFO_PATH]
+    if output_dir is not None:
+        output_path = Path(output_dir)
+        # The proc folder contains sub-*/ses-*/<modality>, regardless of its name.
+        for folder in (output_path, *output_path.parents):
+            if folder.name.startswith("ses-") and folder.parent.name.startswith("sub-"):
+                paths.append(folder.parent.parent / GIT_INFO_FILENAME)
+                break
+        else:
+            paths.append(output_path / GIT_INFO_FILENAME)
+    return paths
+
+
+def append_git_information(log_file=None, output_dir=None):
+    """Finish a step log with the build's Git information, even after errors."""
+    if log_file is None:
+        # Batch runs redirect both streams into the same log file.
+        sys.stdout.flush()
+        sys.stderr.flush()
+        log_file = sys.stdout
+    if log_file.closed:
+        return
+    for path in _git_information_paths(output_dir):
+        try:
+            contents = path.read_text(encoding="utf-8")
+            break
+        except (OSError, UnicodeError) as exc:
+            contents = f"WARNING: Could not read AIDAmri Git information: {exc}\n"
+    log_file.write("\n" + contents)
+    if not contents.endswith("\n"):
+        log_file.write("\n")
+    log_file.flush()
 
 
 def build_script_log_path(output_dir, log_name):
@@ -85,11 +123,14 @@ def get_terminal_stream():
 
 def setup_script_logging(output_dir, log_name):
     """Enable file logging unless batchProc.py already captures the output."""
+    output_dir = os.path.abspath(output_dir)
     if script_logging_disabled():
+        atexit.register(append_git_information, output_dir=output_dir)
         return
 
     log_file = open(build_script_log_path(output_dir, log_name), "w", encoding="utf-8")
     _LOG_FILES.append(log_file)
+    atexit.register(append_git_information, log_file, output_dir=output_dir)
     sys.stdout = _TeeStream(sys.stdout, log_file)
     sys.stderr = _TeeStream(sys.stderr, log_file)
     log_explicit_cli_options()
