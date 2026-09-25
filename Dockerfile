@@ -99,6 +99,13 @@ RUN wget https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubunt
 ENV PATH=$PATH:/aida/ants-2.6.2/ants-2.6.2/bin
 RUN N4BiasFieldCorrection --version
 
+# Ubuntu 22.04's MRtrix3 package supplies dwidenoise for optional DWI MP-PCA.
+ARG MRTRIX3_VERSION=3.0.3-1
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends mrtrix3=${MRTRIX3_VERSION} && \
+    dwidenoise -version && \
+    rm -rf /var/lib/apt/lists/*
+
 # Python setup (Default for Ubuntu 22.04 is Python 3.10)
 ENV VIRTUAL_ENV=/opt/env
 RUN python3 -m venv $VIRTUAL_ENV

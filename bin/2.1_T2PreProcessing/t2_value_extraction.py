@@ -1,3 +1,4 @@
+import atexit
 import nibabel as nii
 import numpy as np
 import argparse
@@ -53,6 +54,7 @@ def load_label_lookup(label_file):
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import append_git_information
 
 def getOutfile(atlas_type, img_file, suffix):
     imgName = os.path.basename(img_file)
@@ -116,6 +118,10 @@ if __name__ == '__main__':
         default=get_default_label_file(script_dir),
     )
     args = parser.parse_args()
+    atexit.register(
+        append_git_information,
+        output_dir=os.path.dirname(os.path.abspath(args.input)) if args.input else None,
+    )
 
     print(f"Extracting T2 values for: {args.input}")
     print(f"Label file: {args.label_file}")
