@@ -238,10 +238,12 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
     modalities = sorted({entry["modality"] for entry in entries})
     generated_at = _report_timestamp()
 
-    with open(html_path, "w") as f:
-        f.write(f"<html><head><title>{html.escape(title)}</title>\n")
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(f"<!DOCTYPE html><html><head><title>{html.escape(title)}</title>\n")
         f.write(
             """
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
             <style>
             body { font-family: Arial, sans-serif; margin: 40px; }
             .custom-parameters { background: #f3f6f8; border: 1px solid #ccd5db; border-radius: 4px; margin-bottom: 24px; padding: 16px 20px; }
@@ -252,7 +254,16 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
             .report-generated { color: #555; font-size: 0.95em; margin: -10px 0 24px; }
             .report-entry { margin-bottom: 40px; }
             .report-info { font-size: 1.0em; margin-bottom: 8px; line-height: 1.5; }
-            .report-img { width: 100%; max-width: 1200px; border: 1px solid #ccc; }
+            .report-img { display: block; width: 100%; height: auto; box-sizing: border-box; border: 1px solid #ccc; }
+            .report-image-button { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+            .report-image-button:focus-visible { outline: 3px solid #167ac6; outline-offset: 2px; }
+            #image-viewer { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #181818; color: white; }
+            .viewer-layout { display: flex; flex-direction: column; height: 100%; }
+            .viewer-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; }
+            .viewer-toolbar button { padding: 6px 12px; cursor: pointer; }
+            #viewer-stage { position: relative; flex: 1; min-height: 0; overflow: hidden; touch-action: none; cursor: grab; }
+            #viewer-stage.dragging { cursor: grabbing; }
+            #viewer-image { position: absolute; top: 0; left: 0; max-width: none; transform-origin: 0 0; user-select: none; }
             #report-dropdown-bar { position: fixed; top: 0; left: 0; width: 100%; background: #f9f9f9; border-bottom: 1px solid #ccc; z-index: 1000; padding: 12px 40px; box-sizing: border-box; }
             </style>
             <script>
@@ -270,10 +281,130 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
                     entry.style.display = show ? '' : 'none';
                 }
             }
+            document.addEventListener('DOMContentLoaded', function () {
+                const viewer = document.getElementById('image-viewer');
+                const stage = document.getElementById('viewer-stage');
+                const image = document.getElementById('viewer-image');
+                const level = document.getElementById('viewer-level');
+                const zoomOut = document.getElementById('viewer-zoom-out');
+                const zoomIn = document.getElementById('viewer-zoom-in');
+                let zoom = 1, width = 0, height = 0, x = 0, y = 0;
+                let drag = null;
+                let previousOverflow = '';
+
+                function render() {
+                    const w = width * zoom, h = height * zoom;
+                    x = w <= stage.clientWidth ? (stage.clientWidth - w) / 2
+                        : Math.min(0, Math.max(stage.clientWidth - w, x));
+                    y = h <= stage.clientHeight ? (stage.clientHeight - h) / 2
+                        : Math.min(0, Math.max(stage.clientHeight - h, y));
+                    image.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+                    level.textContent = `${Math.round(zoom * 100)}%`;
+                    zoomOut.disabled = zoom <= 1;
+                    zoomIn.disabled = zoom >= 8;
+                }
+
+                function fitImage() {
+                    if (!viewer.open || !image.naturalWidth) return;
+                    const fit = Math.min(stage.clientWidth / image.naturalWidth,
+                        stage.clientHeight / image.naturalHeight);
+                    width = image.naturalWidth * fit;
+                    height = image.naturalHeight * fit;
+                    image.style.width = `${width}px`;
+                    image.style.height = `${height}px`;
+                    zoom = 1;
+                    render();
+                }
+
+                function changeZoom(factor, px = stage.clientWidth / 2, py = stage.clientHeight / 2) {
+                    const next = Math.min(8, Math.max(1, zoom * factor));
+                    x = px - (px - x) * next / zoom;
+                    y = py - (py - y) * next / zoom;
+                    zoom = next;
+                    render();
+                }
+
+                image.addEventListener('load', fitImage);
+                document.querySelectorAll('.report-image-button').forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        const source = button.querySelector('img');
+                        image.alt = source.alt;
+                        previousOverflow = document.body.style.overflow;
+                        document.body.style.overflow = 'hidden';
+                        viewer.showModal();
+                        image.src = source.src;
+                        if (image.complete) fitImage();
+                    });
+                });
+                document.getElementById('viewer-close').addEventListener('click', () => viewer.close());
+                viewer.addEventListener('close', function () {
+                    document.body.style.overflow = previousOverflow;
+                    drag = null;
+                    stage.classList.remove('dragging');
+                });
+                zoomIn.addEventListener('click', () => changeZoom(1.25));
+                zoomOut.addEventListener('click', () => changeZoom(1 / 1.25));
+                document.getElementById('viewer-fit').addEventListener('click', fitImage);
+                window.addEventListener('resize', fitImage);
+                stage.addEventListener('wheel', function (event) {
+                    event.preventDefault();
+                    const bounds = stage.getBoundingClientRect();
+                    changeZoom(event.deltaY < 0 ? 1.15 : 1 / 1.15,
+                        event.clientX - bounds.left, event.clientY - bounds.top);
+                }, { passive: false });
+                stage.addEventListener('pointerdown', function (event) {
+                    if (event.button !== 0 || drag) return;
+                    drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+                    stage.setPointerCapture(event.pointerId);
+                    stage.classList.add('dragging');
+                    event.preventDefault();
+                });
+                stage.addEventListener('pointermove', function (event) {
+                    if (!drag || drag.id !== event.pointerId) return;
+                    x += event.clientX - drag.x;
+                    y += event.clientY - drag.y;
+                    drag.x = event.clientX;
+                    drag.y = event.clientY;
+                    render();
+                });
+                function endDrag(event) {
+                    if (!drag || drag.id !== event.pointerId) return;
+                    drag = null;
+                    stage.classList.remove('dragging');
+                    if (stage.hasPointerCapture(event.pointerId)) stage.releasePointerCapture(event.pointerId);
+                }
+                ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (name) {
+                    stage.addEventListener(name, endDrag);
+                });
+                viewer.addEventListener('keydown', function (event) {
+                    if (event.key === '+' || event.key === '=') changeZoom(1.25);
+                    else if (event.key === '-') changeZoom(1 / 1.25);
+                    else if (event.key === '0') fitImage();
+                    else return;
+                    event.preventDefault();
+                });
+            });
             </script>
             """
         )
         f.write("</head><body>\n")
+        f.write(
+            """
+            <dialog id="image-viewer" aria-label="Image zoom" aria-describedby="viewer-help">
+                <div class="viewer-layout">
+                    <div class="viewer-toolbar">
+                        <button type="button" id="viewer-zoom-out" aria-label="Zoom out">−</button>
+                        <output id="viewer-level" aria-label="Zoom relative to fitted image">100%</output>
+                        <button type="button" id="viewer-zoom-in" aria-label="Zoom in">+</button>
+                        <button type="button" id="viewer-fit">Fit to window</button>
+                        <span id="viewer-help">Scroll or +/− to zoom · Drag to pan · 0 to fit · Esc to close</span>
+                        <button type="button" id="viewer-close" autofocus>Close</button>
+                    </div>
+                    <div id="viewer-stage"><img id="viewer-image" alt="" draggable="false"></div>
+                </div>
+            </dialog>
+            """
+        )
         f.write("<div id='report-dropdown-bar'>\n")
         for label, element_id, values in (
             ("Subject", "subjectDropdown", subjects),
@@ -290,6 +421,7 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
         f.write("</div><div style='height:60px;'></div>\n")
         f.write(f"<h1>{html.escape(title)}</h1>\n")
         f.write(f"<p class='report-generated'><b>Created:</b> {html.escape(generated_at)}</p>\n")
+        f.write("<p>Click an image to zoom and inspect details.</p>\n")
         if custom_parameters:
             f.write("<section class='custom-parameters'>\n")
             f.write("<h2>Custom parameters</h2>\n<table>\n")
@@ -314,8 +446,10 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
                 f.write(f"<b>{html.escape(label)}:</b> {html.escape(str(value))} &nbsp; ")
             f.write("</div>\n")
             f.write(
+                "<button type='button' class='report-image-button' "
+                "aria-label='Open image zoom' title='Click to zoom'>"
                 f"<img class='report-img' src='{html.escape(entry['report_img_path'])}' "
-                f"alt='{html.escape(entry['image_alt'])}'>\n"
+                f"alt='{html.escape(entry['image_alt'])}'></button>\n"
             )
             f.write("</div>\n")
         f.write("</body></html>\n")

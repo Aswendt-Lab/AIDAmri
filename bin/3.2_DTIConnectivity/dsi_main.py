@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
 from common.script_logging import (
+    append_git_information,
     build_script_log_path,
     log_explicit_cli_options,
     script_logging_disabled,
@@ -28,6 +29,7 @@ from common.script_logging import (
 
 
 def enable_process_log(log_path):
+    output_dir = os.path.dirname(os.path.abspath(log_path))
     # Mirror stdout/stderr into a dataset-local log file so debugging works the
     # same whether the script is launched from the image or a mounted checkout.
     tee_proc = subprocess.Popen(["tee", "-a", log_path], stdin=subprocess.PIPE)
@@ -40,6 +42,7 @@ def enable_process_log(log_path):
         try:
             sys.stdout.flush()
             sys.stderr.flush()
+            append_git_information(sys.stdout, output_dir=output_dir)
         finally:
             try:
                 tee_proc.stdin.close()
@@ -188,6 +191,8 @@ if __name__ == '__main__':
         enable_process_log(process_log)
         log_explicit_cli_options()
         print(f"Writing process log to {process_log}")
+    else:
+        atexit.register(append_git_information, output_dir=os.path.abspath(dwi_dir))
         
     # Determine the gradient source based on the -b option.
     if str(args.b_table).lower() == 'auto':
