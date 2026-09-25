@@ -8,6 +8,7 @@ University Hospital Cologne
 
 """
 
+import atexit
 import sys,os
 import glob
 import shutil as sh
@@ -21,6 +22,7 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
 from common.script_logging import (
+    append_git_information,
     build_script_log_path,
     log_explicit_cli_options,
     script_logging_disabled,
@@ -41,9 +43,16 @@ class BerlinTimeFormatter(logging.Formatter):
 
 
 def setup_logging(outfile):
+    outfile = os.path.abspath(outfile)
     handlers = [logging.StreamHandler()]
     if not script_logging_disabled():
-        handlers.append(logging.FileHandler(build_script_log_path(outfile, "registration.log"), mode="w"))
+        file_handler = logging.FileHandler(
+            build_script_log_path(outfile, "registration.log"), mode="w", encoding="utf-8"
+        )
+        handlers.append(file_handler)
+        atexit.register(append_git_information, file_handler.stream, output_dir=outfile)
+    else:
+        atexit.register(append_git_information, output_dir=outfile)
     formatter = BerlinTimeFormatter("%(asctime)s %(levelname)s: %(message)s")
     for handler in handlers:
         handler.setFormatter(formatter)
