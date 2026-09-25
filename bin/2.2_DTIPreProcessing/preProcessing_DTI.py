@@ -377,8 +377,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '-d',
         '--denoiser',
-        help='Denoising method: patch2self or MRtrix3 dwidenoise (MP-PCA). Default: disabled',
-        choices = ["patch2self", "dwidenoise"],
+        help='Denoising method: patch2self or MRtrix3 (MP-PCA). Default: disabled',
+        choices = ["patch2self", "mrtrix3"],
         type=str.lower,
         default=None
     )
