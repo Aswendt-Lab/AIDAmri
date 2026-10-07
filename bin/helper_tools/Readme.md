@@ -333,42 +333,22 @@ Python helper module for project-level QC reports.
 Direct command-line use:
 
 ```bash
-python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report all --acronym ptlp
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report bet --n-slices 7
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report registration
-python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report cc
-python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --custom-parameter t2-frac=0.1 --custom-parameter t2-bias-method=mico
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym cc
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --acronym ptlp --custom-parameter t2-frac=0.1 --custom-parameter t2-bias-method=mico
 ```
 
-`--report` accepts `all` (the default), `bet`, `registration`, or `cc`. `--n-slices`
+`--report` accepts `all` (the default), `bet`, `registration`, or `acronym`.
+`--acronym` is required for `all` and `acronym`; lookup in
+`lib/acronym_rsfMRI.txt` is case-insensitive. Missing or unknown acronyms cause
+an error before any reports are written. BET and registration alone do not
+require an acronym. `--n-slices`
 sets the number of slices per orientation and defaults to `10`. Repeat
 `--custom-parameter NAME=VALUE` to record processing parameters in the custom
 parameters section of the generated HTML reports. Parameter names without a
 leading `--` are normalized automatically.
-
-Import use:
-
-Available functions:
-
-```python
-from batch_qc_reports import build_bet_qc_report, build_registration_qc_report, build_cc_qc_report
-
-build_bet_qc_report(
-    "/path/to/proc_data",
-    n_slices=10,
-    custom_parameters=[("--t2-frac", 0.1)],
-)
-build_registration_qc_report(
-    "/path/to/proc_data",
-    n_slices=10,
-    custom_parameters=[("--t2-frac", 0.1)],
-)
-build_cc_qc_report(
-    "/path/to/proc_data",
-    n_slices=10,
-    custom_parameters=[("--t2-frac", 0.1)],
-)
-```
 
 When reports are created by `batchProc.py`, options explicitly supplied on the
 command line are listed in a **Custom parameters** section at the top of each
@@ -391,15 +371,20 @@ Registration report behavior:
 - Writes PNGs and `registration_report.html` under
   `<project_dir>/Report/Registration/`.
 
-Corpus callosum report behavior:
+Acronym report behavior:
 
 - Uses the same BET/`*_AnnoSplit_parental.nii.gz` pairs as the registration report.
-- Filters the overlay to Allen atlas labels `776` (left) and `2776` (right),
-  as listed in `lib/annoVolume+2000_rsfMRI.nii.txt`. These replace the SIGMA
-  labels `891` and `892` used in the source branch `Multiverse_rat_AIDAmri-dev-V3`.
-- Writes PNGs and `cc_report.html` under `<project_dir>/Report/CC/`.
-- `batchProc.py` creates the CC report automatically when the requested steps
-  include `registration`, using seven slices per orientation.
+- Reads the label from `lib/acronym_rsfMRI.txt` relative to the installation,
+  independently of the current working directory. Filters the overlay to that
+  label and the label plus 2000, e.g. `ptlp` selects `22` and `2022`.
+- Preserves the spelling in the TXT for folder names, filenames and titles:
+  `<project_dir>/Report/PTLp/PTLp_report.html` and accompanying PNGs.
+- Uses the HTML title `PTLp Report BET + AnnoSplit_parental (labels 22, 2022)`
+  and image titles starting with `PTLp Report: `.
+- The existing `build_cc_qc_report` function remains as a compatibility wrapper
+  for `batchProc.py`, resolving `cc` through the same TXT. Batch registration
+  still creates this report with seven slices per orientation, under
+  `<project_dir>/Report/cc/`.
 
 ## T2 Cropping
 

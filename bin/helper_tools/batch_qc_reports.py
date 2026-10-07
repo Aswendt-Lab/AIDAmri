@@ -4,6 +4,7 @@ import logging
 import os
 from calendar import month_name
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -19,8 +20,21 @@ import nibabel as nib
 import numpy as np
 
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
-# Left/right corpus callosum in lib/annoVolume+2000_rsfMRI.nii.txt (Allen atlas).
-CC_ATLAS_LABELS = (776, 2776)
+ACRONYM_FILE = Path(__file__).resolve().parents[2] / "lib" / "acronym_rsfMRI.txt"
+
+
+def _resolve_acronym(acronym):
+    """Return the atlas spelling and both hemisphere labels for an acronym."""
+    requested = acronym.strip().casefold()
+    with ACRONYM_FILE.open(encoding="utf-8") as source:
+        for line in source:
+            if not line.strip():
+                continue
+            label, canonical_acronym = line.split()
+            if canonical_acronym.casefold() == requested:
+                label = int(label)
+                return canonical_acronym, (label, label + 2000)
+    raise ValueError(f"Unknown acronym {acronym!r} in {ACRONYM_FILE}")
 
 
 def _as_3d(data):
@@ -554,20 +568,21 @@ def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=Non
     return html_path, len(entries)
 
 
-def build_cc_qc_report(project_dir, n_slices=10, custom_parameters=None):
+def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters=None):
+    acronym, atlas_labels = _resolve_acronym(acronym)
     project_dir = Path(project_dir)
-    out_dir = project_dir / "Report" / "CC"
+    out_dir = project_dir / "Report" / acronym
     out_dir.mkdir(parents=True, exist_ok=True)
 
     entries = []
-    label_text = ", ".join(str(label) for label in CC_ATLAS_LABELS)
+    label_text = ", ".join(str(label) for label in atlas_labels)
     suffix = "_AnnoSplit_parental.nii.gz"
     anno_files = sorted(project_dir.glob(f"sub-*/ses-*/*/*{suffix}"))
     for anno_path in anno_files:
         bet_name = anno_path.name[: -len(suffix)] + ".nii.gz"
         bet_path = anno_path.with_name(bet_name)
         if not bet_path.exists():
-            logging.warning("Skipping CC Report without matching BET file: %s", anno_path)
+            logging.warning("Skipping %s Report without matching BET file: %s", acronym, anno_path)
             continue
         try:
             png_path, bet_shape, anno_shape, zooms = _plot_registration_overlay(
@@ -576,9 +591,9 @@ def build_cc_qc_report(project_dir, n_slices=10, custom_parameters=None):
                 out_dir,
                 project_dir,
                 n_slices,
-                atlas_labels=CC_ATLAS_LABELS,
-                report_title="Corpus Callosum Report",
-                filename_suffix="cc_report",
+                atlas_labels=atlas_labels,
+                report_title=f"{acronym} Report",
+                filename_suffix=f"{acronym}_report",
             )
             rel_bet, subject, session, modality = _entry_metadata(bet_path, project_dir)
             rel_anno = anno_path.resolve().relative_to(project_dir.resolve())
@@ -602,18 +617,25 @@ def build_cc_qc_report(project_dir, n_slices=10, custom_parameters=None):
                 }
             )
         except Exception as exc:
-            logging.warning("Could not create CC Report for %s: %s", anno_path, exc)
+            logging.warning("Could not create %s Report for %s: %s", acronym, anno_path, exc)
 
     if not entries:
         return None, 0
     html_path = _write_report(
         entries,
         out_dir,
-        f"Corpus Callosum Report: BET + AnnoSplit_parental (labels {label_text})",
-        "cc_report.html",
+        f"{acronym} Report BET + AnnoSplit_parental (labels {label_text})",
+        f"{acronym}_report.html",
         custom_parameters=custom_parameters,
     )
     return html_path, len(entries)
+
+
+def build_cc_qc_report(project_dir, n_slices=10, custom_parameters=None):
+    """Keep the existing batchProc integration using labels from the acronym file."""
+    return build_acronym_qc_report(
+        project_dir, "cc", n_slices=n_slices, custom_parameters=custom_parameters
+    )
 
 
 def _positive_int(value):
@@ -638,7 +660,7 @@ def _custom_parameter(value):
 
 def _build_argument_parser():
     parser = argparse.ArgumentParser(
-        description="Create project-level BET, registration and corpus callosum QC reports."
+        description="Create project-level BET, registration and acronym-based atlas QC reports."
     )
     parser.add_argument(
         "-i",
@@ -650,9 +672,16 @@ def _build_argument_parser():
     )
     parser.add_argument(
         "--report",
-        choices=("all", "bet", "registration", "cc"),
+        choices=("all", "bet", "registration", "acronym"),
         default="all",
         help="Report to create (default: all).",
+    )
+    parser.add_argument(
+        "--acronym",
+        help=(
+            "Atlas acronym from lib/acronym_rsfMRI.txt (case-insensitive), e.g. ptlp. "
+            "Required for --report all and --report acronym."
+        ),
     )
     parser.add_argument(
         "--n-slices",
@@ -683,13 +712,23 @@ def main(argv=None):
     if not project_dir.is_dir():
         parser.error(f"project directory does not exist or is not a directory: {project_dir}")
 
+    if args.report in ("all", "acronym") and not args.acronym:
+        parser.error(f"--acronym is required for --report {args.report}")
+    if args.acronym is not None:
+        try:
+            args.acronym, _ = _resolve_acronym(args.acronym)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+
     report_builders = []
     if args.report in ("all", "bet"):
         report_builders.append(("BET", build_bet_qc_report))
     if args.report in ("all", "registration"):
         report_builders.append(("Registration", build_registration_qc_report))
-    if args.report in ("all", "cc"):
-        report_builders.append(("CC", build_cc_qc_report))
+    if args.report in ("all", "acronym"):
+        report_builders.append(
+            (args.acronym, partial(build_acronym_qc_report, acronym=args.acronym))
+        )
 
     for report_label, report_builder in report_builders:
         html_path, count = report_builder(
