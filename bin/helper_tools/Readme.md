@@ -337,6 +337,7 @@ python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report all -
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report bet --n-slices 7
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report registration
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym cc
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym ptlp aca hip
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --acronym ptlp --custom-parameter t2-frac=0.1 --custom-parameter t2-bias-method=mico
 ```
 
@@ -349,6 +350,12 @@ sets the number of slices per orientation and defaults to `10`. Repeat
 `--custom-parameter NAME=VALUE` to record processing parameters in the custom
 parameters section of the generated HTML reports. Parameter names without a
 leading `--` are normalized automatically.
+
+Pass multiple space-separated values to `--acronym` to show several regions in
+one overlay and HTML report. Repeating the option is also supported, e.g.
+`--acronym ptlp --acronym aca`. Duplicate regions are included once, preserving
+the order of their first occurrence. Each region contributes its label and
+that label plus 2000. Single-acronym calls keep their existing output names.
 
 When reports are created by `batchProc.py`, options explicitly supplied on the
 command line are listed in a **Custom parameters** section at the top of each
@@ -381,6 +388,10 @@ Acronym report behavior:
   `<project_dir>/Report/PTLp/PTLp_report.html` and accompanying PNGs.
 - Uses the HTML title `PTLp Report BET + AnnoSplit_parental (labels 22, 2022)`
   and image titles starting with `PTLp Report: `.
+- Multiple regions use combined names, e.g. `--acronym ptlp aca` writes
+  `<project_dir>/Report/PTLp_ACA/PTLp_ACA_report.html`. The HTML title is
+  `PTLp + ACA Report BET + AnnoSplit_parental (labels 22, 2022, 31, 2031)`;
+  image titles start with `PTLp + ACA Report: `.
 - The existing `build_cc_qc_report` function remains as a compatibility wrapper
   for `batchProc.py`, resolving `cc` through the same TXT. Batch registration
   still creates this report with seven slices per orientation, under

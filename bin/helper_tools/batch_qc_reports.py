@@ -37,6 +37,22 @@ def _resolve_acronym(acronym):
     raise ValueError(f"Unknown acronym {acronym!r} in {ACRONYM_FILE}")
 
 
+def _resolve_acronyms(acronyms):
+    """Resolve one or more acronyms, keeping their order and removing duplicates."""
+    if isinstance(acronyms, str):
+        acronyms = [acronyms]
+    names = []
+    labels = []
+    for acronym in acronyms:
+        name, region_labels = _resolve_acronym(acronym)
+        if name not in names:
+            names.append(name)
+            labels.extend(region_labels)
+    if not names:
+        raise ValueError("At least one atlas acronym is required")
+    return names, tuple(labels)
+
+
 def _as_3d(data):
     data = np.asarray(data)
     if data.ndim == 4:
@@ -569,9 +585,12 @@ def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=Non
 
 
 def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters=None):
-    acronym, atlas_labels = _resolve_acronym(acronym)
+    """Render the selected regions together; acronym accepts a string or sequence."""
+    acronyms, atlas_labels = _resolve_acronyms(acronym)
+    acronym = " + ".join(acronyms)
+    output_name = "_".join(acronyms)
     project_dir = Path(project_dir)
-    out_dir = project_dir / "Report" / acronym
+    out_dir = project_dir / "Report" / output_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     entries = []
@@ -593,7 +612,7 @@ def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters
                 n_slices,
                 atlas_labels=atlas_labels,
                 report_title=f"{acronym} Report",
-                filename_suffix=f"{acronym}_report",
+                filename_suffix=f"{output_name}_report",
             )
             rel_bet, subject, session, modality = _entry_metadata(bet_path, project_dir)
             rel_anno = anno_path.resolve().relative_to(project_dir.resolve())
@@ -625,7 +644,7 @@ def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters
         entries,
         out_dir,
         f"{acronym} Report BET + AnnoSplit_parental (labels {label_text})",
-        f"{acronym}_report.html",
+        f"{output_name}_report.html",
         custom_parameters=custom_parameters,
     )
     return html_path, len(entries)
@@ -678,8 +697,12 @@ def _build_argument_parser():
     )
     parser.add_argument(
         "--acronym",
+        nargs="+",
+        action="extend",
+        metavar="ACRONYM",
         help=(
-            "Atlas acronym from lib/acronym_rsfMRI.txt (case-insensitive), e.g. ptlp. "
+            "One or more atlas acronyms from lib/acronym_rsfMRI.txt "
+            "(case-insensitive), e.g. ptlp aca hip. May be repeated. "
             "Required for --report all and --report acronym."
         ),
     )
@@ -716,7 +739,7 @@ def main(argv=None):
         parser.error(f"--acronym is required for --report {args.report}")
     if args.acronym is not None:
         try:
-            args.acronym, _ = _resolve_acronym(args.acronym)
+            args.acronym, _ = _resolve_acronyms(args.acronym)
         except (OSError, ValueError) as exc:
             parser.error(str(exc))
 
@@ -727,7 +750,7 @@ def main(argv=None):
         report_builders.append(("Registration", build_registration_qc_report))
     if args.report in ("all", "acronym"):
         report_builders.append(
-            (args.acronym, partial(build_acronym_qc_report, acronym=args.acronym))
+            (" + ".join(args.acronym), partial(build_acronym_qc_report, acronym=args.acronym))
         )
 
     for report_label, report_builder in report_builders:
