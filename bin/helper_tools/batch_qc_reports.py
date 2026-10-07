@@ -20,31 +20,49 @@ import nibabel as nib
 import numpy as np
 
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
-ACRONYM_FILE = Path(__file__).resolve().parents[2] / "lib" / "acronym_rsfMRI.txt"
+ATLAS_CONFIG = {
+    "parental": ("acronym_rsfMRI.txt", "AnnoSplit_parental"),
+    "detailed": ("acronyms_ARA.txt", "AnnoSplit"),
+}
 
 
-def _resolve_acronym(acronym):
-    """Return the atlas spelling and both hemisphere labels for an acronym."""
-    requested = acronym.strip().casefold()
-    with ACRONYM_FILE.open(encoding="utf-8") as source:
+def _resolve_acronym(acronym, atlas="parental"):
+    """Prefer exact spelling, then accept a unique case-insensitive match."""
+    if atlas not in ATLAS_CONFIG:
+        raise ValueError(f"Unknown atlas {atlas!r}; choose parental or detailed")
+    acronym_file = Path(__file__).resolve().parents[2] / "lib" / ATLAS_CONFIG[atlas][0]
+    requested = acronym.strip()
+    matches = []
+    with acronym_file.open(encoding="utf-8") as source:
         for line in source:
             if not line.strip():
                 continue
-            label, canonical_acronym = line.split()
-            if canonical_acronym.casefold() == requested:
+            label, canonical_acronym = line.strip().split(maxsplit=1)
+            if canonical_acronym == requested:
                 label = int(label)
                 return canonical_acronym, (label, label + 2000)
-    raise ValueError(f"Unknown acronym {acronym!r} in {ACRONYM_FILE}")
+            if canonical_acronym.casefold() == requested.casefold():
+                matches.append((canonical_acronym, int(label)))
+    if len(matches) == 1:
+        canonical_acronym, label = matches[0]
+        return canonical_acronym, (label, label + 2000)
+    if len(matches) > 1:
+        candidates = ", ".join(f"{name!r} (label {label})" for name, label in matches)
+        raise ValueError(
+            f"Ambiguous acronym {acronym!r} in {acronym_file}: {candidates}. "
+            "Use the exact spelling from the acronym file."
+        )
+    raise ValueError(f"Unknown acronym {acronym!r} in {acronym_file}")
 
 
-def _resolve_acronyms(acronyms):
+def _resolve_acronyms(acronyms, atlas="parental"):
     """Resolve one or more acronyms, keeping their order and removing duplicates."""
     if isinstance(acronyms, str):
         acronyms = [acronyms]
     names = []
     labels = []
     for acronym in acronyms:
-        name, region_labels = _resolve_acronym(acronym)
+        name, region_labels = _resolve_acronym(acronym, atlas=atlas)
         if name not in names:
             names.append(name)
             labels.extend(region_labels)
@@ -584,18 +602,22 @@ def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=Non
     return html_path, len(entries)
 
 
-def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters=None):
+def build_acronym_qc_report(
+    project_dir, acronym, n_slices=10, custom_parameters=None, atlas="parental"
+):
     """Render the selected regions together; acronym accepts a string or sequence."""
-    acronyms, atlas_labels = _resolve_acronyms(acronym)
+    acronyms, atlas_labels = _resolve_acronyms(acronym, atlas=atlas)
+    annotation_name = ATLAS_CONFIG[atlas][1]
     acronym = " + ".join(acronyms)
-    output_name = "_".join(acronyms)
+    output_name = "_".join(acronyms).replace("/", "_")
+    report_name = output_name if atlas == "parental" else f"{output_name}_detailed"
     project_dir = Path(project_dir)
     out_dir = project_dir / "Report" / output_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     entries = []
     label_text = ", ".join(str(label) for label in atlas_labels)
-    suffix = "_AnnoSplit_parental.nii.gz"
+    suffix = f"_{annotation_name}.nii.gz"
     anno_files = sorted(project_dir.glob(f"sub-*/ses-*/*/*{suffix}"))
     for anno_path in anno_files:
         bet_name = anno_path.name[: -len(suffix)] + ".nii.gz"
@@ -612,7 +634,7 @@ def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters
                 n_slices,
                 atlas_labels=atlas_labels,
                 report_title=f"{acronym} Report",
-                filename_suffix=f"{output_name}_report",
+                filename_suffix=f"{report_name}_report",
             )
             rel_bet, subject, session, modality = _entry_metadata(bet_path, project_dir)
             rel_anno = anno_path.resolve().relative_to(project_dir.resolve())
@@ -643,8 +665,8 @@ def build_acronym_qc_report(project_dir, acronym, n_slices=10, custom_parameters
     html_path = _write_report(
         entries,
         out_dir,
-        f"{acronym} Report BET + AnnoSplit_parental (labels {label_text})",
-        f"{output_name}_report.html",
+        f"{acronym} Report BET + {annotation_name} (labels {label_text})",
+        f"{report_name}_report.html",
         custom_parameters=custom_parameters,
     )
     return html_path, len(entries)
@@ -696,13 +718,24 @@ def _build_argument_parser():
         help="Report to create (default: all).",
     )
     parser.add_argument(
+        "--atlas",
+        choices=tuple(ATLAS_CONFIG),
+        default="parental",
+        help=(
+            "Atlas for the acronym report (default: parental): parental uses "
+            "_AnnoSplit_parental.nii.gz and lib/acronym_rsfMRI.txt; detailed uses "
+            "_AnnoSplit.nii.gz and lib/acronyms_ARA.txt."
+        ),
+    )
+    parser.add_argument(
         "--acronym",
         nargs="+",
         action="extend",
         metavar="ACRONYM",
         help=(
-            "One or more atlas acronyms from lib/acronym_rsfMRI.txt "
-            "(case-insensitive), e.g. ptlp aca hip. May be repeated. "
+            "One or more acronyms from the selected atlas's acronym file "
+            "(exact spelling preferred; otherwise case-insensitive), e.g. ptlp aca hip. "
+            "May be repeated. "
             "Required for --report all and --report acronym."
         ),
     )
@@ -739,7 +772,7 @@ def main(argv=None):
         parser.error(f"--acronym is required for --report {args.report}")
     if args.acronym is not None:
         try:
-            args.acronym, _ = _resolve_acronyms(args.acronym)
+            args.acronym, _ = _resolve_acronyms(args.acronym, atlas=args.atlas)
         except (OSError, ValueError) as exc:
             parser.error(str(exc))
 
@@ -750,7 +783,10 @@ def main(argv=None):
         report_builders.append(("Registration", build_registration_qc_report))
     if args.report in ("all", "acronym"):
         report_builders.append(
-            (" + ".join(args.acronym), partial(build_acronym_qc_report, acronym=args.acronym))
+            (
+                " + ".join(args.acronym),
+                partial(build_acronym_qc_report, acronym=args.acronym, atlas=args.atlas),
+            )
         )
 
     for report_label, report_builder in report_builders:

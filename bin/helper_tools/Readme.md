@@ -338,13 +338,14 @@ python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report bet -
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report registration
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym cc
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym ptlp aca hip
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --atlas detailed --acronym "MOp2/3" "FRP1"
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --acronym ptlp --custom-parameter t2-frac=0.1 --custom-parameter t2-bias-method=mico
 ```
 
 `--report` accepts `all` (the default), `bet`, `registration`, or `acronym`.
-`--acronym` is required for `all` and `acronym`; lookup in
-`lib/acronym_rsfMRI.txt` is case-insensitive. Missing or unknown acronyms cause
-an error before any reports are written. BET and registration alone do not
+`--acronym` is required for `all` and `acronym`; lookup in the selected atlas's
+acronym file first prefers exact spelling, then accepts a unique match ignoring
+case. BET and registration alone do not
 require an acronym. `--n-slices`
 sets the number of slices per orientation and defaults to `10`. Repeat
 `--custom-parameter NAME=VALUE` to record processing parameters in the custom
@@ -353,9 +354,29 @@ leading `--` are normalized automatically.
 
 Pass multiple space-separated values to `--acronym` to show several regions in
 one overlay and HTML report. Repeating the option is also supported, e.g.
-`--acronym ptlp --acronym aca`. Duplicate regions are included once, preserving
-the order of their first occurrence. Each region contributes its label and
-that label plus 2000. Single-acronym calls keep their existing output names.
+`--acronym ptlp --acronym aca`. Each region contributes its label and
+that label plus 2000. Single-acronym parental calls keep their existing output names.
+
+Quote acronyms containing spaces so the terminal passes the full name as one
+argument, e.g. `--acronym "CUL4, 5"` or `--acronym "fiber tracts". A slash
+does not require escaping: `--acronym MOp2/3` and `--acronym "MOp2/3"` both
+work. When selecting multiple regions, quote each acronym containing spaces
+separately:
+
+```bash
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data \
+  --report acronym --atlas detailed --acronym "CUL4, 5" "MOp2/3"
+```
+
+`--atlas parental|detailed` selects the atlas for the acronym report:
+
+| Selection | Annotation suffix | Acronym file |
+| --- | --- | --- |
+| `parental` (default) | `_AnnoSplit_parental.nii.gz` | `lib/acronym_rsfMRI.txt` |
+| `detailed` | `_AnnoSplit.nii.gz` | `lib/acronyms_ARA.txt` |
+
+This also applies to the acronym report within `--report all`. Python callers can
+pass `atlas="detailed"` to `build_acronym_qc_report`.
 
 When reports are created by `batchProc.py`, options explicitly supplied on the
 command line are listed in a **Custom parameters** section at the top of each
@@ -380,8 +401,8 @@ Registration report behavior:
 
 Acronym report behavior:
 
-- Uses the same BET/`*_AnnoSplit_parental.nii.gz` pairs as the registration report.
-- Reads the label from `lib/acronym_rsfMRI.txt` relative to the installation,
+- Pairs the selected annotation suffix with the matching BET file.
+- Reads the label from the selected acronym file relative to the installation,
   independently of the current working directory. Filters the overlay to that
   label and the label plus 2000, e.g. `ptlp` selects `22` and `2022`.
 - Preserves the spelling in the TXT for folder names, filenames and titles:
@@ -392,6 +413,11 @@ Acronym report behavior:
   `<project_dir>/Report/PTLp_ACA/PTLp_ACA_report.html`. The HTML title is
   `PTLp + ACA Report BET + AnnoSplit_parental (labels 22, 2022, 31, 2031)`;
   image titles start with `PTLp + ACA Report: `.
+- Detailed reports use `AnnoSplit` in the HTML title and `_detailed_report`
+  in HTML/PNG filenames, so both atlas variants can coexist in the region folder,
+  e.g. `Report/PTLp/PTLp_detailed_report.html`. Slashes in detailed acronyms are
+  replaced with underscores in folder and filenames (`MOp2/3` → `MOp2_3`);
+  titles retain the original acronym spelling.
 - The existing `build_cc_qc_report` function remains as a compatibility wrapper
   for `batchProc.py`, resolving `cc` through the same TXT. Batch registration
   still creates this report with seven slices per orientation, under
