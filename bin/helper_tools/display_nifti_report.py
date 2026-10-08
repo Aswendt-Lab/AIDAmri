@@ -1,6 +1,7 @@
 """Create a project-level single-image or overlay report from NIfTI suffixes."""
 
 import argparse
+import csv
 import logging
 from pathlib import Path
 
@@ -37,6 +38,10 @@ def _tolerance(value):
     if not np.isfinite(value) or value < 0:
         raise argparse.ArgumentTypeError("must be finite and nonnegative")
     return value
+
+
+def _load_groups(csv_path):
+    return qc._load_groups(csv_path)
 
 
 def _load_volume(path):
@@ -132,7 +137,7 @@ def _plot_nifti_image(
 
 def build_display_nifti_report(
     project_dir, nifti_in1, nifti_in2=None, opacity=35, n_slices=10,
-    geometry_atol=GEOMETRY_ATOL, geometry_rtol=GEOMETRY_RTOL, modality="all",
+    geometry_atol=GEOMETRY_ATOL, geometry_rtol=GEOMETRY_RTOL, modality="all", group=None,
 ):
     project_dir = Path(project_dir).expanduser().resolve()
     if not project_dir.is_dir():
@@ -146,6 +151,7 @@ def build_display_nifti_report(
     geometry_atol = _tolerance(geometry_atol)
     geometry_rtol = _tolerance(geometry_rtol)
     n_slices = qc._positive_int(n_slices)
+    group_names, memberships = _load_groups(group) if group is not None else (None, {})
 
     report_prefix = "overlay_nifti_report" if nifti_in2 is not None else "display_nifti_report"
     report_stem = f"{report_prefix}_{nifti_in1}"
@@ -222,12 +228,13 @@ def build_display_nifti_report(
 
     if not entries:
         return None, 0
+    qc._apply_groups(entries, group_names, memberships)
     report_title = "Overlay Report" if nifti_in2 is not None else "Display Report"
     title = f"{report_title}: {nifti_in1}"
     if nifti_in2 is not None:
         title += f" + {nifti_in2}"
     html_path = qc._write_report(
-        entries, out_dir, title, f"{report_stem}.html",
+        entries, out_dir, title, f"{report_stem}.html", group_names=group_names,
     )
     return html_path, len(entries)
 
@@ -251,6 +258,10 @@ def _build_argument_parser():
     parser.add_argument(
         "-m", "--modality", choices=MODALITY_CHOICES, default="all",
         help="Modality folders to search, including their subfolders (default: all).",
+    )
+    parser.add_argument(
+        "-g", "--group", type=Path, metavar="CSV",
+        help="Optional CSV with group names as columns and Subject folder names as cells; adds a Group filter.",
     )
     parser.add_argument(
         "-o", "--opacity", type=_opacity, default=None,
@@ -280,11 +291,14 @@ def main(argv=None):
     if args.opacity is not None and args.nifti_in2 is None:
         parser.error("--opacity requires --nifti_in2")
     opacity = 35 if args.opacity is None else args.opacity
-    html_path, count = build_display_nifti_report(
-        project_dir, args.nifti_in1, nifti_in2=args.nifti_in2, opacity=opacity,
-        n_slices=args.n_slices, geometry_atol=args.geometry_atol,
-        geometry_rtol=args.geometry_rtol, modality=args.modality,
-    )
+    try:
+        html_path, count = build_display_nifti_report(
+            project_dir, args.nifti_in1, nifti_in2=args.nifti_in2, opacity=opacity,
+            n_slices=args.n_slices, geometry_atol=args.geometry_atol,
+            geometry_rtol=args.geometry_rtol, modality=args.modality, group=args.group,
+        )
+    except (OSError, ValueError, csv.Error) as exc:
+        parser.error(str(exc))
     if html_path:
         print(f"Display report written to {html_path} ({count} image(s))")
     else:

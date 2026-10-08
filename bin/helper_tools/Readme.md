@@ -334,6 +334,7 @@ Python helper module for project-level QC reports.
 Direct command-line use:
 
 ```bash
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report all --acronym ptlp
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report bet --n-slices 7
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report registration
@@ -341,10 +342,12 @@ python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acron
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym ptlp aca hip
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --atlas detailed --acronym "MOp2/3" "FRP1"
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --acronym ptlp --custom-parameter t2-frac=0.1 --custom-parameter t2-bias-method=mico
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report all --acronym ptlp -g /path/to/group_tDCS_Sham.csv
 ```
 
 `--report` accepts `all` (the default), `bet`, `registration`, or `acronym`.
-`--acronym` is required for `all` and `acronym`; lookup in the selected atlas's
+`--acronym` defaults to `cc` for `all` and `acronym` when omitted; explicitly
+supplied acronyms replace this default. Lookup in the selected atlas's
 acronym file first prefers exact spelling, then accepts a unique match ignoring
 case. BET and registration alone do not
 require an acronym. `--n-slices`
@@ -352,6 +355,15 @@ sets the number of slices per orientation and defaults to `10`. Repeat
 `--custom-parameter NAME=VALUE` to record processing parameters in the custom
 parameters section of the generated HTML reports. Parameter names without a
 leading `--` are normalized automatically.
+
+- `--group CSV` / `-g CSV` optionally adds a Group dropdown to both Display
+  and Overlay reports. CSV column names are group names (e.g. `tDCS,Sham`),
+  and cells contain exact Subject folder names (e.g. `sub-NR1042,sub-NR1037`).
+  Empty cells are ignored. Group, Subject, Session and Modality filters are
+  combined. Subjects missing from the CSV remain visible under `All` and can
+  also be selected via `Unassigned`. Subjects listed in several columns
+  appear under each corresponding group. Without a CSV, no Group dropdown is
+  shown. Invalid or unreadable CSV files are rejected before images are generated.
 
 Pass multiple space-separated values to `--acronym` to show several regions in
 one overlay and HTML report. Repeating the option is also supported, e.g.
@@ -452,6 +464,9 @@ python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
 
 python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
   -1 fz.fa.nii.gz -2 AnnoSplit_parental.nii.gz -m dwi -o 60 -n 10
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  -1 fz.fa.nii.gz -2 AnnoSplit_parental.nii.gz -m dwi -g /path/to/group_tDCS_Sham.csv
 ```
 
 - Searches recursively inside every `sub-*/ses-*/<modality>/` directory,
@@ -460,6 +475,14 @@ python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
 - `--modality all|anat|dwi|func|t2map` restricts the search to the selected
   modality directory across all subjects and sessions. The default `all`
   searches every modality directory. 
+- `--group CSV` / `-g CSV` optionally adds a Group dropdown to both Display
+  and Overlay reports. CSV column names are group names (e.g. `tDCS,Sham`),
+  and cells contain exact Subject folder names (e.g. `sub-NR1042,sub-NR1037`).
+  Empty cells are ignored. Group, Subject, Session and Modality filters are
+  combined. Subjects missing from the CSV remain visible under `All` and can
+  also be selected via `Unassigned`. Subjects listed in several columns
+  appear under each corresponding group. Without a CSV, no Group dropdown is
+  shown. Invalid or unreadable CSV files are rejected before images are generated.
 - With one input, every matching file gets a grayscale mosaic with axial,
   sagittal and coronal slices. With two inputs, the first is the grayscale base
   and the second is a colored overlay as in the registration report; nonpositive
