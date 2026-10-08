@@ -15,6 +15,7 @@ environment so that relative paths to `lib/` resources resolve as expected.
 | `ReorientBatch.py` | Reorient NIfTI files to a target orientation while mirroring the input folder tree. |
 | `adjustbvecRep.py` | Repeat DWI `.bval` and `.bvec` sidecars to match the number of image volumes. |
 | `batch_qc_reports.py` | Python helper module for project-level BET, registration, and corpus callosum HTML QC reports. |
+| `display_nifti_report.py` | Display arbitrary NIfTI filename suffixes as single images or geometry-checked overlays in an HTML report. |
 | `crop_T2.py` | Crop T2-weighted images in x/y using FSL through Nipype and write quick-look PNGs. |
 | `fieldmap_json_edit.py` | Populate BIDS fieldmap JSON `IntendedFor` entries for DWI and functional files. |
 | `getAtlasRegionSize_BIDS.py` | Compute per-annotation atlas region volumes in BIDS-style folder trees. |
@@ -422,6 +423,53 @@ Acronym report behavior:
   for `batchProc.py`, resolving `cc` through the same TXT. Batch registration
   still creates this report with seven slices per orientation, under
   `<project_dir>/Report/cc/`.
+
+### `display_nifti_report.py`
+
+Creates a project-level report for one or two NIfTI filename suffixes. HTML reports and accompanying PNGs are written under
+`<project_dir>/Report/Display/` for one input and
+`<project_dir>/Report/Overlay/` for two inputs.
+
+- One input: `display_nifti_report_<nifti_in1>.html`, e.g.
+  `display_nifti_report_fz.fa.nii.gz.html`.
+- Two inputs: `overlay_nifti_report_<nifti_in1>_<nifti_in2>.html`, e.g.
+  `overlay_nifti_report_fz.fa.nii.gz_AnnoSplit_parental.nii.gz.html`.
+
+PNG filenames also include the report identifier so different suffix selections
+keep separate images.
+HTML and image titles use `Display Report` for one input and `Overlay Report`
+for two inputs.
+
+```bash
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  --nifti_in1 fz.fa.nii.gz
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  --nifti_in1 fz.fa.nii.gz --nifti_in2 AnnoSplit_parental.nii.gz --opacity 60
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  --nifti_in1 fz.fa.nii.gz --nifti_in2 AnnoSplit_parental.nii.gz --modality dwi
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  -1 fz.fa.nii.gz -2 AnnoSplit_parental.nii.gz -m dwi -o 60 -n 10
+```
+
+- Searches recursively inside every `sub-*/ses-*/<modality>/` directory,
+  including subfolders such as `DSI_studio`. Suffixes are literal filename
+  endings, including `.nii` or `.nii.gz`; they are not paths or glob patterns.
+- `--modality all|anat|dwi|func|t2map` restricts the search to the selected
+  modality directory across all subjects and sessions. The default `all`
+  searches every modality directory. 
+- With one input, every matching file gets a grayscale mosaic with axial,
+  sagittal and coronal slices. With two inputs, the first is the grayscale base
+  and the second is a colored overlay as in the registration report; nonpositive
+  or nonfinite overlay values are hidden.
+- Overlay pairs require exactly one file per suffix within the same
+  Subject/Session/Modality directory.
+  Missing partners and ambiguous matches are skipped with a terminal warning;
+  ambiguous warnings list the candidate paths.
+- `--opacity` controls the second input and its contour, from `0` (hidden) to
+  `100` (opaque), and defaults to `35`. It requires `--nifti_in2`.
 
 ## T2 Cropping
 
