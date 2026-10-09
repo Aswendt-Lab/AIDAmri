@@ -1,9 +1,12 @@
 import argparse
+import csv
 import html
+import json
 import logging
 import os
 from calendar import month_name
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -19,6 +22,87 @@ import nibabel as nib
 import numpy as np
 
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
+ATLAS_CONFIG = {
+    "parental": ("acronym_rsfMRI.txt", "AnnoSplit_parental"),
+    "detailed": ("acronyms_ARA.txt", "AnnoSplit"),
+}
+
+
+def _load_groups(csv_path):
+    """Read group columns containing Subject folder names; ignore empty cells."""
+    csv_path = Path(csv_path).expanduser()
+    with csv_path.open(encoding="utf-8-sig", newline="") as source:
+        reader = csv.reader(source, strict=True)
+        names = [name.strip() for name in next(reader, [])]
+        if not names or any(not name for name in names):
+            raise ValueError(f"Group CSV must have nonempty column names: {csv_path}")
+        if len(set(names)) != len(names):
+            raise ValueError(f"Group CSV has duplicate column names: {csv_path}")
+        memberships = {}
+        for row in reader:
+            if len(row) > len(names):
+                raise ValueError(f"Too many columns in group CSV at line {reader.line_num}: {csv_path}")
+            for name, subject in zip(names, row):
+                subject = subject.strip()
+                if subject:
+                    groups = memberships.setdefault(subject, [])
+                    if name not in groups:
+                        groups.append(name)
+    return names, memberships
+
+
+def _apply_groups(entries, group_names, memberships):
+    if group_names is None:
+        return
+    for entry in entries:
+        groups = memberships.get(entry["subject"], [])
+        entry["groups"] = groups
+        entry["info"].append(("Group", ", ".join(groups) or "Unassigned"))
+
+
+def _resolve_acronym(acronym, atlas="parental"):
+    """Prefer exact spelling, then accept a unique case-insensitive match."""
+    if atlas not in ATLAS_CONFIG:
+        raise ValueError(f"Unknown atlas {atlas!r}; choose parental or detailed")
+    acronym_file = Path(__file__).resolve().parents[2] / "lib" / ATLAS_CONFIG[atlas][0]
+    requested = acronym.strip()
+    matches = []
+    with acronym_file.open(encoding="utf-8") as source:
+        for line in source:
+            if not line.strip():
+                continue
+            label, canonical_acronym = line.strip().split(maxsplit=1)
+            if canonical_acronym == requested:
+                label = int(label)
+                return canonical_acronym, (label, label + 2000)
+            if canonical_acronym.casefold() == requested.casefold():
+                matches.append((canonical_acronym, int(label)))
+    if len(matches) == 1:
+        canonical_acronym, label = matches[0]
+        return canonical_acronym, (label, label + 2000)
+    if len(matches) > 1:
+        candidates = ", ".join(f"{name!r} (label {label})" for name, label in matches)
+        raise ValueError(
+            f"Ambiguous acronym {acronym!r} in {acronym_file}: {candidates}. "
+            "Use the exact spelling from the acronym file."
+        )
+    raise ValueError(f"Unknown acronym {acronym!r} in {acronym_file}")
+
+
+def _resolve_acronyms(acronyms, atlas="parental"):
+    """Resolve one or more acronyms, keeping their order and removing duplicates."""
+    if isinstance(acronyms, str):
+        acronyms = [acronyms]
+    names = []
+    labels = []
+    for acronym in acronyms:
+        name, region_labels = _resolve_acronym(acronym, atlas=atlas)
+        if name not in names:
+            names.append(name)
+            labels.extend(region_labels)
+    if not names:
+        raise ValueError("At least one atlas acronym is required")
+    return names, tuple(labels)
 
 
 def _as_3d(data):
@@ -148,13 +232,24 @@ def _plot_bet_image(bet_path, out_dir, project_dir, n_slices):
     return png_path, shape, zooms, mask_path if mask_path.exists() else None
 
 
-def _plot_registration_overlay(bet_path, anno_path, out_dir, project_dir, n_slices):
+def _plot_registration_overlay(
+    bet_path,
+    anno_path,
+    out_dir,
+    project_dir,
+    n_slices,
+    atlas_labels=None,
+    report_title="Registration Report",
+    filename_suffix="registration_report",
+):
     bet_data, shape, zooms = _load_3d(bet_path)
     anno_data, anno_shape, _ = _load_3d(anno_path)
     if bet_data.shape != anno_data.shape:
         raise ValueError(
             f"Shape mismatch for overlay: BET {bet_data.shape}, annotation {anno_data.shape}"
         )
+    if atlas_labels is not None:
+        anno_data = np.where(np.isin(anno_data, atlas_labels), anno_data, 0)
 
     orientations = ["Axial", "Sagittal", "Coronal"]
     slices = _slice_indices(bet_data, n_slices)
@@ -192,9 +287,13 @@ def _plot_registration_overlay(bet_path, anno_path, out_dir, project_dir, n_slic
             ax.set_title(f"{orientation} {index}", fontsize=9)
             ax.axis("off")
 
-    fig.suptitle(f"Registration Report: {Path(bet_path).name} + {Path(anno_path).name}", fontsize=14)
+    fig.suptitle(f"{report_title}: {Path(bet_path).name} + {Path(anno_path).name}", fontsize=14)
     fig.tight_layout(rect=[0, 0, 1, 0.96])
-    png_path = Path(out_dir) / _safe_png_name(anno_path, project_dir, "registration_report")
+    png_path = Path(out_dir) / _safe_png_name(
+        anno_path,
+        project_dir,
+        filename_suffix,
+    )
     fig.savefig(png_path, dpi=120)
     plt.close(fig)
     return png_path, shape, anno_shape, zooms
@@ -214,11 +313,12 @@ def _report_timestamp():
     )
 
 
-def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
+def _write_report(entries, out_dir, title, report_name, custom_parameters=None, group_names=None):
     html_path = Path(out_dir) / report_name
     subjects = sorted({entry["subject"] for entry in entries})
     sessions = sorted({entry["session"] for entry in entries})
     modalities = sorted({entry["modality"] for entry in entries})
+    group_ids = {name: f"group-{index}" for index, name in enumerate(group_names or [])}
     generated_at = _report_timestamp()
 
     with open(html_path, "w", encoding="utf-8") as f:
@@ -254,6 +354,8 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
                 var subj = document.getElementById('subjectDropdown').value;
                 var sess = document.getElementById('sessionDropdown').value;
                 var mod = document.getElementById('modalityDropdown').value;
+                var groupDropdown = document.getElementById('groupDropdown');
+                var group = groupDropdown ? groupDropdown.value : 'all';
                 var entries = document.getElementsByClassName('report-entry');
                 for (var i = 0; i < entries.length; i++) {
                     var entry = entries[i];
@@ -261,6 +363,7 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
                     if (subj !== 'all' && entry.getAttribute('data-subject') !== subj) show = false;
                     if (sess !== 'all' && entry.getAttribute('data-session') !== sess) show = false;
                     if (mod !== 'all' && entry.getAttribute('data-modality') !== mod) show = false;
+                    if (group !== 'all' && !JSON.parse(entry.getAttribute('data-groups') || '[]').includes(group)) show = false;
                     entry.style.display = show ? '' : 'none';
                 }
             }
@@ -401,6 +504,14 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
                 escaped_value = html.escape(value)
                 f.write(f"<option value='{escaped_value}'>{escaped_value}</option>")
             f.write("</select></label>\n")
+        if group_names is not None:
+            f.write("<label style='margin-right:20px;'>Group: ")
+            f.write("<select id='groupDropdown' onchange='filterreport()'>")
+            f.write("<option value='all'>All</option>")
+            for name in group_names:
+                f.write(f"<option value='{group_ids[name]}'>{html.escape(name)}</option>")
+            f.write("<option value='unassigned'>Unassigned</option>")
+            f.write("</select></label>\n")
         f.write("</div><div style='height:60px;'></div>\n")
         f.write(f"<h1>{html.escape(title)}</h1>\n")
         f.write(f"<p class='report-generated'><b>Created:</b> {html.escape(generated_at)}</p>\n")
@@ -418,11 +529,15 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
             f.write("</table>\n</section>\n")
 
         for entry in entries:
+            group_attribute = ""
+            if group_names is not None:
+                ids = [group_ids[name] for name in entry.get("groups", []) if name in group_ids]
+                group_attribute = f" data-groups='{html.escape(json.dumps(ids or ['unassigned']))}'"
             f.write(
                 "<div class='report-entry' "
                 f"data-subject='{html.escape(entry['subject'])}' "
                 f"data-session='{html.escape(entry['session'])}' "
-                f"data-modality='{html.escape(entry['modality'])}'>\n"
+                f"data-modality='{html.escape(entry['modality'])}'{group_attribute}>\n"
             )
             f.write("<div class='report-info'>")
             for label, value in entry["info"]:
@@ -439,8 +554,9 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None):
     return html_path
 
 
-def build_bet_qc_report(project_dir, n_slices=10, custom_parameters=None):
+def build_bet_qc_report(project_dir, n_slices=10, custom_parameters=None, group=None):
     project_dir = Path(project_dir)
+    group_names, memberships = _load_groups(group) if group is not None else (None, {})
     out_dir = project_dir / "Report" / "BET"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -474,18 +590,21 @@ def build_bet_qc_report(project_dir, n_slices=10, custom_parameters=None):
 
     if not entries:
         return None, 0
+    _apply_groups(entries, group_names, memberships)
     html_path = _write_report(
         entries,
         out_dir,
         "BET Report",
         "bet_report.html",
         custom_parameters=custom_parameters,
+        group_names=group_names,
     )
     return html_path, len(entries)
 
 
-def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=None):
+def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=None, group=None):
     project_dir = Path(project_dir)
+    group_names, memberships = _load_groups(group) if group is not None else (None, {})
     out_dir = project_dir / "Report" / "Registration"
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -527,14 +646,96 @@ def build_registration_qc_report(project_dir, n_slices=10, custom_parameters=Non
 
     if not entries:
         return None, 0
+    _apply_groups(entries, group_names, memberships)
     html_path = _write_report(
         entries,
         out_dir,
         "Registration Report: BET + AnnoSplit_parental",
         "registration_report.html",
         custom_parameters=custom_parameters,
+        group_names=group_names,
     )
     return html_path, len(entries)
+
+
+def build_acronym_qc_report(
+    project_dir, acronym, n_slices=10, custom_parameters=None, atlas="parental", group=None,
+):
+    """Render the selected regions together; acronym accepts a string or sequence."""
+    acronyms, atlas_labels = _resolve_acronyms(acronym, atlas=atlas)
+    annotation_name = ATLAS_CONFIG[atlas][1]
+    acronym = " + ".join(acronyms)
+    output_name = "_".join(acronyms).replace("/", "_")
+    report_name = output_name if atlas == "parental" else f"{output_name}_detailed"
+    project_dir = Path(project_dir)
+    group_names, memberships = _load_groups(group) if group is not None else (None, {})
+    out_dir = project_dir / "Report" / output_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    entries = []
+    label_text = ", ".join(str(label) for label in atlas_labels)
+    suffix = f"_{annotation_name}.nii.gz"
+    anno_files = sorted(project_dir.glob(f"sub-*/ses-*/*/*{suffix}"))
+    for anno_path in anno_files:
+        bet_name = anno_path.name[: -len(suffix)] + ".nii.gz"
+        bet_path = anno_path.with_name(bet_name)
+        if not bet_path.exists():
+            logging.warning("Skipping %s Report without matching BET file: %s", acronym, anno_path)
+            continue
+        try:
+            png_path, bet_shape, anno_shape, zooms = _plot_registration_overlay(
+                bet_path,
+                anno_path,
+                out_dir,
+                project_dir,
+                n_slices,
+                atlas_labels=atlas_labels,
+                report_title=f"{acronym} Report",
+                filename_suffix=f"{report_name}_report",
+            )
+            rel_bet, subject, session, modality = _entry_metadata(bet_path, project_dir)
+            rel_anno = anno_path.resolve().relative_to(project_dir.resolve())
+            info = [
+                ("BET", rel_bet),
+                ("Annotation", rel_anno),
+                ("Atlas labels", label_text),
+                ("Modality", modality),
+                ("BET dimensions", bet_shape),
+                ("Annotation dimensions", anno_shape),
+                ("Voxel size", tuple(round(float(z), 4) for z in zooms)),
+            ]
+            entries.append(
+                {
+                    "subject": subject,
+                    "session": session,
+                    "modality": modality,
+                    "report_img_path": png_path.name,
+                    "image_alt": f"{bet_path.name} + {anno_path.name} (labels {label_text})",
+                    "info": info,
+                }
+            )
+        except Exception as exc:
+            logging.warning("Could not create %s Report for %s: %s", acronym, anno_path, exc)
+
+    if not entries:
+        return None, 0
+    _apply_groups(entries, group_names, memberships)
+    html_path = _write_report(
+        entries,
+        out_dir,
+        f"{acronym} Report BET + {annotation_name} (labels {label_text})",
+        f"{report_name}_report.html",
+        custom_parameters=custom_parameters,
+        group_names=group_names,
+    )
+    return html_path, len(entries)
+
+
+def build_cc_qc_report(project_dir, n_slices=10, custom_parameters=None, group=None):
+    """Keep the existing batchProc integration using labels from the acronym file."""
+    return build_acronym_qc_report(
+        project_dir, "cc", n_slices=n_slices, custom_parameters=custom_parameters, group=group,
+    )
 
 
 def _positive_int(value):
@@ -559,7 +760,7 @@ def _custom_parameter(value):
 
 def _build_argument_parser():
     parser = argparse.ArgumentParser(
-        description="Create project-level BET and registration QC reports."
+        description="Create project-level BET, registration and acronym-based atlas QC reports."
     )
     parser.add_argument(
         "-i",
@@ -571,9 +772,36 @@ def _build_argument_parser():
     )
     parser.add_argument(
         "--report",
-        choices=("all", "bet", "registration"),
+        choices=("all", "bet", "registration", "acronym"),
         default="all",
         help="Report to create (default: all).",
+    )
+    parser.add_argument(
+        "--atlas",
+        choices=tuple(ATLAS_CONFIG),
+        default="parental",
+        help=(
+            "Atlas for the acronym report (default: parental): parental uses "
+            "_AnnoSplit_parental.nii.gz and lib/acronym_rsfMRI.txt; detailed uses "
+            "_AnnoSplit.nii.gz and lib/acronyms_ARA.txt."
+        ),
+    )
+    parser.add_argument(
+        "-g", "--group", type=Path, metavar="CSV",
+        help="Optional CSV with group names as columns and Subject folder names as cells; adds a Group filter.",
+    )
+    parser.add_argument(
+        "--acronym",
+        nargs="+",
+        action="extend",
+        default=None,
+        metavar="ACRONYM",
+        help=(
+            "One or more acronyms from the selected atlas's acronym file "
+            "(exact spelling preferred; otherwise case-insensitive), e.g. ptlp aca hip. "
+            "May be repeated. "
+            "Default for --report all and --report acronym: cc."
+        ),
     )
     parser.add_argument(
         "--n-slices",
@@ -604,17 +832,38 @@ def main(argv=None):
     if not project_dir.is_dir():
         parser.error(f"project directory does not exist or is not a directory: {project_dir}")
 
+    if args.report in ("all", "acronym") and args.acronym is None:
+        args.acronym = ["cc"]
+    if args.acronym is not None:
+        try:
+            args.acronym, _ = _resolve_acronyms(args.acronym, atlas=args.atlas)
+        except (OSError, ValueError) as exc:
+            parser.error(str(exc))
+    if args.group is not None:
+        try:
+            _load_groups(args.group)
+        except (OSError, ValueError, csv.Error) as exc:
+            parser.error(str(exc))
+
     report_builders = []
     if args.report in ("all", "bet"):
         report_builders.append(("BET", build_bet_qc_report))
     if args.report in ("all", "registration"):
         report_builders.append(("Registration", build_registration_qc_report))
+    if args.report in ("all", "acronym"):
+        report_builders.append(
+            (
+                " + ".join(args.acronym),
+                partial(build_acronym_qc_report, acronym=args.acronym, atlas=args.atlas),
+            )
+        )
 
     for report_label, report_builder in report_builders:
         html_path, count = report_builder(
             project_dir,
             n_slices=args.n_slices,
             custom_parameters=args.custom_parameters or None,
+            group=args.group,
         )
         if html_path:
             print(f"{report_label} report written to {html_path} ({count} image(s))")
