@@ -5,7 +5,8 @@ This release note summarizes the major changes introduced in AIDAmri v3.0.
 
 ## Highlights
 
-- Updated the Docker environment to Ubuntu 22.04 with Python 3.10 and DSI Studio 2025.
+- Updated the Docker environment to Ubuntu 22.04 with Python 3.10 and DSI Studio 2025.04.16.
+- Added Docker build provenance export to `AIDAmri_git_information.txt` for reproducibility.
 - Added `bet4animal` support and improved BET handling for mouse and rat brain extraction.
 - Added ANTs N4 bias field correction and DIPY Patch2Self-based DWI denoising.
 - Improved DWI/DSI Studio processing, including automatic `.bval`/`.bvec` handling, `dti`/`gqi` reconstruction, custom tracking parameters, and optional skipping of slice-wise motion correction.
@@ -19,12 +20,14 @@ This release note summarizes the major changes introduced in AIDAmri v3.0.
 
 - Base image changed from `ubuntu:18.04` to `ubuntu:22.04`.
 - Added platform-aware Docker builds.
-- Updated Python setup to use the system Python 3 on Ubuntu 22.04.
+- Updated Python setup to use the system Python 3.10 on Ubuntu 22.04.
+- Added `constraints.txt` to pin resolved package versions from the reference image while keeping `requirements.txt` as the direct dependency list.
 - Updated `nipype` from `1.1.2` to `1.7.0`.
 - Added ANTs 2.6.2 for `N4BiasFieldCorrection`.
 - Modernized the NiftyReg Docker build for Ubuntu 22.04 while keeping the same pinned NiftyReg commit.
 - Updated DSI Studio to the Ubuntu 22.04 build from 2025.04.16.
 - Added installation support for `immv` and `bet4animal`.
+- Added build-time Git metadata capture and container startup copying of `AIDAmri_git_information.txt` into `/aida/DATA`.
 
 ## Preprocessing
 
@@ -92,6 +95,7 @@ This release note summarizes the major changes introduced in AIDAmri v3.0.
 ## Breaking or User-visible Changes
 
 - A Docker image rebuild is required.
+- Docker build provenance is generated from the Git state available in the build context. If the local Git user should be recorded, pass `AIDAMRI_GIT_CONFIG_USER` as a build argument.
 - DSI Studio auto-gradient mode now requires matching `.bval` and `.bvec` files.
 - `lib/DTI_Jones30.txt` was removed.
 - Incidence map generation now requires an explicit `--session`.

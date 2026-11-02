@@ -34,7 +34,7 @@ openpyxl==3.1.5
 orderly-set==5.5.0
 packaging==26.2
 pandas==2.3.3
-pillow==12.2.0
+pillow==12.3.0
 progressbar33==2.4
 prov==2.1.1
 pydot==4.0.1
@@ -46,7 +46,7 @@ requests==2.34.2
 scikit-build==0.19.1
 scikit-learn==1.7.2
 scipy==1.15.3
-seaborn==0.11.2
+seaborn==0.13.2
 setuptools-scm==10.1.2
 simplejson==4.1.1
 six==1.17.0

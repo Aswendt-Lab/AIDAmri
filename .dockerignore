@@ -1,4 +1,6 @@
 .git
+!.git/
+!.git/**
 .idea
 .codex
 .DS_Store

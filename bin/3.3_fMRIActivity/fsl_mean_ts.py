@@ -16,7 +16,12 @@ import nibabel as nib
 import scipy.io as io
 import correlate_matrix
 
+from calendar import month_name
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
+
 def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
     # input data
 
@@ -81,10 +86,8 @@ def start_fsl_mean_ts(sPathData,sPathMask,labelNames,postTxt):
 
 
 def get_date():
-    now = datetime.now()
-    pvDate = now.strftime("%a %d %b %Y")
-    pvTime = now.strftime("%H:%M:%S")
-    return pvDate + ' ' + pvTime
+    now = datetime.now(REPORT_TIMEZONE)
+    return f"{now.day:02d} {month_name[now.month]} {now.year} {now:%H:%M:%S} {now.tzname()}"
 
 
 if __name__ == '__main__':

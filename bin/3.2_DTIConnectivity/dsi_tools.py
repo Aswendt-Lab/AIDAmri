@@ -24,7 +24,7 @@ Beckman Institute for Advanced Science & Technology
 University of Illinois at Urbana Champaign
 Changes:
 Expanded options, CLI, N4BiasFieldCorrection support
-Compatibility with Ubuntu 22.04, Python 3.10, DSI-Studio release 2025/04/16 (more efficient storage 
+Compatibility with Ubuntu 22.04, Python 3.10, DSI-Studio release 2026.7.25 (tagged commit 438176e; more efficient storage
 using '.fz' and '.sz' file formats)
 """
 
@@ -524,14 +524,13 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
                 f"Invalid make_isotropic value: {make_isotropic}. "
                 'Use 0, "auto", or a voxel size in mm, e.g. 0.2.'
             )
+    iso_value_arg = f"{iso_value:g}"
     # If diffusion data are resampled here, all ROI/parcellation images must be
     # created in the same diffusion space before connectivity is calculated.
 
     additional_cmd = ''
-    # Atlas/ROI images must match this resampled space when iso_value > 0.
     if iso_value > 0:
-        additional_cmd = f'[Step T2][Edit][Resample]={iso_value}'
-        print(f'Resampling to {iso_value} mm isotropic voxel size')
+        print(f'Resampling to {iso_value_arg} mm isotropic voxel size')
 
     # Optional future DSI Studio corrections. Currently disabled because AIDAmri
     # performs slice-wise motion correction before source generation.
@@ -561,10 +560,12 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         "--action=rec",
         f"--source={src_file}",
         f"--mask={mask_file}",
+        f"--apply_mask",
         f"--method={method_rec}",
         "--other_output=all", #diffusion metrics to compute. 'all' for every possible measure(fa,rd,rdi)
         f"--output={fib_file}",
         "--check_btable=0",#if 1 checks the gradient table and flips/swaps to fix gradient directions
+        f"--make_isotropic={iso_value_arg}",
     ]
 
     if additional_cmd:
@@ -832,7 +833,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
     # Performs analysis on every connectivity value and type. DSI Studio reuses
     # the same default connectivity filename, so each result must be renamed
     # immediately after the corresponding command finishes.
-    connectivity_values = ['qa', 'count']
+    connectivity_values = ['all']
     connectivity_types = ['pass', 'end']
     tract_dir = os.path.dirname(tract_file)
     tract_base = os.path.basename(tract_file)

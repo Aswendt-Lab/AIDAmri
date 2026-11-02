@@ -20,7 +20,6 @@ import nipype.interfaces.ants as ants
 import subprocess
 import shutil
 import averageb0
-import dipy.denoise.patch2self as patch2self
 import itertools
 import sys
 import threading
@@ -28,6 +27,8 @@ import time
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.bet import applyBET, skip_bet_function
+from common.artifact_manifest import start_output_tracking
+from common.script_logging import get_terminal_stream, setup_script_logging
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 
@@ -40,7 +41,9 @@ def creat_brkraw_backup(input_file):
     os.mkdir(brkraw_dir)
     dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
 
-    shutil.copyfile(input_file, dst_path)
+    # Keep the original NIfTI in brkraw and process a copy at the input path.
+    shutil.move(input_file, dst_path)
+    shutil.copyfile(dst_path, input_file)
 
     data = nib.load(input_file)
     # Preserve nibabel scaling (scl_slope/scl_inter). Using get_unscaled()
@@ -141,17 +144,18 @@ def spinner(stop_event, message="Working"):
     Displays a simple terminal spinner while a long-running processing step is active.
     Does not report the actual progress of external tools such as FSL BET or ANTs.
     """
-    if os.environ.get("AIDAMRI_DISABLE_SPINNER") == "1" or not sys.stdout.isatty():
+    stream = get_terminal_stream()
+    if os.environ.get("AIDAMRI_DISABLE_SPINNER") == "1" or stream is None:
         return
 
     for ch in itertools.cycle("|/-\\"):
         if stop_event.is_set():
             break
-        sys.stdout.write(f"\r{message}... {ch}")
-        sys.stdout.flush()
+        stream.write(f"\r{message}... {ch}")
+        stream.flush()
         time.sleep(0.1)
-    sys.stdout.write(f"\r{message}... done\n")
-    sys.stdout.flush()
+    stream.write(f"\r{message}... done\n")
+    stream.flush()
 
 
 def set_xform_codes_to_one(input_file):
@@ -165,7 +169,10 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
     """
     Denoises the input DTI image using Patch2Self from DIPY.
     Requires an appropriate input file (input_file) and the output path (output_path).
+    Also saves P2SNoise as the signed 4D residual: input minus Patch2Self output.
     """
+    import dipy.denoise.patch2self as patch2self
+
     bvalsname = input_file.replace(".nii.gz", ".bval")
     if not os.path.exists(bvalsname):
         try:
@@ -187,66 +194,105 @@ def denoise_patch2self(input_file, output_path, b0_thresh=100):
         print("Image sform:", data.header.get_sform())
     if img.ndim != 4:
         raise ValueError("Input image must be a 4D NIfTI file.")
-    
+
     # Apply Patch2Self denoising
     denoised_img = patch2self.patch2self(img, bvals, b0_threshold=b0_thresh, model='ols', out_dtype=np.float32)
     
     # Save the denoised image
-    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Patch2SelfDenoised.nii.gz')
-    denoised_nii = nib.Nifti1Image(denoised_img, affine)
+    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'P2SDenoised.nii.gz')
+    denoised_nii = nib.Nifti1Image(denoised_img, affine, header=data.header.copy())
+    denoised_nii.set_data_dtype(np.float32)
+    denoised_nii.set_qform(affine, code=1)
+    denoised_nii.set_sform(affine, code=1)
+    set_default_xyzt_units_if_unknown(denoised_nii.header)
     if debug:
         print("Denoised image header:", denoised_nii.header)
         print("Denoised affine matrix:", denoised_nii.affine)
         print("Denoised image sform:", denoised_nii.header.get_sform())
     nib.save(denoised_nii, output_file)
 
-    # # Copy header from original image to denoised image using fslcpgeom
-    # myFslCpGeom = fsl.utils.CopyGeom(dest_file=output_file, in_file=input_file)
-    # myFslCpGeom.run()
-    # print(f"Denoising completed, output saved to {output_file}")
-    # if debug is True:
-    #     output = nii.load(output_file)
-    #     print("Final denoised image header after copying geometry:", output.header)
-    #     print("Final denoised affine matrix after copying geometry:", output.affine)
-    #     print("Final denoised image sform after copying geometry:", output.header.get_sform())
+    # Preserve every volume and the sign of the removed signal.
+    noise_data = np.empty(denoised_img.shape, dtype=np.float32)
+    np.subtract(img, denoised_img, out=noise_data)
+    noise_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'P2SNoise.nii.gz')
+    noise_header = denoised_nii.header.copy()
+    noise_header.set_intent('none')
+    noise_header['descrip'] = 'Patch2Self signed residual: original minus denoised'
+    noise_header['cal_min'] = noise_data.min()
+    noise_header['cal_max'] = noise_data.max()
+    noise_nii = nib.Nifti1Image(noise_data, affine, header=noise_header)
+    nib.save(noise_nii, noise_file)
+    print("Patch2Self noise residual (original minus denoised) saved to", noise_file)
     return output_file
 
-def smoothIMG(input_file, output_path,skip_min=False):
+def denoise_mrtrix3(input_file, output_path):
+    """Run MP-PCA on the original 4D DWI, before averaging or interpolation."""
+    stem = os.path.basename(input_file).split('.')[0]
+    output_file = os.path.join(output_path, stem + 'MR3Denoised.nii.gz')
+    noise_file = os.path.join(output_path, stem + 'MR3Noise.nii.gz')
+    executable = shutil.which("dwidenoise")
+    if executable is None:
+        raise FileNotFoundError(
+            "MRtrix3 dwidenoise was not found in PATH. Install MRtrix3 or rebuild the AIDAmri Docker image."
+        )
+    if len(nib.load(input_file).shape) != 4:
+        raise ValueError("Input image must be a 4D NIfTI file.")
+
+    command = [
+        executable, input_file, output_file, '-noise', noise_file,
+        '-datatype', 'float32', '-force',
+    ]
+    try:
+        result = subprocess.run(
+            command, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        print(error.stdout or "", end="")
+        raise
+    print(result.stdout or "", end="")
+    print("MRtrix3 noise map saved to", noise_file)
+    return output_file
+
+def smoothIMG(input_file, output_path, skip_smoothing=False):
     """
-    Prepare a 3D image for smoothing and apply FSL's median spatial filter.
-    For 4D inputs, a voxel-wise minimum projection across the 4th dimension is
-    written as *DN.nii.gz before smoothing. For 3D inputs, the MP image is just
-    a float32/header-normalized copy. If skip_min is True, no MP file is
-    created and the input image is passed directly to FSL smoothing.
+    Prepare a 3D reference image and optionally apply FSL's median spatial filter.
+    For 4D inputs, a voxel-wise median projection across the 4th dimension is
+    written as *MP.nii.gz. For 3D inputs, the MP image is just a
+    float32/header-normalized copy.
     """
+    source_base = os.path.basename(input_file).split('.')[0]
     data = nib.load(input_file)
     vol = data.get_fdata()
-    if not skip_min:
-        if vol.ndim == 4:
-            img_smooth = np.min(vol, axis=3).astype(np.float32)
-        elif vol.ndim == 3:
-            img_smooth = vol.astype(np.float32)
-        else:
-            raise ValueError(f"Unsupported image dimensionality: {vol.ndim}")
-        unscaledNiiData = nib.Nifti1Image(img_smooth, data.affine)
-        unscaledNiiData.set_qform(data.affine, code=1)
-        unscaledNiiData.set_sform(data.affine, code=1)
+    if vol.ndim == 4:
+        img_smooth = np.median(vol, axis=3).astype(np.float32)
+        source_base = source_base + 'MP'
+    elif vol.ndim == 3:
+        img_smooth = vol.astype(np.float32)
+    else:
+        raise ValueError(f"Unsupported image dimensionality: {vol.ndim}")
+    unscaledNiiData = nib.Nifti1Image(img_smooth, data.affine)
+    unscaledNiiData.set_qform(data.affine, code=1)
+    unscaledNiiData.set_sform(data.affine, code=1)
 
-        hdrOut = unscaledNiiData.header
-        hdrOut.set_data_dtype(np.float32)
-        space_unit, time_unit = hdrOut.get_xyzt_units()
+    hdrOut = unscaledNiiData.header
+    hdrOut.set_data_dtype(np.float32)
+    space_unit, time_unit = hdrOut.get_xyzt_units()
 
-        if not space_unit or space_unit.lower() == "unknown":
-            space_unit = "mm"
-        if not time_unit or time_unit.lower() == "unknown":
-            time_unit = "sec"
-        hdrOut.set_xyzt_units(space_unit, time_unit)
-        output_file = os.path.join(os.path.dirname(input_file),
-                                   os.path.basename(input_file).split('.')[0] + 'MP.nii.gz')
-        nib.save(unscaledNiiData, output_file)
-        input_file = output_file
+    if not space_unit or space_unit.lower() == "unknown":
+        space_unit = "mm"
+    if not time_unit or time_unit.lower() == "unknown":
+        time_unit = "sec"
+    hdrOut.set_xyzt_units(space_unit, time_unit)
+    output_file = os.path.join(os.path.dirname(input_file),
+                               os.path.basename(input_file).split('.')[0] + 'MP.nii.gz')
+    nib.save(unscaledNiiData, output_file)
+    input_file = output_file
 
-    output_file = os.path.join(output_path, os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
+    if skip_smoothing:
+        print("Spatial smoothing skipped")
+        return input_file
+
+    output_file = os.path.join(output_path, source_base + 'Smooth.nii.gz')
     myGauss =  fsl.SpatialFilter(
         in_file = input_file,
         out_file = output_file, 
@@ -260,7 +306,6 @@ def smoothIMG(input_file, output_path,skip_min=False):
     hdr = img.header
     hdr["pixdim"][4:8] = 1
     nib.save(img, output_file)
-
     return output_file
 
 def thresh(input_file, output_path):
@@ -323,10 +368,10 @@ if __name__ == "__main__":
     parser.add_argument(
         '-b',
         '--bias-method',
-        help='Biasfield correction method - default="mico", other options are "ants" or "none"',
-        choices = ["none", "mico", "ants"],
+        help='Biasfield correction method - default=skip, other options are "mico", "ants"',
+        choices = ["skip", "mico", "ants"],
         type=str.lower,
-        default=None,
+        default="skip",
     )
 
     parser.add_argument(
@@ -340,8 +385,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '-d',
         '--denoiser',
-        help='Denoising method - default=None, other option is "patch2self"',
-        choices = ["patch2self"],
+        help='Denoising method: patch2self or MRtrix3 (MP-PCA). Default: disabled',
+        choices = ["patch2self", "mrtrix3"],
         type=str.lower,
         default=None
     )
@@ -352,9 +397,9 @@ if __name__ == "__main__":
         action='store_true'
     )
     parser.add_argument(
-        '--skip-min-projection',
-        help='Skip creation of the 3D minimum-projection reference image before smoothing',
-        action='store_true'
+        '--skip-smoothing',
+        action='store_true',
+        help='Skip the FSL spatial median smoothing step; still creates the 3D median reference image'
     )
     args = parser.parse_args()
 
@@ -368,27 +413,32 @@ if __name__ == "__main__":
     horizontal_gradient = args.horizontal_gradient
     bias_method = args.bias_method
     output_path = os.path.dirname(input_file)
+    start_output_tracking(output_path, "dwi", "preprocessing")
+    setup_script_logging(output_path, "preprocess.log")
     b0_thresh=100
 
-    print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
+    if args.bet == "bet":
+        print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
 
     creat_brkraw_backup(input_file)
     header_check(input_file)
     
-    if args.denoiser == "patch2self":
-        # Denoising using Patch2Self
-        print("Starting denoising using patch2self")
+    if args.denoiser is not None:
+        print("Starting denoising using", args.denoiser)
         try:
             # start spinner
             stop_event = threading.Event()
             thread = threading.Thread(
                 target=spinner,
-                args=(stop_event, "Running Denoising with Patch2Self")
+                args=(stop_event, f"Running denoising with {args.denoiser}")
             )
             thread.start()
 
             try:
-                denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+                if args.denoiser == "patch2self":
+                    denoised_image = denoise_patch2self(input_file, output_path, b0_thresh)
+                else:
+                    denoised_image = denoise_mrtrix3(input_file, output_path)
                 set_xform_codes_to_one(denoised_image)
                 set_default_xyzt_units_if_unknown(denoised_image)
             finally:
@@ -397,7 +447,7 @@ if __name__ == "__main__":
 
             print("Denoising completed, output saved to", denoised_image)
         except Exception as e:
-            print(f'Error in Patch2Self denoising\nError message: {str(e)}')
+            print(f'Error in {args.denoiser} denoising\nError message: {str(e)}')
             raise
 
 
@@ -442,7 +492,7 @@ if __name__ == "__main__":
         thread.start()
 
         try:
-            output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_min=args.skip_min_projection)
+            output_smooth = smoothIMG(input_file = input_file, output_path = output_path, skip_smoothing=args.skip_smoothing)
         finally:
             stop_event.set()
             thread.join()
@@ -452,7 +502,7 @@ if __name__ == "__main__":
         raise
 
     # intensity correction using non parametric bias field correction algorithm
-    if bias_method is None:
+    if bias_method == "skip":
         print("No bias field correction applied")
         outputBiasCorr = output_smooth
     elif bias_method == "mico":

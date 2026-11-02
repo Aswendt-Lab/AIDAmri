@@ -15,7 +15,11 @@ import os
 import sys
 import numpy as np
 import nibabel as nib
+from calendar import month_name
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 def startSeedPoint(in_labels,in_atlas):
 
@@ -94,10 +98,8 @@ def startSeedPoint(in_labels,in_atlas):
 
 
 def get_date():
-    now = datetime.now()
-    pvDate = now.strftime("%a %d %b %Y")
-    pvTime = now.strftime("%H:%M:%S")
-    return pvDate + ' ' + pvTime
+    now = datetime.now(REPORT_TIMEZONE)
+    return f"{now.day:02d} {month_name[now.month]} {now.year} {now:%H:%M:%S} {now.tzname()}"
 
 def read_csv(sFilename):
     fid = open(sFilename)

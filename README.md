@@ -1,4 +1,4 @@
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Aswendt-Lab/AIDAmri/docker-image.yml) [![Static Badge](https://img.shields.io/badge/data_structure-BIDS-yellow)](https://bids.neuroimaging.io/news.html) [![Static Badge](https://img.shields.io/badge/NiftyReg-CBSI-orange)](https://github.com/KCL-BMEIS/niftyreg) [![Static Badge](https://img.shields.io/badge/DSI--Studio-2025.04.16-orange)](https://dsi-studio.labsolver.org/) [![Static Badge](https://img.shields.io/badge/FSL-5.0.11-orange)](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki) ![Static Badge](https://img.shields.io/badge/Python-3.10-orange)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/Aswendt-Lab/AIDAmri/docker-image.yml) [![Static Badge](https://img.shields.io/badge/data_structure-BIDS-yellow)](https://bids.neuroimaging.io/news.html) [![Static Badge](https://img.shields.io/badge/NiftyReg-CBSI-orange)](https://github.com/KCL-BMEIS/niftyreg) [![Static Badge](https://img.shields.io/badge/DSI--Studio-2025.04.16-orange)](https://dsi-studio.labsolver.org/) [![Static Badge](https://img.shields.io/badge/ANTs-2.6.2-orange)](https://github.com/ANTsX/ANTs) [![Static Badge](https://img.shields.io/badge/FSL-5.0.11-orange)](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki) ![Static Badge](https://img.shields.io/badge/Python-3.10-orange)
 
 [1.2]: http://i.imgur.com/wWzX9uB.png
 [1]: http://www.twitter.com/AswendtMarkus
@@ -77,6 +77,22 @@ T2-weighted (anatomical scan),
 DTI (structural connectivity scan),
 rs-fMRI (functional connectivity scan).
 
+## Current Docker Environment
+
+The current `Dockerfile` builds an AMD64 Ubuntu 22.04 image with Python 3.10 in
+a virtual environment at `/opt/env`. The image includes FSL 5.0.11, NiftyReg
+from the pinned CBSI commit `83d8d1182ed4c227ce4764f1fdab3b1797eecd8d`,
+DSI Studio `2025.04.16`, ANTs `2.6.2`, `bet4animal`, and `immv`.
+Generated timestamps use German local time and are written as
+`DD Month YYYY HH:MM:SS CET/CEST`.
+
+Python dependencies are installed from `requirements.txt` with resolved package
+versions constrained by `constraints.txt`. During the Docker build, repository
+Git metadata is written into `/aida/build/AIDAmri_git_information.txt`. When a
+container starts with `/aida/DATA` mounted, the entrypoint copies this file to
+`/aida/DATA/AIDAmri_git_information.txt` so processed data can be linked to the
+source revision used for the image.
+
 ## Data Format and Orientation Requirements
 
 AIDAmri supports data processing exclusively for datasets in NIfTI (.nii/.nii.gz) or Bruker formats. To ensure accurate registration and reproducible results, 
@@ -84,7 +100,7 @@ all input data for preprocessing must be in <ins>**LIP (Left-Inferior-Posterior)
 Furthermore, the image header information must be consistent with the physical orientation of the data array. 
 Any mismatch between the header orientation and the actual voxel layout can lead to registration errors or incorrect alignment with the atlas. It is therefore strongly recommended to verify and, if necessary, correct the header orientation. 
 Please use FSL eyes for visual inspection and `fslhd` for checking the header information. FSL is already installed inside AIDAmri. More Information about FSL can be find [here](https://fsl.fmrib.ox.ac.uk/fsl/docs/).
-If your data is in a different orientation than LIP please use our ReorientBatch.py script in the [helpertools](bin/helper_tools) folder. The script should be used **after** convert2Nifti script and **before** processing any files.  ReorientBatch.py can reorient the whole proc_data folder. 
+If your data is in a different orientation than LIP please use our ReorientBatch.py script in the [helper tools](bin/helper_tools) folder. The script should be used **after** convert2Nifti script and **before** processing any files. ReorientBatch.py can reorient the whole proc_data folder and supports parallel processing with `--cpu-percent`.
 It is important that the folder contains only the NIFTI files to be reoriented. The folder must not contain any NIFTI files that have already been processed. 
 Furthermore, please note that after reorientation, tools such as Fiji or other tools that do not read the header of a NIFTI file will display the images only as the data was saved after reorientation. 
 For this reason, we recommend FSL Eyes, as this tool provides more information about the orientation. 
@@ -95,7 +111,7 @@ For this reason, we recommend FSL Eyes, as this tool provides more information a
 <details>
 <summary><strong>This section lists frequently encountered problems when using AIDAmri and possible solutions.</strong></summary>
 	
-If your problem is not listed here, please use our Gitter Chat or open an issue on GitHub and include:
+If your problem is not listed here, please use open an issue on GitHub and include:
 - OS
 - Docker version
 - Command used
@@ -103,6 +119,15 @@ If your problem is not listed here, please use our Gitter Chat or open an issue 
 
 
 ---
+<details>
+<summary><strong>Running Container Warning</strong></summary>
+ARM users (e.g. Apple Silicon) may see the following warning when starting the container:
+
+WARNING: The requested image's platform (linux/amd64) does not match the detected host platform (linux/arm64/v8) and no specific platform was requested
+
+The warning appears because the image was built for the AMD64 architecture, while the host uses ARM64. Docker can run the image using emulation, although performance may be reduced.
+It can be ignored and does not affect the functionality of the container.
+</details>
 
 <details>
 <summary><strong>General debugging tips</strong></summary>
@@ -238,15 +263,15 @@ fslhd input.nii.gz
 [Matlab script](ARA/) to generate a custom version of the Allen Mouse Brain Atlas.
 
 ## CONTACT
-If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+Join our open office hour every **Thursday at 3:00 pm German local time (CET/CEST)** to ask questions and discuss AIDAmri with the team.
 
-or 
+[![Join on Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
 
-join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
+Sessions may be cancelled on public holidays in Germany.
 
-Please note that the Open Office Hour may not take place on public holidays in Germany.
+If you encounter a bug or technical issue, please open an issue on GitHub.
 
-For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)
+For all other inquiries, please contact **Markus Aswendt** at aswendtATmed.uni-frankfurt.de (replace AT with @).
 
 ## LICENSE/CITATION
 GNU General Public License v3.0

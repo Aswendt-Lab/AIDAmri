@@ -19,6 +19,8 @@ import shutil
 #makes sure to import bet.py
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.bet import applyBET, skip_bet_function
+from common.artifact_manifest import start_output_tracking
+from common.script_logging import setup_script_logging
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 
@@ -32,7 +34,9 @@ def create_brkraw_backup(input_file):
     os.mkdir(brkraw_dir)
     dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
 
-    shutil.copyfile(input_file, dst_path)
+    # Keep the original NIfTI in brkraw and process a copy at the input path.
+    shutil.move(input_file, dst_path)
+    shutil.copyfile(dst_path, input_file)
 
     data = nib.load(input_file)
     # Preserve nibabel scaling (scl_slope/scl_inter). Using get_unscaled()
@@ -125,18 +129,19 @@ def n4biasfieldcorr(input_file):
     return output_file
 
 
-def smoothIMG(input_file,outputPath):
+def smoothIMG(input_file, outputPath, skip_smoothing=False):
     """
-    Prepare a 3D image for smoothing and apply FSL's median spatial filter.
-    For 4D inputs, a voxel-wise minimum projection across the 4th dimension is
-    written as *MP.nii.gz before smoothing. For 3D inputs, the MP image is just
-    a float32/header-normalized copy.
+    Prepare a 3D reference image and optionally apply FSL's median spatial filter.
+    For 4D inputs, a voxel-wise median projection across the 4th dimension is
+    written as *MP.nii.gz. For 3D inputs, the MP image is just a
+    float32/header-normalized copy.
     """
     source_base = os.path.basename(input_file).split('.')[0]
     data = nib.load(input_file)
     vol = data.get_fdata(dtype=np.float32)
     if vol.ndim == 4:
-        ImgSmooth = np.min(vol, axis=3).astype(np.float32)
+        ImgSmooth = np.median(vol, axis=3).astype(np.float32)
+        source_base = source_base + 'MP'
     elif vol.ndim == 3:
         ImgSmooth = vol.astype(np.float32)
     else:
@@ -149,10 +154,15 @@ def smoothIMG(input_file,outputPath):
     hdrOut.set_data_dtype(np.float32)
     set_default_xyzt_units_if_unknown(hdrOut)
     output_file = os.path.join(os.path.dirname(input_file),
-                               os.path.basename(input_file).split('.')[0] + 'DN.nii.gz')
+                               os.path.basename(input_file).split('.')[0] + 'MP.nii.gz')
     # hdrOut['sform_code'] = 1
     nib.save(unscaledNiiData, output_file)
     input_file = output_file
+
+    if skip_smoothing:
+        print("Spatial smoothing skipped")
+        return input_file
+
     #output_file =  os.path.join(os.path.dirname(input_file),os.path.basename(input_file).split('.')[0] + 'Smooth.nii.gz')
     output_file = os.path.join(outputPath, source_base + 'Smooth.nii.gz')
     myGauss =  fsl.SpatialFilter(in_file=input_file,out_file=output_file,operation='median',kernel_shape='box',kernel_size=0.1)
@@ -217,10 +227,15 @@ if __name__ == "__main__":
     parser.add_argument(
         '-b',
         '--bias-method',
-        help='Biasfield correction method - default=None, other options are "ants" or "none"',
-        choices=["none", "ants"],
+        help='Biasfield correction method - default=None, other options are "ants" or "skip"',
+        choices=["skip", "ants"],
         type=str.lower,
         default=None,
+    )
+    parser.add_argument(
+        '--skip-smoothing',
+        action='store_true',
+        help='Skip the FSL spatial median smoothing step; still creates the 3D median reference image'
     )
     args = parser.parse_args()
 
@@ -237,15 +252,18 @@ if __name__ == "__main__":
     horizontal_gradient = args.horizontal_gradient
     bias_method = args.bias_method
     outputPath = os.path.dirname(inputFile)
+    start_output_tracking(outputPath, "func", "preprocessing")
+    setup_script_logging(outputPath, "preprocess.log")
 
-    print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
+    if args.bet == "bet":
+        print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
 
     create_brkraw_backup(inputFile)
     header_check(inputFile)
 
-    outputSmooth = smoothIMG(input_file=inputFile,outputPath=outputPath)
+    outputSmooth = smoothIMG(input_file=inputFile, outputPath=outputPath, skip_smoothing=args.skip_smoothing)
 
-    if bias_method is None or bias_method == "none":
+    if bias_method is None or bias_method == "skip":
         print("No bias field correction applied")
         outputBiasCorr = outputSmooth
     elif bias_method == "ants":

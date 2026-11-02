@@ -19,6 +19,9 @@ import os
 import sys
 import csv
 import json
+from calendar import month_name
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import pandas as pd
 import nibabel as nii
 import glob as glob
@@ -37,6 +40,17 @@ import contextlib
 import io
 
 from helper_tools.plot_sourcedata_niftis import process_subject, write_html_report
+
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
+
+
+class BerlinTimeFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        timestamp = datetime.fromtimestamp(record.created, REPORT_TIMEZONE)
+        return (
+            f"{timestamp.day:02d} {month_name[timestamp.month]} {timestamp.year} "
+            f"{timestamp:%H:%M:%S} {timestamp.tzname()}"
+        )
 
 def create_slice_timings(method_file, scanid, out_file):
     # read in method file to search for parameters
@@ -592,9 +606,11 @@ if __name__ == "__main__":
     # Save the workbook
     workbook.save(os.path.join(sourcedata_dir,"GroupMapping.xlsx"))
      
-    # Konfiguriere das Logging-Modul
+    # Configurate Logging-Modul
     log_file_path = os.path.join(sourcedata_dir, "conv2nifti_log.txt")
-    logging.basicConfig(filename=log_file_path, filemode='w', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    log_handler = logging.FileHandler(log_file_path, mode='w')
+    log_handler.setFormatter(BerlinTimeFormatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logging.basicConfig(level=logging.INFO, handlers=[log_handler], force=True)
     
     # get list of raw data in input folder
     #list_of_raw = sorted([d for d in os.listdir(pathToRawData) if os.path.isdir(os.path.join(pathToRawData, d)) \

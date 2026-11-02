@@ -1,6 +1,9 @@
 import os
 import argparse
+from calendar import month_name
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 os.environ.setdefault("XDG_CACHE_HOME", "/tmp")
@@ -12,6 +15,8 @@ matplotlib.use("Agg")
 import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
+
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 def _display_geometry(img_slice, orientation, zooms):
     if orientation == "Axial":
@@ -182,6 +187,13 @@ def process_subject(subject_dir, out_dir, n_slices=10):
     report_entries.sort(key=lambda x: (x['modality'], x['filename']))
     return report_entries
 
+def _report_timestamp():
+    timestamp = datetime.now(REPORT_TIMEZONE)
+    return (
+        f"{timestamp.day:02d} {month_name[timestamp.month]} {timestamp.year} "
+        f"{timestamp:%H:%M:%S} {timestamp.tzname()}"
+    )
+
 def write_html_report(report_entries, out_dir):
     # Try to extract subject and session IDs from the first entry's filename path
     subject_id = session_id = "unknown"
@@ -195,6 +207,7 @@ def write_html_report(report_entries, out_dir):
     report_fname = "Convert2Nifti_Report.html"
     html_path = os.path.join(out_dir, report_fname)
     report_title = "Convert2Nifti_Report"
+    generated_at = _report_timestamp()
     subjects = sorted(set(
         entry['filename'].split('_')[0].replace('sub-', '') for entry in report_entries
     ))
@@ -211,6 +224,7 @@ def write_html_report(report_entries, out_dir):
         .report-entry { margin-bottom: 40px; }
         .report-info { font-size: 1.1em; margin-bottom: 8px; }
         .report-img { width: 100%; max-width: 1200px; border: 1px solid #ccc; }
+        .report-generated { color: #555; font-size: 0.95em; margin: -10px 0 24px; }
         </style>
         <script>
         function filterreport() {
@@ -263,6 +277,7 @@ def write_html_report(report_entries, out_dir):
         <div style='height:60px;'></div>
         """)
         f.write(f"<h1>{report_title}</h1>\n")
+        f.write(f"<p class='report-generated'><b>Created:</b> {generated_at}</p>\n")
         for entry in report_entries:
             # Extract subject and session from filename
             parts = entry['filename'].split('_')

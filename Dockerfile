@@ -1,4 +1,23 @@
 ARG BASE_IMAGE_PLATFORM=linux/amd64
+
+# Temporary build stage used only to read Git metadata from the build context.
+# The final image copies only the generated text file, not the .git directory.
+FROM --platform=${BASE_IMAGE_PLATFORM} ubuntu:22.04 AS aidamri-git-info
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update -y && \
+	apt-get install -y git && \
+	rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp/aidamri-source
+COPY . .
+# Docker builds cannot see the host's global Git config unless callers pass it
+# explicitly. A repo-local git config remains readable through .git/config.
+ARG AIDAMRI_GIT_CONFIG_USER=unknown
+RUN sh install/write_aidamri_git_info.sh /tmp/aidamri-source /tmp/AIDAmri_git_information.txt && \
+	cat /tmp/AIDAmri_git_information.txt
+
 FROM --platform=${BASE_IMAGE_PLATFORM} ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -31,8 +50,13 @@ RUN wget https://github.com/Kitware/CMake/releases/download/v3.23.2/cmake-3.23.2
 	make install
 
 # create and switch to working directory
-RUN mkdir /aida/
+RUN mkdir -p /aida/build /aida/DATA
 WORKDIR /aida/
+COPY --from=aidamri-git-info /tmp/AIDAmri_git_information.txt /aida/build/AIDAmri_git_information.txt
+COPY install/aidamri_entrypoint.sh /aida/aidamri_entrypoint.sh
+RUN chmod +x /aida/aidamri_entrypoint.sh
+ENTRYPOINT ["/aida/aidamri_entrypoint.sh"]
+CMD ["/bin/bash"]
 
 # NiftyReg preparation and installation
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -56,14 +80,16 @@ RUN cmake -D CMAKE_BUILD_TYPE=Release \
 
 ENV NIFTYREG_INSTALL=/aida/NiftyReg/niftyreg_install
 ENV PATH="${PATH}:${NIFTYREG_INSTALL}/bin"
-ENV LD_LIBRARY_PATH="/aida/dsi_studio_ubuntu2204/dsi-studio:/usr/local/lib:/usr/lib:/lib:${NIFTYREG_INSTALL}/lib"
+ENV LD_LIBRARY_PATH="/aida/dsi_studio_ubuntu2204/dsi-studio-cpu:/usr/local/lib:/usr/lib:/lib:${NIFTYREG_INSTALL}/lib"
 WORKDIR /aida
 
-# download DSI studio
-# https://github.com/frankyeh/DSI-Studio/releases/download/2023.12.06/dsi_studio_ubuntu2204.zip
-RUN wget https://github.com/frankyeh/DSI-Studio/releases/download/2025.04.16/dsi_studio_ubuntu2204.zip &&\
-	unzip dsi_studio_ubuntu2204.zip -d /aida/dsi_studio_ubuntu2204 &&\
-	rm dsi_studio_ubuntu2204.zip
+# Download the Ubuntu 22.04 CPU build from the reproducibility-pinned DSI Studio release.
+ARG DSI_STUDIO_URL=https://github.com/frankyeh/DSI-Studio/releases/download/2025.04.16/dsi_studio_ubuntu2204_cpu.zip
+ARG DSI_STUDIO_ARCHIVE=dsi_studio_ubuntu2204_cpu.zip
+
+RUN wget -O "${DSI_STUDIO_ARCHIVE}" "${DSI_STUDIO_URL}" && \
+    unzip "${DSI_STUDIO_ARCHIVE}" -d /aida/dsi_studio_ubuntu2204 && \
+    rm "${DSI_STUDIO_ARCHIVE}"
 
 # Install ANTs (if no 22.04 binary, keep 18.04 version)
 # https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubuntu-22.04-X64-gcc.zip
@@ -72,6 +98,13 @@ RUN wget https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubunt
 	rm ants-2.6.2-ubuntu-22.04-X64-gcc.zip
 ENV PATH=$PATH:/aida/ants-2.6.2/ants-2.6.2/bin
 RUN N4BiasFieldCorrection --version
+
+# Ubuntu 22.04's MRtrix3 package supplies dwidenoise for optional DWI MP-PCA.
+ARG MRTRIX3_VERSION=3.0.3-1
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends mrtrix3=${MRTRIX3_VERSION} && \
+    dwidenoise -version && \
+    rm -rf /var/lib/apt/lists/*
 
 # Python setup (Default for Ubuntu 22.04 is Python 3.10)
 ENV VIRTUAL_ENV=/opt/env
@@ -101,17 +134,17 @@ ENV PATH=${FSLDIR}/bin:${PATH}
 # copy bin/ and lib/ from AIDAmri into image
 COPY bin/ bin/
 RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
-ENV PATH=/aida/bin:/aida/bin/3.2_DTIConnectivity:$PATH
+ENV PATH=/aida/bin:/aida/bin/common:/aida/bin/3.2_DTIConnectivity:$PATH
 RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
 COPY lib/ lib/
 # make install_immv executable and run it
 COPY install/install_immv.sh install/install_immv.sh
 RUN chmod +x /aida/install/install_immv.sh
 RUN /aida/install/install_immv.sh
-RUN echo "/aida/dsi_studio_ubuntu2204/dsi-studio/dsi_studio" > /aida/bin/3.2_DTIConnectivity/dsi_studioPath.txt
-RUN test -x /aida/dsi_studio_ubuntu2204/dsi-studio/dsi_studio
+RUN echo "/aida/dsi_studio_ubuntu2204/dsi-studio-cpu/dsi_studio" > /aida/bin/3.2_DTIConnectivity/dsi_studioPath.txt
+RUN test -x /aida/dsi_studio_ubuntu2204/dsi-studio-cpu/dsi_studio
 
 RUN pip install -c constraints.txt dipy scikit-learn
 RUN pip install -c constraints.txt fslpy
-RUN wget -O /aida/bin/bet4animal "https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false" && \
-    chmod +x /aida/bin/bet4animal
+RUN wget -O /aida/bin/common/bet4animal "https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false" && \
+    chmod +x /aida/bin/common/bet4animal

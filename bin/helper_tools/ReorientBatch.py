@@ -5,6 +5,8 @@ import subprocess
 import shutil
 import traceback
 import argparse
+import concurrent.futures
+import multiprocessing
 
 import numpy as np
 import nibabel as nib
@@ -16,13 +18,15 @@ from typing import Optional
 Batch reorientation of NIfTI files within a BIDS-like directory structure.
 
 Usage:
-    python ReorientBatch.py <INPUT_ROOT> <OUTPUT_ROOT>
+    python ReorientBatch.py -i <INPUT_ROOT> -o <OUTPUT_ROOT> -t LIP -n
 
 - All .nii and .nii.gz files under INPUT_ROOT are processed.
 - Non-NIfTI files are copied unchanged into the mirrored structure.
 - The relative directory structure is preserved under OUTPUT_ROOT.
 - Images are reoriented to a user-specified target orientation
   (default: LIP for AIDAmri).
+- Processing can be parallelized with --cpu-percent, interpreted as a
+  percentage of available CPU cores.
 - Only the orientation (affine and axis order) is changed; all other
   header information is preserved where possible.
 """
@@ -306,6 +310,69 @@ def check_nifti_orientations(nifti_files, src_root: str, target_ori: str, log=No
     return all_match
 
 
+def process_file_task(task):
+    src_path, dst_path, rel_path, fname, target_ori = task
+    log_lines = []
+
+    def log(msg: str):
+        log_lines.append(msg)
+
+    result = {
+        "rel_path": rel_path,
+        "log_lines": log_lines,
+        "n_total_nifti": 0,
+        "n_processed_nifti": 0,
+        "n_copied_non_nifti": 0,
+        "error": None,
+    }
+
+    try:
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+
+        is_nifti = is_nifti_file(fname)
+        is_sidecar = fname.endswith(".bvec") or fname.endswith(".bval")
+
+        if is_nifti:
+            result["n_total_nifti"] = 1
+            reorient_single_image(src_path, dst_path, target_ori, log)
+            result["n_processed_nifti"] = 1
+        elif is_sidecar:
+            # skip: handled with the image
+            pass
+        else:
+            copy_non_nifti(src_path, dst_path, log)
+            result["n_copied_non_nifti"] = 1
+    except Exception as e:
+        result["error"] = {
+            "class": e.__class__.__name__,
+            "message": str(e),
+            "traceback": traceback.format_exc(),
+            "src_path": src_path,
+            "dst_path": dst_path,
+        }
+
+    return result
+
+
+def parse_cpu_percent(value):
+    cpu_count = multiprocessing.cpu_count()
+    value = str(value).strip()
+
+    if value.endswith("%"):
+        value = value[:-1]
+
+    try:
+        percent = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            "--cpu-percent must be a percentage from 1 to 100, e.g. 50 or 50%"
+        )
+    if percent <= 0 or percent > 100:
+        raise argparse.ArgumentTypeError(
+            "--cpu-percent must be greater than 0 and at most 100"
+        )
+    return max(1, int(cpu_count * percent / 100 + 0.5))
+
 
 def validate_target_ori(ori: str) -> str:
     ori = ori.strip().upper()
@@ -357,6 +424,14 @@ def parse_args():
         "-n",
         action="store_true",
         help="Non-interactive mode (requires -t)"
+    )
+
+    parser.add_argument(
+        "-p", "--cpu-percent",
+        dest="cpu_percent",
+        default="50",
+        type=parse_cpu_percent,
+        help="CPU percentage for parallel processes, e.g. 50 or 50%%"
     )
 
     return parser.parse_args()
@@ -422,48 +497,57 @@ def main():
             print(f"Log file written to:         {log_path}")
             return
 
+        tasks = []
         for root, dirs, files in os.walk(src_root):
             for fname in files:
                 src_path = os.path.join(root, fname)
                 rel_path = os.path.relpath(src_path, src_root)
                 dst_path = os.path.join(dst_root, rel_path)
+                tasks.append((src_path, dst_path, rel_path, fname, target_ori))
 
-                os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        num_processes = args.cpu_percent
+        num_processes = min(num_processes, len(tasks))
+        print(f"Running with {num_processes} CPUs for the parallelization!")
+        log(f"Running with {num_processes} CPUs for the parallelization!")
 
-                is_nifti = is_nifti_file(fname)
-                is_sidecar = fname.endswith(".bvec") or fname.endswith(".bval")
+        with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
+            futures = [executor.submit(process_file_task, task) for task in tasks]
 
-                try:
-                    if is_nifti:
-                        n_total_nifti += 1
-                        reorient_single_image(src_path, dst_path, target_ori, log)
-                        n_processed_nifti += 1
-                    elif is_sidecar:
-                        # skip: handled with the image
-                        pass
-                    else:
-                        copy_non_nifti(src_path, dst_path, log)
-                        n_copied_non_nifti += 1
-                except Exception as e:
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+
+                for line in result["log_lines"]:
+                    log(line)
+
+                n_total_nifti += result["n_total_nifti"]
+                n_processed_nifti += result["n_processed_nifti"]
+                n_copied_non_nifti += result["n_copied_non_nifti"]
+
+                if result["error"] is not None:
                     any_errors = True
-                    print(f"\nError processing file: {rel_path}: {e.__class__.__name__}: {e}", file=sys.stderr)
+                    error = result["error"]
+                    print(
+                        f"\nError processing file: {result['rel_path']}: "
+                        f"{error['class']}: {error['message']}",
+                        file=sys.stderr,
+                    )
                     log("")
                     log("ERROR during processing file:")
-                    log(f"  Source: {src_path}")
-                    log(f"  Destination: {dst_path}")
-                    log(f"  Exception: {e.__class__.__name__}: {e}")
+                    log(f"  Source: {error['src_path']}")
+                    log(f"  Destination: {error['dst_path']}")
+                    log(f"  Exception: {error['class']}: {error['message']}")
                     log("  Traceback:")
-                    log(traceback.format_exc())
-                finally:
-                    processed_files += 1
-                    progress = processed_files / total_files
-                    filled = int(bar_width * progress)
-                    bar = "#" * filled + "-" * (bar_width - filled)
-                    print(
-                        f"\rProgress: [{bar}] {progress * 100:6.2f}% ({processed_files}/{total_files})",
-                        end="",
-                        flush=True,
-                    )
+                    log(error["traceback"])
+
+                processed_files += 1
+                progress = processed_files / total_files
+                filled = int(bar_width * progress)
+                bar = "#" * filled + "-" * (bar_width - filled)
+                print(
+                    f"\rProgress: [{bar}] {progress * 100:6.2f}% ({processed_files}/{total_files})",
+                    end="",
+                    flush=True,
+                )
 
     print()
     print("\nBatch processing completed.")

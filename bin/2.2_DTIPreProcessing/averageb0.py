@@ -40,20 +40,24 @@ def averageb0(input_file, b0_thresh=100, use_mcflirt=False):
     Averages all b0 images in a DTI dataset, based on the bvals.
     Requires a 4D dwi image (input_file), with an existing bvals file in the same directory.
     """
-    bvalsname = input_file.replace(".nii.gz", ".bval")
-    if not os.path.exists(bvalsname):
-        try:
-            bvalsname = input_file.replace("Patch2SelfDenoised.nii.gz", ".bval")
-            if not os.path.exists(bvalsname):
-                bvalsname = input_file.replace("Patch2SelfDenoised.nii", ".bval")
-            if not os.path.exists(bvalsname):
-                bvalsname = input_file.replace(".nii.gz", ".btable")
-                btable = np.loadtxt(bvalsname, dtype=float)
-                bvalsname = os.path.splitext(bvalsname)[0] + ".bval"
-                np.savetxt(bvalsname, btable[0, :], fmt='%.6f')
-        except:
-            sys.exit(f"Error: bvals file {bvalsname} not found.")
-    bvals = np.loadtxt(bvalsname, dtype=float)
+    stem = input_file[:-7] if input_file.endswith(".nii.gz") else os.path.splitext(input_file)[0]
+    stems = [stem]
+    for suffix in ("P2SDenoised", "MR3Denoised", "Patch2SelfDenoised"):
+        if stem.endswith(suffix):
+            stems.append(stem[:-len(suffix)])
+            break
+    # Denoising preserves volume order, so original gradient files remain valid.
+    for candidate in stems:
+        if os.path.exists(candidate + ".bval"):
+            bvals = np.loadtxt(candidate + ".bval", dtype=float)
+            break
+        if os.path.exists(candidate + ".btable"):
+            btable = np.loadtxt(candidate + ".btable", dtype=float)
+            bvals = btable[0, :]
+            np.savetxt(candidate + ".bval", bvals, fmt='%.6f')
+            break
+    else:
+        sys.exit(f"Error: No .bval or .btable found for {input_file}.")
     if bvals.ndim > 1:
         bvals = bvals[0, :]
     # find b-values < b0_thresh

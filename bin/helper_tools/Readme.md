@@ -14,13 +14,15 @@ environment so that relative paths to `lib/` resources resolve as expected.
 | `MRI_files_summarizer.py` | Create a CSV inventory of NIfTI files found below `**/brkraw/*.nii.gz`. |
 | `ReorientBatch.py` | Reorient NIfTI files to a target orientation while mirroring the input folder tree. |
 | `adjustbvecRep.py` | Repeat DWI `.bval` and `.bvec` sidecars to match the number of image volumes. |
-| `batch_qc_reports.py` | Python helper module for project-level BET and registration HTML QC reports. |
+| `batch_qc_reports.py` | Python helper module for project-level BET, registration, and corpus callosum HTML QC reports. |
+| `display_nifti_report.py` | Display arbitrary NIfTI filename suffixes as single images or geometry-checked overlays in an HTML report. |
 | `crop_T2.py` | Crop T2-weighted images in x/y using FSL through Nipype and write quick-look PNGs. |
 | `fieldmap_json_edit.py` | Populate BIDS fieldmap JSON `IntendedFor` entries for DWI and functional files. |
 | `getAtlasRegionSize_BIDS.py` | Compute per-annotation atlas region volumes in BIDS-style folder trees. |
 | `getAtlasRegionSize_noBIDS.py` | Compute aggregate atlas region volumes for non-BIDS T2w folders. |
 | `plot_sourcedata_niftis.py` | Generate per-session NIfTI mosaic PNGs and an HTML QC report. |
 | `remove_carets_spaces.sh` | Remove spaces and caret (`^`) characters from a plain-text file. |
+| `Reset_proc_folder.py` | Safely reset processing stages using runtime-generated output manifests. |
 | `reset_naming.py` | Clean Bruker `subject` files before PV-to-NIfTI conversion. |
 
 ## Dependencies
@@ -132,6 +134,73 @@ Outputs are written in the current working directory:
 Note: despite the historical script comments, the current implementation does
 not remove underscores and does not overwrite the original `subject` file.
 
+## Manifest-based Processing Reset
+
+### `Reset_proc_folder.py`
+
+The anat, dwi, func, and t2map stage scripts take a recursive snapshot of their
+modality folder before processing and update a dataset-specific manifest when
+the process exits. For example, `sub-01/ses-02/anat` uses
+`.sub-01_ses-02_anat_aidamri_manifest.json`. Tracking also works when a stage script is
+launched directly instead of through `batchProc.py`.
+
+The reset helper deletes only files registered as newly created by stages after
+the requested target phase. Standard BIDS sidecars matching `*_T2w.json`, `*_EPI.json`, `*_dwi.json`, 
+`*.bvec`, or `*.bval` and `*Stroke_mask.nii.gz` are not deleted.
+Existing files that were modified are reported but
+not deleted. Files without any manifest assignment are explicitly reported as
+not managed and are preserved. Tracked directories are removed only when
+empty. Before planning a reset, every existing folder of the selected mode must
+contain its readable, correctly named manifest. For example,
+`--mode anat` validates only `anat` folders and does not inspect manifests in
+`dwi`, `func`, or `t2map`. A missing or invalid manifest in the selected mode
+aborts the complete reset before anything is deleted.
+
+Do not run a reset concurrently with preprocessing,
+registration, processing, or `batchProc.py`.
+
+At the end of every dry-run or applied reset, warnings and unmanaged files are
+shown again in a consolidated summary grouped by subject, session, and mode.
+Modified files and unmanaged files are listed with their full paths so the user
+can inspect and handle them manually.
+
+Use `--delete-unmanaged` only after reviewing a dry-run. It permanently deletes
+files that are not referenced anywhere in the manifest. Standard BIDS sidecars matching 
+`*_T2w.json`, `*_EPI.json`, `*_dwi.json`, `*.bvec`, or `*.bval` and `*Stroke_mask.nii.gz` 
+are always protected from this deletion. Other manually supplied masks, notes, and user data can still be
+deleted. Unmanaged directories are never removed recursively: their files are
+deleted individually and the directories are removed only when empty. A
+directory containing a protected file is preserved.
+
+```bash
+python Reset_proc_folder.py --input /path/to/project \
+  --mode anat \
+  --phase preprocessing \
+  --delete-unmanaged \
+  --dry-run
+```
+
+Always inspect a dry-run first:
+
+```bash
+python Reset_proc_folder.py --input /path/to/project \
+  --mode anat \
+  --phase preprocessing \
+  --dry-run
+```
+
+Apply the displayed plan interactively:
+
+```bash
+python Reset_proc_folder.py --input /path/to/project \
+  --mode anat \
+  --phase preprocessing
+```
+
+Use `--yes` only for an already reviewed automated invocation. Projects that
+were processed before manifest tracking was introduced cannot be reconstructed
+retrospectively. By default, their untracked files remain untouched.
+
 ## Reorientation
 
 ### `ReorientBatch.py`
@@ -154,6 +223,7 @@ Key behavior:
 - Writes a log file into the output root.
 - If every NIfTI already matches the target orientation, the script logs this
   and aborts before copying the whole tree.
+- Processes files in parallel. By default, it uses `50%` of available CPU cores.
 
 Usage:
 
@@ -177,8 +247,13 @@ Options:
 - `-n`: non-interactive mode. Requires `-t`.
 - `-l LOGFILE`: log filename written into the output root. Default:
   `reorient_log.txt`.
+- `-p`, `--cpu-percent`: CPU percentage for parallel processing, for example
+  `50` or `50%`. Default: `50`.
 
 ## Quality Control and Data Summaries
+
+Generated report timestamps use German local time in the format
+`DD Month YYYY HH:MM:SS CET/CEST`, for example `15 July 2026 15:14:12 CEST`.
 
 ### `adjustbvecRep.py`
 
@@ -255,17 +330,71 @@ Behavior:
 
 ### `batch_qc_reports.py`
 
-Importable Python helper module for project-level QC reports. It does not define
-a command-line interface.
+Python helper module for project-level QC reports. 
+Direct command-line use:
 
-Available functions:
-
-```python
-from batch_qc_reports import build_bet_qc_report, build_registration_qc_report
-
-build_bet_qc_report("/path/to/proc_data", n_slices=10)
-build_registration_qc_report("/path/to/proc_data", n_slices=10)
+```bash
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report all --acronym ptlp
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report bet --n-slices 7
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report registration
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym cc
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --acronym ptlp aca hip
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report acronym --atlas detailed --acronym "MOp2/3" "FRP1"
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --acronym ptlp --custom-parameter t2-frac=0.1 --custom-parameter t2-bias-method=mico
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data --report all --acronym ptlp -g /path/to/group_tDCS_Sham.csv
 ```
+
+`--report` accepts `all` (the default), `bet`, `registration`, or `acronym`.
+`--acronym` defaults to `cc` for `all` and `acronym` when omitted; explicitly
+supplied acronyms replace this default. Lookup in the selected atlas's
+acronym file first prefers exact spelling, then accepts a unique match ignoring
+case. BET and registration alone do not
+require an acronym. `--n-slices`
+sets the number of slices per orientation and defaults to `10`. Repeat
+`--custom-parameter NAME=VALUE` to record processing parameters in the custom
+parameters section of the generated HTML reports. Parameter names without a
+leading `--` are normalized automatically.
+
+- `--group CSV` / `-g CSV` optionally adds a Group dropdown to both Display
+  and Overlay reports. CSV column names are group names (e.g. `tDCS,Sham`),
+  and cells contain exact Subject folder names (e.g. `sub-NR1042,sub-NR1037`).
+  Empty cells are ignored. Group, Subject, Session and Modality filters are
+  combined. Subjects missing from the CSV remain visible under `All` and can
+  also be selected via `Unassigned`. Subjects listed in several columns
+  appear under each corresponding group. Without a CSV, no Group dropdown is
+  shown. Invalid or unreadable CSV files are rejected before images are generated.
+
+Pass multiple space-separated values to `--acronym` to show several regions in
+one overlay and HTML report. Repeating the option is also supported, e.g.
+`--acronym ptlp --acronym aca`. Each region contributes its label and
+that label plus 2000. Single-acronym parental calls keep their existing output names.
+
+Quote acronyms containing spaces so the terminal passes the full name as one
+argument, e.g. `--acronym "CUL4, 5"` or `--acronym "fiber tracts". A slash
+does not require escaping: `--acronym MOp2/3` and `--acronym "MOp2/3"` both
+work. When selecting multiple regions, quote each acronym containing spaces
+separately:
+
+```bash
+python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data \
+  --report acronym --atlas detailed --acronym "CUL4, 5" "MOp2/3"
+```
+
+`--atlas parental|detailed` selects the atlas for the acronym report:
+
+| Selection | Annotation suffix | Acronym file |
+| --- | --- | --- |
+| `parental` (default) | `_AnnoSplit_parental.nii.gz` | `lib/acronym_rsfMRI.txt` |
+| `detailed` | `_AnnoSplit.nii.gz` | `lib/acronyms_ARA.txt` |
+
+This also applies to the acronym report within `--report all`. Python callers can
+pass `atlas="detailed"` to `build_acronym_qc_report`.
+
+When reports are created by `batchProc.py`, options explicitly supplied on the
+command line are listed in a **Custom parameters** section at the top of each
+HTML report. The required `--input` option is omitted. Direct callers can pass
+the optional `custom_parameters` sequence shown above.
 
 BET report behavior:
 
@@ -282,6 +411,88 @@ Registration report behavior:
 - Overlays annotation labels on the BET image.
 - Writes PNGs and `registration_report.html` under
   `<project_dir>/Report/Registration/`.
+
+Acronym report behavior:
+
+- Pairs the selected annotation suffix with the matching BET file.
+- Reads the label from the selected acronym file relative to the installation,
+  independently of the current working directory. Filters the overlay to that
+  label and the label plus 2000, e.g. `ptlp` selects `22` and `2022`.
+- Preserves the spelling in the TXT for folder names, filenames and titles:
+  `<project_dir>/Report/PTLp/PTLp_report.html` and accompanying PNGs.
+- Uses the HTML title `PTLp Report BET + AnnoSplit_parental (labels 22, 2022)`
+  and image titles starting with `PTLp Report: `.
+- Multiple regions use combined names, e.g. `--acronym ptlp aca` writes
+  `<project_dir>/Report/PTLp_ACA/PTLp_ACA_report.html`. The HTML title is
+  `PTLp + ACA Report BET + AnnoSplit_parental (labels 22, 2022, 31, 2031)`;
+  image titles start with `PTLp + ACA Report: `.
+- Detailed reports use `AnnoSplit` in the HTML title and `_detailed_report`
+  in HTML/PNG filenames, so both atlas variants can coexist in the region folder,
+  e.g. `Report/PTLp/PTLp_detailed_report.html`. Slashes in detailed acronyms are
+  replaced with underscores in folder and filenames (`MOp2/3` → `MOp2_3`);
+  titles retain the original acronym spelling.
+- The existing `build_cc_qc_report` function remains as a compatibility wrapper
+  for `batchProc.py`, resolving `cc` through the same TXT. Batch registration
+  still creates this report with seven slices per orientation, under
+  `<project_dir>/Report/cc/`.
+
+### `display_nifti_report.py`
+
+Creates a project-level report for one or two NIfTI filename suffixes. HTML reports and accompanying PNGs are written under
+`<project_dir>/Report/Display/` for one input and
+`<project_dir>/Report/Overlay/` for two inputs.
+
+- One input: `display_nifti_report_<nifti_in1>.html`, e.g.
+  `display_nifti_report_fz.fa.nii.gz.html`.
+- Two inputs: `overlay_nifti_report_<nifti_in1>_<nifti_in2>.html`, e.g.
+  `overlay_nifti_report_fz.fa.nii.gz_AnnoSplit_parental.nii.gz.html`.
+
+PNG filenames also include the report identifier so different suffix selections
+keep separate images.
+HTML and image titles use `Display Report` for one input and `Overlay Report`
+for two inputs.
+
+```bash
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  --nifti_in1 fz.fa.nii.gz
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  --nifti_in1 fz.fa.nii.gz --nifti_in2 AnnoSplit_parental.nii.gz --opacity 60
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  --nifti_in1 fz.fa.nii.gz --nifti_in2 AnnoSplit_parental.nii.gz --modality dwi
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  -1 fz.fa.nii.gz -2 AnnoSplit_parental.nii.gz -m dwi -o 60 -n 10
+
+python bin/helper_tools/display_nifti_report.py -i /aida/DATA/test/ \
+  -1 fz.fa.nii.gz -2 AnnoSplit_parental.nii.gz -m dwi -g /path/to/group_tDCS_Sham.csv
+```
+
+- Searches recursively inside every `sub-*/ses-*/<modality>/` directory,
+  including subfolders such as `DSI_studio`. Suffixes are literal filename
+  endings, including `.nii` or `.nii.gz`; they are not paths or glob patterns.
+- `--modality all|anat|dwi|func|t2map` restricts the search to the selected
+  modality directory across all subjects and sessions. The default `all`
+  searches every modality directory. 
+- `--group CSV` / `-g CSV` optionally adds a Group dropdown to both Display
+  and Overlay reports. CSV column names are group names (e.g. `tDCS,Sham`),
+  and cells contain exact Subject folder names (e.g. `sub-NR1042,sub-NR1037`).
+  Empty cells are ignored. Group, Subject, Session and Modality filters are
+  combined. Subjects missing from the CSV remain visible under `All` and can
+  also be selected via `Unassigned`. Subjects listed in several columns
+  appear under each corresponding group. Without a CSV, no Group dropdown is
+  shown. Invalid or unreadable CSV files are rejected before images are generated.
+- With one input, every matching file gets a grayscale mosaic with axial,
+  sagittal and coronal slices. With two inputs, the first is the grayscale base
+  and the second is a colored overlay as in the registration report; nonpositive
+  or nonfinite overlay values are hidden.
+- Overlay pairs require exactly one file per suffix within the same
+  Subject/Session/Modality directory.
+  Missing partners and ambiguous matches are skipped with a terminal warning;
+  ambiguous warnings list the candidate paths.
+- `--opacity` controls the second input and its contour, from `0` (hidden) to
+  `100` (opaque), and defaults to `35`. It requires `--nifti_in2`.
 
 ## T2 Cropping
 

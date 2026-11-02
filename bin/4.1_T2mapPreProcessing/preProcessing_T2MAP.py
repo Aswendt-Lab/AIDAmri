@@ -18,6 +18,8 @@ import shutil
 #makes sure to import bet.py
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.bet import applyBET, skip_bet_function
+from common.artifact_manifest import start_output_tracking
+from common.script_logging import setup_script_logging
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 
@@ -30,7 +32,9 @@ def create_brkraw_backup(input_file):
     os.mkdir(brkraw_dir)
     dst_path = os.path.join(brkraw_dir, os.path.basename(input_file))
 
-    shutil.copyfile(input_file, dst_path)
+    # Keep the original NIfTI in brkraw and process a copy at the input path.
+    shutil.move(input_file, dst_path)
+    shutil.copyfile(dst_path, input_file)
 
     data = nib.load(input_file)
     # Preserve nibabel scaling (scl_slope/scl_inter). Using get_unscaled()
@@ -185,10 +189,10 @@ if __name__ == "__main__":
     parser.add_argument(
         '-b',
         '--bias-method',
-        choices=["none", "mico"],
+        choices=["skip", "mico"],
         type=str.lower,
         default="mico",
-        help='Biasfield correction method for T2map: none or mico. Default: mico'
+        help='Biasfield correction method for T2map: skip or mico. Default: mico'
     )
     parser.add_argument('-c', '--center', nargs=3, type=float, default=None, help='BET center as x y z')
     args = parser.parse_args()
@@ -206,8 +210,11 @@ if __name__ == "__main__":
     horizontal_gradient = args.horizontal_gradient
     bias_method = args.bias_method
     output_path = os.path.dirname(input_file)
-    
-    print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
+    start_output_tracking(output_path, "t2map", "preprocessing")
+    setup_script_logging(output_path, "preprocess.log")
+
+    if args.bet == "bet":
+        print(f"Frac: {frac} Radius: {radius} Gradient {horizontal_gradient}")
 
     create_brkraw_backup(input_file)
     header_check(input_file)
@@ -220,7 +227,7 @@ if __name__ == "__main__":
         raise
 
     # intensity correction using non parametric bias field correction algorithm
-    if bias_method == "none":
+    if bias_method == "skip":
         print("No bias field correction applied")
         outputBiasCorr = output_smooth
     elif bias_method == "mico":
@@ -246,4 +253,3 @@ if __name__ == "__main__":
             center=args.center,
         )
     print("Brainextraction was successful")
-

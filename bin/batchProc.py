@@ -14,9 +14,15 @@ Example:
 python batchProc.py -i /Volumes/Desktop/MRI/proc_data -t anat dwi func t2map
 """
 
+import argparse
+import ast
 import os
 import fnmatch
+import csv
+from calendar import month_name
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 import concurrent.futures
 import subprocess
 from tqdm import tqdm
@@ -24,8 +30,51 @@ import multiprocessing
 import logging
 import shlex
 import time
+import sys
+import shutil
+
+from common.artifact_manifest import OutputTracker
+from common.script_logging import build_script_log_path
+from common.fmri_metadata import positive_tr
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
+REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
+AIDAMRI_GIT_INFO_SOURCES = [
+    "/aida/build/AIDAmri_git_information.txt",
+    "/aida/DATA/AIDAmri_git_information.txt",
+]
+AIDAMRI_GIT_INFO_FILENAME = "AIDAmri_git_information.txt"
+
+
+class BatchProcFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        timestamp = datetime.fromtimestamp(record.created, REPORT_TIMEZONE)
+        return (
+            f"{timestamp.day:02d} {month_name[timestamp.month]} {timestamp.year} "
+            f"{timestamp:%H:%M:%S} {timestamp.tzname()}"
+        )
+
+
+def configure_logging(log_file_path):
+    handler = logging.FileHandler(log_file_path)
+    handler.setFormatter(
+        BatchProcFormatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
+    logging.basicConfig(level=logging.INFO, handlers=[handler], force=True)
+
+
+def copy_aidamri_git_information_to_proc(proc_dir):
+    """Best-effort copy of build provenance into the processed data folder."""
+    target = os.path.join(proc_dir, AIDAMRI_GIT_INFO_FILENAME)
+    for source in AIDAMRI_GIT_INFO_SOURCES:
+        if not os.path.isfile(source):
+            continue
+        try:
+            if os.path.abspath(source) != os.path.abspath(target):
+                shutil.copyfile(source, target)
+        except OSError:
+            pass
+        return
 
 
 def findData(projectPath, sessions, data_types):
@@ -104,14 +153,18 @@ def run_subprocess(command, datatype, step, anat_process=False):
                     if a.endswith(".nii") or a.endswith(".nii.gz")), command_args[-1])
 
     base = _log_base_from_input(inp)
+    #starting aidamri output tracker
+    output_tracker = None
+    if datatype in {"anat", "dwi", "func", "t2map"}:
+        output_tracker = OutputTracker.start(base, datatype, step)
 
     # default location
-    log_file = os.path.join(base, f"{step}.log")
+    log_name = f"{step}.log"
 
     # special case: anat/process wants different filenames
     if datatype == "anat" and step == "process":
         log_name = f"{step}.log" if anat_process else f"{step}_par.log"
-        log_file = os.path.join(base, log_name)
+    log_file = build_script_log_path(base, log_name)
 
     #Determine sub / ses
     normalized_path = os.path.normpath(inp)
@@ -124,6 +177,7 @@ def run_subprocess(command, datatype, step, anat_process=False):
         with open(log_file, 'w') as outfile:
             time.sleep(2) # make sure logging file is created before starting the subprocess
             child_env = os.environ.copy()
+            child_env["AIDAMRI_DISABLE_SCRIPT_LOG"] = "1"
             # dsi_main.py can create its own process.log during interactive
             # runs. Disable that side log here because batchProc.py already
             # captures stdout/stderr into the step-specific batch log.
@@ -156,9 +210,12 @@ def run_subprocess(command, datatype, step, anat_process=False):
     except Exception as e:
         logging.error(f'Error while executing the command: {command_args} Errorcode: {str(e)}')
         raise
+    finally:
+        if output_tracker is not None:
+            output_tracker.finalize()
     
 
-def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
+def executeScripts(currentPath_wData, dataFormat, step, cfg):
     # For every datatype (T2w, fMRI, DTI), go in all days/group/subjects folders
     # and execute the respective (pre-)processing/registration-scripts.
     # If a certain file does not exist, a note will be created in the errorList.
@@ -178,10 +235,11 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     command = f'python preProcessing_T2.py -i {_quote(currentFile[0])}'
 
                     # Bias field correction for T2: none | mico | ants
-                    if cfg.get("t2_bias_method"):
+                    if cfg.get("t2_bias_method") is not None:
                         command += f' -b {cfg["t2_bias_method"]}'
 
-                    command += f' --bet {cfg["t2_bet"]}'
+                    if cfg.get("t2_bet") is not None:
+                        command += f' --bet {cfg["t2_bet"]}'
 
                     # BET-Parameter
                     if cfg.get("t2_frac") is not None:
@@ -248,7 +306,10 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                     command = f'python preProcessing_fMRI.py -i {_quote(currentFile[0])}'
                     if cfg.get("func_bias_method") is not None:
                         command += f' -b {cfg["func_bias_method"]}'
-                    command += f' --bet {cfg["func_bet"]}'
+                    if cfg.get("func_skip_smoothing") is True:
+                        command += ' --skip-smoothing'
+                    if cfg.get("func_bet") is not None:
+                        command += f' --bet {cfg["func_bet"]}'
                     if cfg.get("func_frac") is not None:
                         command += f' -f {cfg["func_frac"]}'
                     if cfg.get("func_radius") is not None:
@@ -271,6 +332,8 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 currentFile = sorted(currentPath_wData.glob("*Bet.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python registration_rsfMRI.py -i {_quote(currentFile[0])}'
+                    if cfg.get("func_atlas_mask_t2") is True:
+                        command += " --atlas-mask-t2"
                     result = run_subprocess(command,dataFormat,step)
                     if result != 0:
                         errorList.append(result)
@@ -283,7 +346,13 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
-                    command = f'python process_fMRI.py -i {_quote(currentFile[0])} -stc {stc} --bet {cfg["func_bet"]}'
+                    command = f'python process_fMRI.py -i {_quote(currentFile[0])}'
+                    if cfg.get("func_tr") is not None:
+                        command += f' --tr {positive_tr(cfg["func_tr"])}'
+                    if cfg.get("func_bet") is not None:
+                        command += f' --bet {cfg["func_bet"]}'
+                    if cfg.get("func_stc") is True:
+                        command += ' -stc'
                     if cfg.get("func_frac") is not None:
                         command += f' --bet-frac {cfg["func_frac"]}'
                     if cfg.get("func_radius") is not None:
@@ -307,9 +376,10 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                 currentFile = sorted(currentPath_wData.glob("*MEMS.nii.gz"))
                 if len(currentFile)>0:
                     command = f'python preProcessing_T2MAP.py -i {_quote(currentFile[0])}'
-                    if cfg.get("t2map_bias_method"):
+                    if cfg.get("t2map_bias_method") is not None:
                         command += f' -b {cfg["t2map_bias_method"]}'
-                    command += f' --bet {cfg["t2map_bet"]}'
+                    if cfg.get("t2map_bet") is not None:
+                        command += f' --bet {cfg["t2map_bet"]}'
                     if cfg.get("t2map_frac") is not None:
                         command += f' -f {cfg["t2map_frac"]}'
                     if cfg.get("t2map_radius") is not None:
@@ -373,21 +443,21 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
                         command += f' -g {cfg["dwi_gradient"]}'
 
                     # Bias field
-                    # dwi_bias_method with choices ["mico",“ants”], default=None
                     if cfg.get("dwi_bias_method") is not None:
                         command += f' -b {cfg["dwi_bias_method"]}'
 
                     # Denoiser
-                    if cfg.get("dwi_denoiser"):
+                    if cfg.get("dwi_denoiser") is not None:
                         command += f' --denoiser {cfg["dwi_denoiser"]}'
 
-                    command += f' --bet {cfg["dwi_bet"]}'
+                    if cfg.get("dwi_bet") is not None:
+                        command += f' --bet {cfg["dwi_bet"]}'
 
-                    if cfg.get("dwi_average_b0"):
+                    if cfg.get("dwi_average_b0") is True:
                         command += ' --average-b0'
 
-                    if cfg.get("dwi_skip_min_projection"):
-                        command += ' --skip-min-projection'
+                    if cfg.get("dwi_skip_smoothing") is True:
+                        command += ' --skip-smoothing'
 
                     result = run_subprocess(command, dataFormat, step)
                     if result != 0:
@@ -413,37 +483,44 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg, stc=False):
             elif step == "process":
                 currentFile = sorted(currentPath_wData.glob("*dwi.nii.gz"))
                 if cfg.get("dwi_denoiser") == "patch2self":
-                    currentFile = sorted(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
+                    currentFile = sorted(currentPath_wData.glob("*P2SDenoised.nii.gz"))
+                    if not currentFile:
+                        currentFile = sorted(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
+                elif cfg.get("dwi_denoiser") == "mrtrix3":
+                    currentFile = sorted(currentPath_wData.glob("*MR3Denoised.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
                     # Pull values from cfg (with defaults)
-                    track_param = cfg.get("dsi_track_param", "default")
-                    if isinstance(track_param, (list, tuple)):
-                        track_param_args = ' '.join(_quote(item) for item in track_param)
-                    else:
-                        track_param_args = _quote(track_param)
-                    recon_method = cfg.get("dsi_recon_method", "dti")
-                    vivo = cfg.get("dsi_vivo", "in_vivo")
-                    make_iso = cfg.get("dsi_make_isotropic", "0")
-                    b_table = cfg.get("dsi_b_table", "auto")
                     optional = cfg.get("dsi_optional")
                     thread_count = cfg.get("num_processes", 1)
-                    legacy = bool(cfg.get("dsi_legacy", False))
-                    skip_motion_correction = bool(cfg.get("dsi_skip_motion_correction", False))
 
                     cli_str = (
                         f'dsi_main.py -i {_quote(currentFile[0])} '
-                        f'-b {_quote(b_table)} '
-                        f'-t {track_param_args} -r {_quote(recon_method)} '
-                        f'-v {_quote(vivo)} -m {_quote(make_iso)} '
                         f'--thread-count {thread_count}'
                     )
-                    if legacy:
+                    if cfg.get("dsi_b_table") is not None:
+                        cli_str += f' -b {_quote(cfg["dsi_b_table"])}'
+                    if cfg.get("dsi_track_param") is not None:
+                        track_param = cfg["dsi_track_param"]
+                        if isinstance(track_param, (list, tuple)):
+                            track_param_args = ' '.join(_quote(item) for item in track_param)
+                        else:
+                            track_param_args = _quote(track_param)
+                        cli_str += f' -t {track_param_args}'
+                    if cfg.get("dsi_recon_method") is not None:
+                        cli_str += f' -r {_quote(cfg["dsi_recon_method"])}'
+                    if cfg.get("dsi_vivo") is not None:
+                        cli_str += f' -v {_quote(cfg["dsi_vivo"])}'
+                    if cfg.get("dsi_make_isotropic") is not None:
+                        cli_str += f' -m {_quote(cfg["dsi_make_isotropic"])}'
+                    if cfg.get("dsi_legacy") is True:
                         cli_str += ' -l'
-                    if skip_motion_correction:
+                    if cfg.get("dsi_skip_motion_correction") is True:
                         cli_str += ' --skip-motion-correction'
-                    if optional:
-                        cli_str += ' -o ' + ' '.join(_quote(item) for item in optional)
+                    if optional is not None:
+                        cli_str += ' -o'
+                        if len(optional) > 0:
+                            cli_str += ' ' + ' '.join(_quote(item) for item in optional)
 
                     os.chdir(cwd + '/3.2_DTIConnectivity')
                     command = f'python {cli_str}'
@@ -481,12 +558,13 @@ def find(pattern, path):
     return result
 
 
-def create_qc_reports(project_path, steps):
+def create_qc_reports(project_path, steps, custom_parameters=None):
     requested_steps = set(steps)
 
     try:
         from helper_tools.batch_qc_reports import (
             build_bet_qc_report,
+            build_cc_qc_report,
             build_registration_qc_report,
         )
     except Exception as exc:
@@ -498,7 +576,11 @@ def create_qc_reports(project_path, steps):
         try:
             print("Creating BET report...")
             logging.info("Creating BET report...")
-            html_path, count = build_bet_qc_report(project_path, n_slices=7)
+            html_path, count = build_bet_qc_report(
+                project_path,
+                n_slices=7,
+                custom_parameters=custom_parameters,
+            )
             if html_path:
                 print(f"BET report written to {html_path} ({count} image(s))")
                 logging.info("BET report written to %s (%s images)", html_path, count)
@@ -513,7 +595,11 @@ def create_qc_reports(project_path, steps):
         try:
             print("Creating Registration report...")
             logging.info("Creating Registration report...")
-            html_path, count = build_registration_qc_report(project_path, n_slices=7)
+            html_path, count = build_registration_qc_report(
+                project_path,
+                n_slices=7,
+                custom_parameters=custom_parameters,
+            )
             if html_path:
                 print(f"Registration report written to {html_path} ({count} image(s))")
                 logging.info("Registration report written to %s (%s images)", html_path, count)
@@ -523,6 +609,24 @@ def create_qc_reports(project_path, steps):
         except Exception as exc:
             logging.warning("Registration report generation failed: %s", exc)
             print(f"Registration report generation failed: {exc}")
+
+        try:
+            print("Creating CC report...")
+            logging.info("Creating CC report...")
+            html_path, count = build_cc_qc_report(
+                project_path,
+                n_slices=7,
+                custom_parameters=custom_parameters,
+            )
+            if html_path:
+                print(f"CC report written to {html_path} ({count} image(s))")
+                logging.info("CC report written to %s (%s images)", html_path, count)
+            else:
+                print("CC report skipped: no BET/AnnoSplit_parental pairs found.")
+                logging.info("CC report skipped: no BET/AnnoSplit_parental pairs found.")
+        except Exception as exc:
+            logging.warning("CC report generation failed: %s", exc)
+            print(f"CC report generation failed: {exc}")
 
 
 def format_step_label(step):
@@ -534,14 +638,413 @@ def format_step_label(step):
     return labels.get(step, step.capitalize())
 
 
+CLI_DEFAULT_DESCRIPTIONS = {
+    "sessions": "all sessions",
+    "data_types": "anat, dwi, func, t2map",
+    "debug_steps": "preprocess, registration, process",
+    "exemptionlist": "no exemptionlist",
+    "cpu_percent": "use cpu_cores",
+    "func_atlas_mask_t2": "disabled",
+    "func_tr": "JSON RepetitionTime, otherwise 1.42 s",
+}
+
+CLI_DEFAULT_SOURCES = {
+    "t2_bias_method": [("2.1_T2PreProcessing/preProcessing_T2.py", "--bias-method")],
+    "t2_bet": [("2.1_T2PreProcessing/preProcessing_T2.py", "--bet")],
+    "t2_frac": [("2.1_T2PreProcessing/preProcessing_T2.py", "--frac")],
+    "t2_radius": [("2.1_T2PreProcessing/preProcessing_T2.py", "--radius")],
+    "t2_gradient": [("2.1_T2PreProcessing/preProcessing_T2.py", "--horizontal-gradient")],
+    "t2_center": [("2.1_T2PreProcessing/preProcessing_T2.py", "--center")],
+    "dwi_denoiser": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--denoiser")],
+    "dwi_average_b0": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--average-b0")],
+    "dwi_bet": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--bet")],
+    "dwi_skip_smoothing": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--skip-smoothing")],
+    "dwi_frac": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--frac")],
+    "dwi_radius": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--radius")],
+    "dwi_gradient": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--horizontal-gradient")],
+    "dwi_bias_method": [("2.2_DTIPreProcessing/preProcessing_DTI.py", "--bias-method")],
+    "func_bias_method": [("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--bias-method")],
+    "func_skip_smoothing": [("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--skip-smoothing")],
+    "func_bet": [
+        ("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--bet"),
+        ("3.3_fMRIActivity/process_fMRI.py", "--bet"),
+    ],
+    "func_frac": [
+        ("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--frac"),
+        ("3.3_fMRIActivity/process_fMRI.py", "--bet-frac"),
+    ],
+    "func_radius": [
+        ("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--radius"),
+        ("3.3_fMRIActivity/process_fMRI.py", "--bet-radius"),
+    ],
+    "func_gradient": [
+        ("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--horizontal-gradient"),
+        ("3.3_fMRIActivity/process_fMRI.py", "--bet-gradient"),
+    ],
+    "func_center": [
+        ("2.3_fMRIPreProcessing/preProcessing_fMRI.py", "--center"),
+        ("3.3_fMRIActivity/process_fMRI.py", "--center"),
+    ],
+    "func_stc": [("3.3_fMRIActivity/process_fMRI.py", "--slicetimecorrection")],
+    "t2map_bet": [("4.1_T2mapPreProcessing/preProcessing_T2MAP.py", "--bet")],
+    "t2map_bias_method": [("4.1_T2mapPreProcessing/preProcessing_T2MAP.py", "--bias-method")],
+    "t2map_frac": [("4.1_T2mapPreProcessing/preProcessing_T2MAP.py", "--frac")],
+    "t2map_radius": [("4.1_T2mapPreProcessing/preProcessing_T2MAP.py", "--radius")],
+    "t2map_gradient": [("4.1_T2mapPreProcessing/preProcessing_T2MAP.py", "--horizontal-gradient")],
+    "t2map_center": [("4.1_T2mapPreProcessing/preProcessing_T2MAP.py", "--center")],
+    "dsi_b_table": [("3.2_DTIConnectivity/dsi_main.py", "--b-table")],
+    "dsi_recon_method": [("3.2_DTIConnectivity/dsi_main.py", "--recon-method")],
+    "dsi_vivo": [("3.2_DTIConnectivity/dsi_main.py", "--vivo")],
+    "dsi_make_isotropic": [("3.2_DTIConnectivity/dsi_main.py", "--make-isotropic")],
+    "dsi_track_param": [("3.2_DTIConnectivity/dsi_main.py", "--track-params")],
+    "dsi_skip_motion_correction": [("3.2_DTIConnectivity/dsi_main.py", "--skip-motion-correction")],
+    "dsi_legacy": [("3.2_DTIConnectivity/dsi_main.py", "--legacy")],
+    "dsi_optional": [("3.2_DTIConnectivity/dsi_main.py", "--optional")],
+}
+
+SCRIPT_ARGUMENT_DEFAULT_CACHE = {}
+
+
+def literal_ast_value(node):
+    try:
+        return ast.literal_eval(node)
+    except (ValueError, TypeError):
+        return None
+
+
+def get_script_argument_defaults(script_relative_path):
+    if script_relative_path in SCRIPT_ARGUMENT_DEFAULT_CACHE:
+        return SCRIPT_ARGUMENT_DEFAULT_CACHE[script_relative_path]
+
+    script_path = Path(__file__).resolve().parent / script_relative_path
+    defaults = {}
+
+    try:
+        tree = ast.parse(script_path.read_text())
+    except OSError:
+        SCRIPT_ARGUMENT_DEFAULT_CACHE[script_relative_path] = defaults
+        return defaults
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "add_argument":
+            continue
+
+        option_strings = []
+        for arg in node.args:
+            value = literal_ast_value(arg)
+            if isinstance(value, str):
+                option_strings.append(value)
+        if not option_strings:
+            continue
+
+        keyword_values = {keyword.arg: keyword.value for keyword in node.keywords}
+        if "default" in keyword_values:
+            default = literal_ast_value(keyword_values["default"])
+        else:
+            action = literal_ast_value(keyword_values["action"]) if "action" in keyword_values else None
+            if action == "store_true":
+                default = False
+            elif action == "store_false":
+                default = True
+            else:
+                default = None
+
+        for option in option_strings:
+            defaults[option] = default
+
+    SCRIPT_ARGUMENT_DEFAULT_CACHE[script_relative_path] = defaults
+    return defaults
+
+
+def format_cli_value(value):
+    if value is None:
+        return "not set"
+    if isinstance(value, bool):
+        return "enabled" if value else "disabled"
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return "[]"
+        return ", ".join(str(item) for item in value)
+    return str(value)
+
+
+def format_cli_default(dest):
+    if dest in CLI_DEFAULT_DESCRIPTIONS:
+        return f"default: {CLI_DEFAULT_DESCRIPTIONS[dest]}"
+
+    sources = CLI_DEFAULT_SOURCES.get(dest)
+    if not sources:
+        return "default"
+
+    parts = []
+    for script_relative_path, option in sources:
+        defaults = get_script_argument_defaults(script_relative_path)
+        default = defaults.get(option)
+        parts.append(f"{Path(script_relative_path).name}={format_cli_value(default)}")
+
+    return "default: " + "; ".join(parts)
+
+
+def print_cli_parameters(args):
+    values = vars(args)
+    parameters = []
+    for label, value in values.items():
+        display_value = format_cli_default(label) if value is None else format_cli_value(value)
+        parameters.append(f"{label}={display_value}")
+
+    message = "Command line (global) parameters : " + ", ".join(parameters)
+    print(message)
+    logging.info(message)
+
+
+def get_explicit_cli_parameters(parser, args, argv):
+    """Return parsed values for options explicitly supplied on the command line."""
+    supplied_options = {value.split("=", 1)[0] for value in argv if value.startswith("-")}
+    parameters = []
+
+    for action in parser._actions:
+        if action.dest in {"help", "input"}:
+            continue
+        if not supplied_options.intersection(action.option_strings):
+            continue
+
+        long_option = next(
+            (option for option in action.option_strings if option.startswith("--")),
+            action.option_strings[0],
+        )
+        parameters.append((long_option, getattr(args, action.dest)))
+
+    return parameters
+
+
+NON_SAMPLE_OVERRIDE_DESTS = {
+    "help",
+    "input",
+    "sessions",
+    "data_types",
+    "debug_steps",
+    "cpu_cores",
+    "cpu_percent",
+    "exemptionlist",
+}
+
+
+def get_study_id_from_path(path):
+    for part in Path(path).parts:
+        if part.startswith("sub-"):
+            return part
+    return None
+
+
+def get_session_from_path(path):
+    for part in Path(path).parts:
+        if part.startswith("ses-"):
+            return part
+    return None
+
+
+def normalize_exemption_column(column):
+    normalized = column.strip()
+    if normalized.startswith("--"):
+        normalized = normalized[2:]
+
+    if normalized == "StudyID":
+        return "StudyID"
+    if normalized == "session":
+        return "session"
+    return normalized
+
+
+def get_sample_override_actions(parser):
+    actions = {}
+    for action in parser._actions:
+        if action.dest in NON_SAMPLE_OVERRIDE_DESTS:
+            continue
+        long_option = next(
+            (option for option in action.option_strings if option.startswith("--")),
+            None,
+        )
+        if long_option:
+            actions[normalize_exemption_column(long_option)] = action
+    return actions
+
+
+def split_exemption_values(value):
+    if "," in value or ";" in value:
+        return [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
+    return value.split()
+
+
+def csv_cell_has_value(value):
+    if isinstance(value, list):
+        return any((item or "").strip() for item in value)
+    return bool((value or "").strip())
+
+
+def convert_exemption_item(action, value, column):
+    converter = action.type or str
+    try:
+        converted = converter(value)
+    except Exception as exc:
+        raise ValueError(
+            f"Invalid value {value!r} in exemptionlist column {column!r}: {exc}"
+        ) from exc
+
+    if action.choices is not None and converted not in action.choices:
+        raise ValueError(
+            f"Invalid value {value!r} in exemptionlist column {column!r}. "
+            f"Allowed values: {', '.join(map(str, action.choices))}"
+        )
+    return converted
+
+
+def convert_exemption_value(action, raw_value, column):
+    value = raw_value.strip()
+    if value == "":
+        return None
+
+    if action.nargs == 0:
+        lowered = value.lower()
+        if lowered in {"1", "true", "yes", "y", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "n", "off"}:
+            return False
+        raise ValueError(
+            f"Invalid boolean value {value!r} in exemptionlist column {column!r}. "
+            "Use true/false, yes/no or 1/0."
+        )
+
+    if action.nargs is None:
+        return convert_exemption_item(action, value, column)
+
+    values = split_exemption_values(value)
+    if isinstance(action.nargs, int) and len(values) != action.nargs:
+        raise ValueError(
+            f"Column {column!r} expects {action.nargs} value(s), got {len(values)}: {value!r}"
+        )
+    if action.nargs == "+" and not values:
+        raise ValueError(f"Column {column!r} expects at least one value")
+
+    return [convert_exemption_item(action, item, column) for item in values]
+
+
+def load_exemptionlist(path, parser):
+    exemption_path = Path(path)
+    if not exemption_path.is_file():
+        raise ValueError(f"Exemptionlist does not exist: {path}")
+
+    override_actions = get_sample_override_actions(parser)
+    exemptions = {}
+
+    with exemption_path.open(newline="") as csv_file:
+        reader = csv.DictReader(csv_file)
+        if not reader.fieldnames:
+            raise ValueError("Exemptionlist is empty or has no header")
+
+        normalized_columns = {
+            column: normalize_exemption_column(column)
+            for column in reader.fieldnames
+            if column is not None
+        }
+        study_id_columns = [
+            column for column, normalized in normalized_columns.items()
+            if normalized == "StudyID"
+        ]
+        if len(study_id_columns) != 1:
+            raise ValueError("Exemptionlist must contain exactly one StudyID column")
+        study_id_column = study_id_columns[0]
+
+        session_columns = [
+            column for column, normalized in normalized_columns.items()
+            if normalized == "session"
+        ]
+        if len(session_columns) != 1:
+            raise ValueError("Exemptionlist must contain exactly one session column")
+        session_column = session_columns[0]
+
+        parameter_columns = []
+        for column, normalized in normalized_columns.items():
+            if column in {study_id_column, session_column}:
+                continue
+            if normalized not in override_actions:
+                raise ValueError(
+                    f"Unknown exemptionlist column {column!r}. "
+                    "Use CLI parameter names without leading '--', e.g. func-frac."
+                )
+            parameter_columns.append((column, normalized, override_actions[normalized]))
+
+        for line_number, row in enumerate(reader, start=2):
+            if row.get(None) and csv_cell_has_value(row.get(None)):
+                raise ValueError(f"Too many columns in exemptionlist line {line_number}")
+
+            if not any(csv_cell_has_value(value) for value in row.values()):
+                continue
+
+            study_id = (row.get(study_id_column) or "").strip()
+            if not study_id:
+                raise ValueError(f"Missing StudyID in exemptionlist line {line_number}")
+            session = (row.get(session_column) or "").strip()
+            if not session:
+                raise ValueError(f"Missing session in exemptionlist line {line_number}")
+
+            exemption_key = (study_id, session)
+            if exemption_key in exemptions:
+                raise ValueError(
+                    f"Duplicate StudyID/session pair {study_id!r}, {session!r} in exemptionlist"
+                )
+
+            overrides = {}
+            for column, normalized, action in parameter_columns:
+                converted = convert_exemption_value(action, row.get(column) or "", column)
+                if converted is not None:
+                    overrides[action.dest] = converted
+            exemptions[exemption_key] = overrides
+
+    return exemptions
+
+
+def get_batch_exemption_keys(all_files):
+    keys = set()
+    for paths in all_files.values():
+        for path in paths:
+            study_id = get_study_id_from_path(path)
+            session = get_session_from_path(path)
+            if study_id and session:
+                keys.add((study_id, session))
+    return keys
+
+
+def validate_exemption_samples(exemptions, all_files):
+    batch_keys = get_batch_exemption_keys(all_files)
+    missing = sorted(set(exemptions) - batch_keys)
+    if missing:
+        missing_labels = [f"{study_id}/{session}" for study_id, session in missing]
+        raise ValueError(
+            "Exemptionlist contains StudyID/session pair(s) that are not part of the current batch: "
+            + ", ".join(missing_labels)
+        )
+
+
+def get_sample_cfg(base_cfg, path, exemptions):
+    study_id = get_study_id_from_path(path)
+    session = get_session_from_path(path)
+    exemption_key = (study_id, session)
+    if exemption_key not in exemptions:
+        return base_cfg
+
+    cfg = dict(base_cfg)
+    cfg.update(exemptions[exemption_key])
+    return cfg
+
+
 TQDM_BAR_FORMAT = (
     "{desc}: {percentage:3.0f}%|{bar}| "
     "{n_fmt}/{total_fmt} done | elapsed {elapsed} | remaining {remaining}"
 )
 
 if __name__ == "__main__":
-    import argparse
-
     def parse_cpu_percent(value):
         cpu_count = multiprocessing.cpu_count()
         value = str(value).strip()
@@ -625,9 +1128,11 @@ if __name__ == "__main__":
         help="Processing steps to run (preprocess registration process). Default: all"
     )
     batch.add_argument(
-        "--slice-time-correction",
-        action="store_true",
-        help="Enable slice time correction for fMRI"
+        "--exemptionlist",
+        help=(
+            "CSV file with per-StudyID parameter overrides. "
+            "Empty cells keep the normal CLI/default value. For boolean flags, use false, no, 0 or off to disable a CLI/default value. "
+        )
     )
     # ============================================================
     # CPU / PARALLELIZATION
@@ -647,22 +1152,20 @@ if __name__ == "__main__":
     )
 
     # ============================================================
-    # T2 PREPROCESSING (preProcessing_T2.py)
+    # T2 OPTIONS
     # ============================================================
-    t2 = parser.add_argument_group("T2 preprocessing (preProcessing_T2.py)")
+    t2 = parser.add_argument_group("T2 options")
     t2.add_argument(
         "--t2-bias-method",
-        choices=["none", "mico", "ants"],
+        choices=["skip", "mico", "ants"],
         type=str.lower,
-        default = "mico",
-        help="Bias field correction method for T2 (none, mico or ants). Default: mico"
+        help="Bias field correction method for T2; omitted uses preProcessing_T2.py default"
     )
     t2.add_argument(
         "--t2-bet",
         choices=["skip", "bet", "bet4animal"],
         type=str.lower,
-        default="bet",
-        help="Brain extraction method for T2: skip, bet or bet4animal. Default: bet"
+        help="Brain extraction method for T2; omitted uses preProcessing_T2.py default"
     )
 
     t2.add_argument(
@@ -695,31 +1198,32 @@ if __name__ == "__main__":
     )
 
     # ============================================================
-    # DWI PREPROCESSING (preProcessing_DTI.py)
+    # DWI OPTIONS
     # ============================================================
-    dwi = parser.add_argument_group("DWI preprocessing (preProcessing_DTI.py)")
+    dwi = parser.add_argument_group("DWI options")
     dwi.add_argument(
         "--dwi-denoiser",
-        choices=["patch2self"],
+        choices=["patch2self", "mrtrix3"],
         type=str.lower,
-        help="DWI denoising method"
+        help="DWI denoising method: patch2self or MRtrix3 (MP-PCA)"
     )
     dwi.add_argument(
         "--dwi-average-b0",
         action="store_true",
+        default=None,
         help="Average b0 volumes before DWI processing"
     )
     dwi.add_argument(
         "--dwi-bet",
         choices=["skip", "bet", "bet4animal"],
         type=str.lower,
-        default="bet",
-        help="Brain extraction method for DWI: skip, bet or bet4animal. Default: bet"
+        help="Brain extraction method for DWI; omitted uses preProcessing_DTI.py default"
     )
     dwi.add_argument(
-        "--dwi-skip-min-projection",
+        "--dwi-skip-smoothing",
         action="store_true",
-        help="Skip minimum intensity projection step"
+        default=None,
+        help="Skip spatial median smoothing in dwi preprocessing; the 3D median reference image is still created"
     )
     dwi.add_argument(
         "--dwi-frac",
@@ -738,29 +1242,36 @@ if __name__ == "__main__":
     )
     dwi.add_argument(
         "--dwi-bias-method",
-        choices=["none", "mico", "ants"],
+        choices=["skip", "mico", "ants"],
         type=str.lower,
-        default=None,
-        help="Bias field correction for DWI: none, MICO or ANTs (default: None)"
+        help="Bias field correction for DWI; omitted uses preProcessing_DTI.py default"
     )
 
     # ============================================================
-    # fMRI PREPROCESSING (preProcessing_fMRI.py)
+    # fMRI OPTIONS
     # ============================================================
-    func = parser.add_argument_group("fMRI preprocessing (preProcessing_fMRI.py)")
+    func = parser.add_argument_group("fMRI options")
+    func.add_argument(
+        "--func-tr", type=positive_tr,
+        help="fMRI TR in seconds; priority: --func-tr > JSON RepetitionTime > fallback 1.42 s"
+    )
     func.add_argument(
         "--func-bias-method",
-        choices=["none", "ants"],
+        choices=["skip", "ants"],
         type=str.lower,
+        help="Bias field correction for fMRI; omitted uses preProcessing_fMRI.py default"
+    )
+    func.add_argument(
+        "--func-skip-smoothing",
+        action="store_true",
         default=None,
-        help="Bias field correction for fMRI: none or ANTs (default: None)"
+        help="Skip spatial median smoothing in fMRI preprocessing; the 3D median reference image is still created"
     )
     func.add_argument(
         "--func-bet",
         choices=["skip", "bet", "bet4animal"],
         type=str.lower,
-        default="bet",
-        help="Brain extraction method for fMRI preprocess/process: skip, bet or bet4animal. Default: bet"
+        help="Brain extraction method for fMRI preprocess/process; omitted uses preProcessing_fMRI.py default"
     )
     func.add_argument(
         "--func-frac",
@@ -784,24 +1295,34 @@ if __name__ == "__main__":
         metavar=("X", "Y", "Z"),
         help="BET center in voxel coordinates for fMRI"
     )
+    func.add_argument(
+        "--func-atlas-mask-t2",
+        action="store_true",
+        default=None,
+        help="Mask the T2 BET with the T2 registered atlas annotation before fMRI registration"
+    )
+    func.add_argument(
+        "--func-stc",
+        action="store_true",
+        default=None,
+        help="Enable slice time correction for fMRI processing"
+    )
 
     # ============================================================
-    # T2MAP PREPROCESSING (preProcessing_T2MAP.py)
+    # T2MAP OPTIONS
     # ============================================================
-    t2map = parser.add_argument_group("T2map preprocessing (preProcessing_T2MAP.py)")
+    t2map = parser.add_argument_group("T2map options")
     t2map.add_argument(
         "--t2map-bet",
         choices=["skip", "bet", "bet4animal"],
         type=str.lower,
-        default="bet",
-        help="Brain extraction method for T2map: skip, bet or bet4animal. Default: bet"
+        help="Brain extraction method for T2map; omitted uses preProcessing_T2MAP.py default"
     )
     t2map.add_argument(
         "--t2map-bias-method",
-        choices=["none", "mico"],
+        choices=["skip", "mico"],
         type=str.lower,
-        default="mico",
-        help='Biasfield correction method for T2map: none or mico. Default: mico'
+        help='Biasfield correction method for T2map; omitted uses preProcessing_T2MAP.py default'
     )
     t2map.add_argument(
         "--t2map-frac",
@@ -832,43 +1353,40 @@ if __name__ == "__main__":
     dsi = parser.add_argument_group("DSI Studio / tractography (dsi_main.py)")
     dsi.add_argument(
         "--dsi-b-table",
-        default="auto",
-        help='Diffusion gradient source: "auto" or explicit b-table path'
+        help='Diffusion gradient source; omitted uses dsi_main.py default'
     )
     dsi.add_argument(
         "--dsi-recon-method",
-        default="dti",
         type=str.lower,
         choices=["dti", "gqi"],
-        help="DSI reconstruction method"
+        help="DSI reconstruction method; omitted uses dsi_main.py default"
     )
     dsi.add_argument(
         "--dsi-vivo",
-        default="in_vivo",
         type=str.lower,
         choices=["in_vivo", "ex_vivo"],
-        help="In vivo or ex vivo data (controls sampling length)"
+        help="In vivo or ex vivo data; omitted uses dsi_main.py default"
     )
     dsi.add_argument(
         "--dsi-make-isotropic",
-        default='0',
-        help="Voxel size (mm) for isotropic resampling (0 = off, auto = header)"
+        help="Voxel size (mm) for isotropic resampling; omitted uses dsi_main.py default"
     )
     dsi.add_argument(
         "--dsi-track-param",
         nargs="+",
-        default="default",
-        help="Tracking parameter preset or 8 custom values"
+        help="Tracking parameter preset or 8 custom values; omitted uses dsi_main.py default"
     )
     dsi.add_argument(
         "--dsi-skip-motion-correction",
         dest="dsi_skip_motion_correction",
         action="store_true",
+        default=None,
         help="Skip slice-wise motion correction"
     )
     dsi.add_argument(
         "--dsi-legacy",
         action="store_true",
+        default=None,
         help="Enable legacy .fib.gz / .src.gz support"
     )
     dsi.add_argument(
@@ -880,14 +1398,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    custom_parameters = get_explicit_cli_parameters(parser, args, sys.argv[1:])
+
     pathToData = args.input
     sessions = args.sessions
     
     #configurate the logging module
     log_file_path = os.path.join(pathToData, "batchproc_log.txt")
-    logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', force =True)
-
-    stc = args.slice_time_correction
+    configure_logging(log_file_path)
+    logging.info("Explicit command line options: %s", shlex.join(sys.argv[1:]))
+    copy_aidamri_git_information_to_proc(pathToData)
 
     if args.data_types is None:
         data_types = ["anat", "dwi", "func", "t2map"]
@@ -899,14 +1419,24 @@ if __name__ == "__main__":
     else:
         steps = args.debug_steps
     
-    print('Entered information:')
-    print(pathToData)
-    print('data_types %s' % data_types)
-    print('Slice time correction [%s]' % stc)
-    print('Steps %s' % steps)
-    print()
-
     all_files = findData(pathToData, sessions, data_types)
+    exemptions = {}
+    if args.exemptionlist:
+        try:
+            exemptions = load_exemptionlist(args.exemptionlist, parser)
+            validate_exemption_samples(exemptions, all_files)
+        except ValueError as exc:
+            logging.error("Invalid exemptionlist: %s", exc)
+            parser.error(str(exc))
+
+        print(f"Loaded exemptionlist for {len(exemptions)} StudyID/session pair(s): {args.exemptionlist}")
+        logging.info(
+            "Loaded exemptionlist for %s StudyID/session pair(s): %s",
+            len(exemptions),
+            args.exemptionlist,
+        )
+        for (study_id, session), overrides in sorted(exemptions.items()):
+            logging.info("Exemption parameters for %s/%s: %s", study_id, session, overrides)
 
     num_processes = 1
 
@@ -919,7 +1449,7 @@ if __name__ == "__main__":
     elif args.cpu_cores == "max":
         num_processes = multiprocessing.cpu_count()
 
-    print(args)
+    print_cli_parameters(args)
     
     if args.cpu_percent is not None:
         num_processes = args.cpu_percent
@@ -930,16 +1460,6 @@ if __name__ == "__main__":
     # turns argparse.Namespace into a dict
     cfg = vars(args)
     cfg["num_processes"] = num_processes
-    logging.info(
-        "DSI settings: b_table=%s recon=%s vivo=%s make_isotropic=%s track_param=%s skip_motion_correction=%s legacy=%s optional=%s",
-        args.dsi_b_table,
-        args.dsi_recon_method,
-        args.dsi_vivo,
-        args.dsi_make_isotropic,
-        args.dsi_track_param,
-        args.dsi_skip_motion_correction,
-        args.dsi_legacy,
-        args.dsi_optional)
 
     for key, value in all_files.items():
         if value:
@@ -960,7 +1480,16 @@ if __name__ == "__main__":
                     bar_format=TQDM_BAR_FORMAT,
                 )
                 with concurrent.futures.ProcessPoolExecutor(max_workers=num_processes) as executor:
-                    futures = [executor.submit(executeScripts, path, key, step, cfg, stc) for path in value]
+                    futures = [
+                        executor.submit(
+                            executeScripts,
+                            path,
+                            key,
+                            step,
+                            get_sample_cfg(cfg, path, exemptions),
+                        )
+                        for path in value
+                    ]
 
                     # --- collect errors robustly ---
                     flat_errors_step = []
@@ -1008,6 +1537,6 @@ if __name__ == "__main__":
                         # strings or unexpected types
                         print(f"Error: {err}")
 
-    create_qc_reports(pathToData, steps)
+    create_qc_reports(pathToData, steps, custom_parameters=custom_parameters)
 
  
