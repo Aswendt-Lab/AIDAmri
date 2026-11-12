@@ -26,6 +26,7 @@ Changes:
 Expanded options, CLI, N4BiasFieldCorrection support
 Compatibility with Ubuntu 22.04, Python 3.10, DSI-Studio release 2026.7.25 (tagged commit 438176e; more efficient storage
 using '.fz' and '.sz' file formats)
+latest Update: Julian Cramer
 """
 
 

@@ -6,6 +6,7 @@ Created on 10/08/2017
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
+latest Update: Julian Cramer
 """
 from __future__ import print_function
 

@@ -55,6 +55,7 @@ Usage:
     python batch_DTIdata_extract.py -i PROC_FOLDER -r annosplit_parental [-t TXT] [-m fa] [-o /OUTPUT/PATH/NAME] [-g GROUPS.csv] [--exclude-stroke-mask]
 
 Created on 08.04.2019 by Niklas Pallast and Markus Aswendt.
+latest Update: Julian Cramer
 """
 
 import argparse
