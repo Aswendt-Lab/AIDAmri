@@ -31,6 +31,7 @@ General:
 - writes BOTH voxel counts and mm^3
 - savemat warnings avoided (drops __header__/__version__/__globals__)
 - voxel size forced to user-confirmed truth: 0.068359 × 0.068359 × 0.5 mm
+latest Update: Julian Cramer
 """
 
 import os

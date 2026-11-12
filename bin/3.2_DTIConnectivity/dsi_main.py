@@ -6,6 +6,7 @@ Created on 10/08/2017
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
+latest Update: Julian Cramer
 """
 from __future__ import print_function
 
@@ -63,14 +64,11 @@ def should_enable_process_log():
 
 
 def normalize_track_params(values):
-    if len(values) == 1:
-        return values[0]
-    if len(values) != 8:
-        raise argparse.ArgumentTypeError(
-            "-t/--track-params expects one preset name or exactly 8 custom values: "
-            "tract_count step_size turning_angle check_ending fa_threshold smoothing min_length max_length"
-        )
-    return values
+    import dsi_tools
+    try:
+        return dsi_tools.normalize_tracking_params(values)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
 
 
 def positive_int(value):
@@ -123,7 +121,8 @@ if __name__ == '__main__':
                         '--track-params',
                         nargs='+',
                         default=['default'],
-                        help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
+                        metavar='PRESET_OR_NAME=VALUE',
+                        help='Use a preset (default, rat, aidamriv2_set, test) or named values, e.g. -t tract_count=1000 step_size=0.05. Unspecified custom values use the rat preset. Allowed names: tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length.',
                         required=False
                        )
     parser.add_argument('--thread-count',
@@ -184,6 +183,7 @@ if __name__ == '__main__':
     # Connectivity outputs are written relative to the DWI directory.
     connectivity_dir_name = r'connectivity'
 
+    args.file_in = os.path.abspath(args.file_in)
     dwi_dir = os.path.dirname(args.file_in)
     start_output_tracking(dwi_dir, "dwi", "processing")
     process_log = build_script_log_path(dwi_dir, "process.log")
@@ -251,6 +251,9 @@ if __name__ == '__main__':
         args.legacy,
         gradient_pair=gradient_pair,
     )
+    if make_isotropic == 'auto':
+        # Use the same diffusion-derived spacing for reconstruction and ROIs.
+        make_isotropic = voxel_size
     fib_dir = os.path.join(dwi_dir, 'fib_map')
 
     tracking_params = args.track_params
@@ -261,9 +264,8 @@ if __name__ == '__main__':
         dsi_studio,
         fib_dir,
         tracking_params,
-        voxel_size,
-        args.thread_count,
-        args.legacy
+        thread_count=args.thread_count,
+        legacy=args.legacy,
     )
 
     # Calculating connectivity

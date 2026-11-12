@@ -12,6 +12,7 @@ For the script to work, it needs to be placed within the /bin folder of AIDAmri.
 
 Example:
 python batchProc.py -i /Volumes/Desktop/MRI/proc_data -t anat dwi func t2map
+latest Update: Julian Cramer
 """
 
 import argparse
@@ -1355,7 +1356,8 @@ if __name__ == "__main__":
     dsi.add_argument(
         "--dsi-track-param",
         nargs="+",
-        help="Tracking parameter preset or 8 custom values; omitted uses dsi_main.py default"
+        metavar="PRESET_OR_NAME=VALUE",
+        help="Tracking preset (default, rat, aidamriv2_set, test) or named values, e.g. --dsi-track-param tract_count=1000 step_size=0.05. Unspecified custom values use the rat preset; omitted uses dsi_main.py default"
     )
     dsi.add_argument(
         "--dsi-skip-motion-correction",

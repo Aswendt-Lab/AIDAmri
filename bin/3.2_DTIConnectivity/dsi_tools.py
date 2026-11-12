@@ -26,6 +26,7 @@ Changes:
 Expanded options, CLI, N4BiasFieldCorrection support
 Compatibility with Ubuntu 22.04, Python 3.10, DSI-Studio release 2026.7.25 (tagged commit 438176e; more efficient storage
 using '.fz' and '.sz' file formats)
+latest Update: Julian Cramer
 """
 
 
@@ -41,32 +42,8 @@ import numpy as np
 import nipype.interfaces.fsl as fsl
 import shutil
 import subprocess
-import pandas as pd
-
-
-def parse_label_line(line, line_number=None, label_file=None):
-    stripped = line.strip()
-    if not stripped or stripped.startswith("#"):
-        return None
-
-    parts = stripped.split()
-    try:
-        label_id = int(float(parts[0]))
-    except (IndexError, ValueError):
-        if line_number is not None and label_file is not None:
-            print(f"Warning: Skipping invalid label line {line_number} in '{label_file}'.")
-        return None
-
-    if '"' in stripped:
-        label_name = stripped.split('"', 1)[1].rsplit('"', 1)[0]
-    elif "\t" in stripped:
-        tab_parts = stripped.split("\t")
-        label_name = tab_parts[1].strip() if len(tab_parts) > 1 else ""
-    else:
-        label_name = " ".join(parts[1:])
-
-    return label_id, label_name
-
+import tempfile
+from scipy.io import loadmat, savemat
 
 def scaleBy10(input_path, inv):
     data = nib.load(input_path)
@@ -128,49 +105,33 @@ def infer_slice_axis(nifti_path):
     return axis_name
 
 def fsl_SeparateSliceMoCo(input_file, par_folder):
+    input_file = os.path.abspath(input_file)
+    par_folder = os.path.abspath(par_folder)
     # Temporarily scale the affine before FSL slice-wise motion correction.
-    input_stem = os.path.basename(input_file).split('.')[0]
+    input_stem = strip_nifti_suffix(input_file)
     scaled_input_file = scaleBy10(input_file, inv=False)
+    try:
+        with tempfile.TemporaryDirectory(prefix="dsi-moco-", dir=os.path.dirname(input_file)) as temp_dir:
+            slice_axis = infer_slice_axis(scaled_input_file)
+            split_interface = fsl.Split(in_file=scaled_input_file, dimension=slice_axis, out_base_name=input_stem)
+            split_interface.run(cwd=temp_dir)
 
-    original_cwd = os.getcwd()
-    temp_dir = os.path.join(os.path.dirname(input_file), "temp")
-    if not os.path.exists(temp_dir):
-        os.mkdir(temp_dir)
+            corrected_slice_files = []
+            for slc in findSlicesData(temp_dir, input_stem):
+                output_file = os.path.join(par_folder, os.path.basename(slc))
+                mcflirt = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
+                mcflirt.run(cwd=temp_dir)
+                corrected_slice_files.append(output_file)
 
-    os.chdir(temp_dir)
-
-    slice_axis = infer_slice_axis(scaled_input_file)
-    split_interface = fsl.Split(in_file=scaled_input_file, dimension=slice_axis, out_base_name=input_stem)
-    split_interface.run()
-    os.remove(scaled_input_file)
-
-    # Split the volume along the inferred slice axis and correct every slice.
-    slice_files = findSlicesData(os.getcwd(), input_stem)
-
-    for slc in slice_files:
-        output_file = os.path.join(par_folder, os.path.basename(slc))
-        mcflirt = fsl.preprocess.MCFLIRT(in_file=slc, out_file=output_file, save_plots=True, terminal_output='none')
-        mcflirt.run()
-        os.remove(slc)
-
-    # Merge corrected slices back to a single volume.
-    corrected_slice_files = findSlicesData(par_folder, input_stem)
-    output_file = os.path.join(os.path.dirname(input_file),
-                               os.path.basename(input_file).split('.')[0]) + '_mcf.nii.gz'
-    merge_interface = fsl.Merge(in_files=corrected_slice_files, dimension=slice_axis, merged_file=output_file)
-    merge_interface.run()
-
-    for slc in corrected_slice_files:
-        os.remove(slc)
-
-    # Restore the original affine scale.
-    output_file = scaleBy10(output_file, inv=True)
-    
-    os.chdir(original_cwd)
-    if os.path.isdir(temp_dir):
-        shutil.rmtree(temp_dir)
-
-    return output_file
+            output_file = os.path.join(os.path.dirname(input_file), input_stem + '_mcf.nii.gz')
+            merge_interface = fsl.Merge(in_files=corrected_slice_files, dimension=slice_axis, merged_file=output_file)
+            merge_interface.run(cwd=temp_dir)
+            for slc in corrected_slice_files:
+                os.remove(slc)
+            return scaleBy10(output_file, inv=True)
+    finally:
+        if os.path.exists(scaled_input_file):
+            os.remove(scaled_input_file)
 
 
 def fsl_eddy_correct(input_file, outputPath):
@@ -305,15 +266,21 @@ def create_stroke_mask_label_file(stroke_mask_anno_path):
     #Look for matching line in *AnnoSplit_parental.txt
     matched_lines = []
     with open(lut_path, "r") as lut_file:
-        for line_number, line in enumerate(lut_file, start=1):
-            parsed_label = parse_label_line(line, line_number, lut_path)
-            if parsed_label is None:
+        for line in lut_file:
+            stripped = line.strip()
+            if not stripped:
                 continue
 
-            label_id, label_name = parsed_label
+            label_parts = stripped.split(None, 1)
+            label_token = label_parts[0] #Grey value
+            try:
+                label_id = int(float(label_token))
+            except ValueError:
+                continue
 
             if label_id in unique_labels: #filter
-                matched_lines.append(f"{label_id} Stroke_{label_name}".rstrip("_"))
+                label_name = label_parts[1] if len(label_parts) > 1 else ""
+                matched_lines.append(f"{label_token} Stroke_{label_name}".rstrip("_"))
 
     if not matched_lines:
         print(
@@ -408,13 +375,52 @@ def find_matching_gradient_pair(folder_path, preferred_stem=None):
         "Please keep only one pair in the folder."
     )
 
+def resolve_command_path(command):
+    """Keep PATH commands, but anchor relative executable paths before running."""
+    command = os.fspath(command)
+    return os.path.abspath(command) if os.path.dirname(command) else command
+
+
+def resolve_input_path(path, fallback_dir):
+    """Prefer an existing caller-relative path; otherwise use the dataset folder."""
+    path = os.fspath(path)
+    if os.path.isabs(path) or os.path.isfile(path):
+        return os.path.abspath(path)
+    return os.path.abspath(os.path.join(fallback_dir, path))
+
+
+def snapshot_dsi_outputs(directories, input_stem, suffixes):
+    """Record only outputs with the current series name, including legacy names."""
+    outputs = {}
+    for directory in directories:
+        for path in glob.glob(os.path.join(directory, glob.escape(input_stem) + '.*')):
+            if os.path.isfile(path) and path.endswith(suffixes):
+                stat = os.stat(path)
+                outputs[path] = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
+    return outputs
+
+
+def select_dsi_output(expected_path, before, directories, input_stem, suffixes):
+    """Prefer the newly written explicit output or one newly written fallback."""
+    after = snapshot_dsi_outputs(directories, input_stem, suffixes)
+    if expected_path in after and before.get(expected_path) != after[expected_path]:
+        return expected_path
+    candidates = [path for path, stat in after.items() if before.get(path) != stat]
+    if not candidates:
+        raise FileNotFoundError(f"No DSI Studio output generated for '{input_stem}': {expected_path}")
+    if len(candidates) != 1:
+        raise ValueError(f"Ambiguous DSI Studio outputs for '{input_stem}': {candidates}")
+    return candidates[0]
+
+
 def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vivo='in_vivo', make_isotropic=0, legacy=False, gradient_pair=None):
     """
     Create DSI Studio source/reconstruction files and export scalar metrics.
     """
-    source_image_file = dir_in
+    dsi_studio = resolve_command_path(dsi_studio)
+    source_image_file = os.path.abspath(dir_in)
     mask_file = dir_msk
-    output_anchor = dir_out
+    output_anchor = os.path.abspath(dir_out)
 
     src_dir_name = r'src'
     fib_dir_name = r'fib_map'
@@ -434,9 +440,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     input_dir = os.path.dirname(os.path.abspath(source_image_file))
 
     #Resolve mask_file relative to the DWI input directory and normalize the result.
-    if not os.path.isabs(mask_file):
-        mask_file = os.path.join(input_dir, mask_file)
-    mask_file = os.path.normpath(mask_file)
+    mask_file = resolve_input_path(mask_file, input_dir)
 
     if not os.path.isfile(mask_file):
         sys.exit("Mask file \"%s\" does not exist." % (mask_file,))
@@ -446,11 +450,15 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
 
     # Validate the b-table or bval/bvec information that will be passed to DSI Studio.
     if gradient_pair is None:
-        if not os.path.isabs(b_table):
-            b_table = os.path.join(input_dir, b_table)
+        b_table = resolve_input_path(b_table, input_dir)
         if not os.path.isfile(b_table):
             sys.exit("File \"%s\" does not exist." % (b_table,))
     else:
+        gradient_pair = {
+            **gradient_pair,
+            'bval': resolve_input_path(gradient_pair['bval'], input_dir),
+            'bvec': resolve_input_path(gradient_pair['bvec'], input_dir),
+        }
         if not os.path.isfile(gradient_pair['bval']):
             sys.exit("File \"%s\" does not exist." % (gradient_pair['bval'],))
         if not os.path.isfile(gradient_pair['bvec']):
@@ -461,15 +469,14 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
     fib_dir = make_dir(output_root, fib_dir_name)
     dsi_metrics_dir = make_dir(output_root, dsi_metrics_dir_name)
 
-    # change to input directory
-    os.chdir(input_dir)
-
     # Prefer explicit gradient files when they are available. This keeps the
     # source image coupled to the original gradients even after motion correction
     # changed the NIfTI filename to *_mcf.nii.gz.
     input_filename = os.path.basename(source_image_file)
     input_stem = strip_nifti_suffix(input_filename)
     expected_src_file = os.path.join(src_dir, input_stem + ext_src)
+    src_suffixes = ('.sz', '.src.gz')
+    src_before = snapshot_dsi_outputs([src_dir], input_stem, src_suffixes)
     if gradient_pair is not None:
         cmd = [
             dsi_studio,
@@ -489,26 +496,8 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         ]
 
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
-
-    patterns = [
-        os.path.join(src_dir, input_stem + '*.src.gz.sz'),
-        os.path.join(src_dir, input_stem + '*.sz'),
-        os.path.join(src_dir, input_stem + '*.src.gz'),
-    ]
-
-    src_candidates = []
-    for pattern in patterns:
-        src_candidates.extend(sorted(glob.glob(pattern)))
-
-    src_candidates = list(dict.fromkeys(src_candidates))
-
-    if not src_candidates:
-        raise FileNotFoundError(
-            f"No DSI Studio source file found for base '{input_stem}' in {src_dir}"
-        )
-
-    src_file = src_candidates[0]
+    subprocess.run(cmd, check=True, cwd=input_dir)
+    src_file = select_dsi_output(expected_src_file, src_before, [src_dir], input_stem, src_suffixes)
 
     # If unrealistic streamlines cross top of cortex are present due to an oversized mask, erode mask
     mask_erosion = 0
@@ -572,6 +561,7 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         sys.exit(f"Unknown reconstruction method: {recon_method}")
 
     fib_file = os.path.join(fib_dir, input_stem + ext_fib)
+    fib_before = snapshot_dsi_outputs([fib_dir, src_dir], input_stem, (ext_fib,))
 
     # Reconstruction command. method: 1=DTI, 4=GQI.
     cmd = [
@@ -591,16 +581,13 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         cmd.append(f"--cmd={additional_cmd}")
 
     print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
-
-    # Older DSI Studio releases may write reconstructed files next to the source.
-    move_files(src_dir, fib_dir, f'/*{ext_fib}')
-
-    fib_candidates = sorted(glob.glob(os.path.join(fib_dir, f"*{ext_fib}")))
-    if not fib_candidates:
-        raise FileNotFoundError(f"No reconstructed FIB/FZ file found in {fib_dir}")
-
-    fib_file = fib_candidates[0]
+    subprocess.run(cmd, check=True, cwd=input_dir)
+    fib_file = select_dsi_output(fib_file, fib_before, [fib_dir, src_dir], input_stem, (ext_fib,))
+    # Move only this reconstruction when a legacy release writes beside the SRC.
+    if os.path.dirname(fib_file) != fib_dir:
+        destination = os.path.join(fib_dir, os.path.basename(fib_file))
+        shutil.move(fib_file, destination)
+        fib_file = destination
 
     if recon_method == "gqi":
         # DSI Studio exports the DTI-derived FA metric from GQI reconstruction as
@@ -619,23 +606,22 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
             f"--export={metric}",
         ]
         print("Running:", " ".join(cmd))
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, cwd=input_dir)
 
+    exported_metrics = []
     for metric in exports:
-        for metric_path in glob.glob(os.path.join(fib_dir, f"*.{metric}.nii.gz")):
+        pattern = glob.escape(fib_file) + f"*.{metric}.nii*"
+        for metric_path in sorted(glob.glob(pattern)):
+            if not metric_path.endswith(('.nii', '.nii.gz')):
+                continue
             print(f"Reorienting {metric_path} to LIP")
             reorient_nifti_to_lip(metric_path)
+            destination = os.path.join(dsi_metrics_dir, os.path.basename(metric_path))
+            shutil.move(metric_path, destination)
+            exported_metrics.append(destination)
 
-    move_files(fib_dir, dsi_metrics_dir, '/*fa.nii.gz')
-    move_files(fib_dir, dsi_metrics_dir, '/*md.nii.gz')
-    move_files(fib_dir, dsi_metrics_dir, '/*ad.nii.gz')
-    move_files(fib_dir, dsi_metrics_dir, '/*rd.nii.gz')
-
-    # Generate PNG quick-look images for all NIfTI outputs in DSI_studio.
-    all_nifti_files = glob.glob(os.path.join(dsi_metrics_dir, "*.nii")) + glob.glob(os.path.join(dsi_metrics_dir, "*.nii.gz"))
-    nifti_files = sorted(set(all_nifti_files))
-
-    for nifti_path in nifti_files:
+    # Generate quick-look images only for this reconstruction's metrics.
+    for nifti_path in exported_metrics:
         base_name = os.path.basename(nifti_path)
         if base_name.endswith(".nii.gz"):
             base_name = base_name[:-7]
@@ -647,50 +633,98 @@ def srcgen(dsi_studio, dir_in, dir_msk, dir_out, b_table, recon_method='dti', vi
         png_slice_path = os.path.join(dsi_metrics_dir, f"{base_name}.png")
         cmd = ["slicer", nifti_path, "-L", "-a", png_slice_path]
         print("Running:", " ".join(cmd))
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, cwd=input_dir)
 
     return float(min_vox_size_mm)
 
-def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, thread_count=1, legacy=False):
-    """
-    Performs seed-based fiber-tracking.
-    Default parameters are used unless a custom parameter is specified.
-    """
-    fib_dir = dir_in
+TRACKING_PARAM_SETS = {
+    "default": {
+        "parameter_id": "0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec"
+    },
+    "aidamriv2_set": {
+        "tract_count": 1000000, "step_size": 0.01, "turning_angle": 55,
+        "check_ending": 0, "fa_threshold": 0.02, "smoothing": 0.1,
+        "min_length": 0.3, "max_length": 120.0,
+    },
+    "rat": {
+        "tract_count": 1000000, "step_size": 0.01, "turning_angle": 60,
+        "check_ending": 0, "fa_threshold": 0.02, "smoothing": 0.1,
+        "min_length": 0.3, "max_length": 20.0,
+    },
+    "test": {
+        "tract_count": 1000, "step_size": 0.01, "turning_angle": 45,
+        "check_ending": 0, "fa_threshold": 0.02, "smoothing": 0.1,
+        "min_length": 0.3, "max_length": 15.0,
+    },
+}
+
+
+def normalize_tracking_params(values):
+    """Resolve a preset or name=value overrides of the rat tracking settings."""
+    if isinstance(values, str):
+        values = [values]
+    if isinstance(values, list) and len(values) == 1 and isinstance(values[0], str) and '=' not in values[0]:
+        preset = values[0].lower()
+        if preset not in TRACKING_PARAM_SETS:
+            raise ValueError(f"Unknown tracking preset '{values[0]}'. Choose: {', '.join(TRACKING_PARAM_SETS)}")
+        return TRACKING_PARAM_SETS[preset].copy()
+
+    if isinstance(values, dict):
+        # A resolved GUI preset can be passed from dsi_main.py to tracking().
+        if values == TRACKING_PARAM_SETS['default']:
+            return values.copy()
+        overrides = values.copy()
+    elif isinstance(values, list) and values:
+        overrides = {}
+        for token in values:
+            if not isinstance(token, str) or '=' not in token:
+                raise ValueError('Use one preset name or name=value assignments, e.g. -t tract_count=1000 step_size=0.05.')
+            name, value = token.split('=', 1)
+            name = name.strip()
+            if name in overrides:
+                raise ValueError(f"Tracking parameter '{name}' was specified more than once.")
+            overrides[name] = value.strip()
+    else:
+        raise ValueError('Tracking parameters must be a preset or name=value assignments.')
+
+    params = TRACKING_PARAM_SETS['rat'].copy()
+    for name, raw_value in overrides.items():
+        if name not in params:
+            raise ValueError(f"Unknown tracking parameter '{name}'. Choose: {', '.join(params)}")
+        try:
+            value = float(raw_value)
+        except (TypeError, ValueError):
+            raise ValueError(f"Tracking parameter '{name}' must be numeric, got {raw_value!r}.") from None
+        if isinstance(raw_value, bool) or not np.isfinite(value):
+            raise ValueError(f"Tracking parameter '{name}' must be a finite number.")
+        if name in ('tract_count', 'check_ending'):
+            if not value.is_integer():
+                raise ValueError(f"Tracking parameter '{name}' must be an integer.")
+            value = int(value)
+        if name in ('tract_count', 'step_size', 'max_length') and value <= 0:
+            raise ValueError(f"Tracking parameter '{name}' must be > 0.")
+        if name in ('fa_threshold', 'min_length') and value < 0:
+            raise ValueError(f"Tracking parameter '{name}' must be >= 0.")
+        if name == 'check_ending' and value not in (0, 1):
+            raise ValueError("Tracking parameter 'check_ending' must be 0 or 1.")
+        if name == 'smoothing' and not 0 <= value <= 1:
+            raise ValueError("Tracking parameter 'smoothing' must be between 0 and 1.")
+        if name == 'turning_angle' and not 0 < value <= 180:
+            raise ValueError("Tracking parameter 'turning_angle' must be > 0 and <= 180.")
+        params[name] = value
+    if params['min_length'] > params['max_length']:
+        raise ValueError("Tracking parameter 'min_length' must not exceed 'max_length'.")
+    return params
+
+
+def tracking(dsi_studio, dir_in, track_param='default', thread_count=1, legacy=False):
+    """Perform tracking with a preset or named overrides of the rat settings."""
+    dsi_studio = resolve_command_path(dsi_studio)
+    fib_dir = os.path.abspath(dir_in)
     if not os.path.isdir(fib_dir):
         sys.exit(f"Input directory does not exist: {fib_dir}")
-
-    if legacy:
-        ext_fib = '.fib.gz'
-    else:
-        ext_fib = '.fz'
-
-    # Parameter sets:
-    # tract_count, step_size, turning_angle, check_ending, fa_threshold,
-    # smoothing, min_length, max_length
-    param_sets = {
-        'default':        ['0AD7A33C9A99193FE8D5123F0AD7233CCDCCCC3D9A99993EbF04240420FdcaCDCC4C3Ec'],
-        'aida_optimized': [1000000, '.01', '55', 0, '.02', '.1', '.3', '120.0'],
-        'rat':            [1000000, '.01', '60', 0, '.02', '.1', '.3', '20.0'],
-        'mouse':          [1000000, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
-        'test':           [10000, '.01', '45', 0, '.02', '.1', '.3', '15.0'],
-    }
-
-    if isinstance(track_param, str):
-        track_param_key = track_param.lower()
-        params = param_sets.get(track_param_key)
-        if params is None:
-            sys.exit(f'Unknown track_param set: {track_param}')
-        params = list(params)
-    elif isinstance(track_param, list):
-        track_param_key = "custom"
-        params = list(track_param)
-    else:
-        sys.exit(
-            'track_param must be "default", "aida_optimized", "rat", "mouse", '
-            "or a list of values for tract_count, step_size, "
-            "turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length."
-        )
+    ext_fib = '.fib.gz' if legacy else '.fz'
+    params = normalize_tracking_params(track_param)
 
     fib_candidates = sorted(glob.glob(os.path.join(fib_dir, f"*{ext_fib}")))
     if not fib_candidates:
@@ -705,7 +739,7 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     track_file = fib_file + ".trk.gz"
 
     # Set tracking based on track_param:
-    if track_param_key == "default":
+    if "parameter_id" in params:
         print('Using DSI Studio default tracking parameters')
         # DSI Studio can replay GUI tracking settings through a parameter_id.
         cmd = [
@@ -713,33 +747,25 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
             "--action=trk",
             f"--source={fib_file}",
             f"--output={track_file}",
-            f"--parameter_id={params[0]}",
+            f"--parameter_id={params['parameter_id']}",
         ]
 
     else:
         # Custom/predefined sets pass each tracking parameter explicitly.
-        if track_param_key != "aida_optimized":
-            params[1] = min_voxel_size_mm / 2
-            params[6] = min_voxel_size_mm * 2
-
         # Export a color TDI next to the tract file for visual QC.
         cmd = [
             dsi_studio,
             "--action=trk",
             f"--source={fib_file}",
             f"--output={track_file}",
-            f"--tract_count={int(params[0])}",
-            f"--step_size={params[1]}",
-            f"--turning_angle={params[2]}",
-            f"--check_ending={int(params[3])}",
-            f"--fa_threshold={params[4]}",
-            f"--smoothing={params[5]}",
-            f"--min_length={params[6]}",
-            f"--max_length={params[7]}",
-            f"--thread_count={thread_count}",
-            "--export=tdi:color",
         ]
 
+        for name, value in params.items():
+            cmd.append(f"--{name}={value}")
+
+        cmd.append(f"--export=tdi:color")
+
+    cmd.append(f"--thread_count={thread_count}")
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
@@ -749,13 +775,81 @@ def tracking(dsi_studio, dir_in, track_param='default', min_voxel_size_mm=0.1, t
     if os.path.exists(tdi_color_file):
         os.replace(tdi_color_file, tdi_color_renamed)
 
+def sanitize_matlab_variables(exported):
+    """Make identifiers valid and unique without losing colliding variables."""
+    # Reserve existing valid identifiers so a sanitized metric cannot overwrite
+    # another variable (e.g. "fa t2r" and "fa_t2r").
+    identifier = re.compile(r'[A-Za-z][A-Za-z0-9_]{0,62}\Z')
+    used = {key for key in exported if identifier.fullmatch(key)}
+    converted = {}
+    mapping = []
+    for original, data in exported.items():
+        if identifier.fullmatch(original):
+            name = original
+        else:
+            base = re.sub(r'[^A-Za-z0-9_]+', '_', original).strip('_') or 'variable'
+            if not base[0].isalpha():
+                base = 'v_' + base
+            name = base[:63]
+            suffix = 2
+            while name in used:
+                ending = f'_{suffix}'
+                name = base[:63 - len(ending)] + ending
+                suffix += 1
+        used.add(name)
+        converted[name] = data
+        mapping.append((original, name))
+    return converted, mapping
+
+
+def decode_dsi_text(value):
+    """Decode the byte arrays or strings used for DSI region names."""
+    value = np.asarray(value)
+    if value.dtype.kind in 'ui':
+        return value.astype(np.uint8).ravel().tobytes().decode('utf-8')
+    if value.dtype.kind == 'U':
+        return ''.join(value.ravel())
+    if value.dtype.kind == 'S':
+        return b''.join(value.ravel()).decode('utf-8')
+    raise ValueError(f'Unsupported DSI region-name type: {value.dtype}')
+
+
+def make_connectivity_matlab_compatible(mat_path):
+    """Preserve DSI arrays, add decoded names, and save MATLAB-compatible MAT-v5."""
+    exported = {
+        key: value for key, value in loadmat(mat_path).items()
+        if not key.startswith('__')
+    }
+    converted, mapping = sanitize_matlab_variables(exported)
+
+    if 'region_names' not in converted and 'name' in exported:
+        text = decode_dsi_text(exported['name'])
+        names = text.rstrip('\x00\r\n').splitlines()
+        converted['region_names'] = np.asarray(names, dtype=object).reshape(-1, 1)
+    if 'matlab_variable_name_map' not in converted:
+        converted['matlab_variable_name_map'] = np.asarray(mapping, dtype=object).reshape(-1, 2)
+
+    # Replace only after a successful save; keep the original export on failure.
+    mat_path = os.path.abspath(mat_path)
+    with tempfile.NamedTemporaryFile(dir=os.path.dirname(mat_path), suffix='.mat', delete=False) as stream:
+        temporary_path = stream.name
+    try:
+        savemat(temporary_path, converted, format='5', do_compression=True, appendmat=False)
+        os.chmod(temporary_path, os.stat(mat_path).st_mode & 0o777)
+        os.replace(temporary_path, mat_path)
+    finally:
+        if os.path.exists(temporary_path):
+            os.remove(temporary_path)
+
+
 def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic=0, legacy=False):
     """
     Calculates connectivity data for pass-through and endpoint definitions.
     """
-    fib_dir = dir_in
+    dsi_studio = resolve_command_path(dsi_studio)
+    fib_dir = os.path.abspath(dir_in)
     seed_file = dir_seeds
-    output_root = dir_out
+    output_root = os.path.abspath(dir_out)
     connectivity_dir_name = dir_con
 
     if not os.path.isdir(fib_dir):
@@ -763,10 +857,7 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
 
     # seed_file is a seed/ROI/atlas file, not a directory. Relative paths are
     # kept for backwards compatibility and resolved against DSI_studio.
-    if not os.path.isabs(seed_file):
-        seed_file = os.path.join(os.path.dirname(fib_dir), "DSI_studio", seed_file)
-
-    seed_file = os.path.normpath(seed_file)
+    seed_file = resolve_input_path(seed_file, os.path.join(os.path.dirname(fib_dir), 'DSI_studio'))
 
     if not os.path.isfile(seed_file):
         sys.exit(f"Seed/ROI file does not exist: {seed_file}")
@@ -802,6 +893,10 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
 
     tract_file = trk_candidates[0]
 
+    # Create the stroke LUT while its original name and parental LUT are available.
+    create_stroke_mask_label_file(seed_file)
+    label_file = os.path.join(os.path.dirname(seed_file), strip_nifti_suffix(seed_file) + '.txt')
+
     # If srcgen resampled diffusion data, use a nearest-neighbor resampled copy
     # of the seed/ROI image for connectivity.
     iso_value = None
@@ -825,6 +920,11 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
             "-out", resampled_seeds_path,
         ]
         subprocess.run(cmd_resample, check=True)
+        if os.path.isfile(label_file):
+            resampled_label_file = os.path.join(
+                connectivity_dir, strip_nifti_suffix(resampled_seeds_path) + '.txt'
+            )
+            shutil.copyfile(label_file, resampled_label_file)
 
         print(f'Resampling seeds image to {iso_value} mm isotropic voxel size')
 
@@ -846,8 +946,6 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
         )
 
         seed_file = resampled_seeds_path
-
-    create_stroke_mask_label_file(seed_file)
 
     # Performs analysis on every connectivity value and type. DSI Studio reuses
     # the same default connectivity filename, so each result must be renamed
@@ -886,7 +984,6 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
                 )
 
             for output_path in connectivity_outputs:
-                output_dir = os.path.dirname(output_path)
                 output_name = os.path.basename(output_path)
 
                 if f".{value}.{connectivity_type}.connectivity." in output_name:
@@ -898,10 +995,10 @@ def connectivity(dsi_studio, dir_in, dir_seeds, dir_out, dir_con, make_isotropic
                     1
                 )
 
-                os.replace(output_path, os.path.join(output_dir, renamed_name))
-
-            move_files(tract_dir, connectivity_dir, "/*.txt")
-            move_files(tract_dir, connectivity_dir, "/*.mat")
+                if output_path.endswith('.mat'):
+                    make_connectivity_matlab_compatible(output_path)
+                destination = os.path.join(connectivity_dir, renamed_name)
+                os.replace(output_path, destination)
 
 if __name__ == '__main__':
     pass

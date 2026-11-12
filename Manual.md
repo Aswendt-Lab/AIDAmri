@@ -420,6 +420,9 @@ Please have a look into the help page of `batchProc.py` for more information on 
 python batchProc.py -h
 ```
 
+> [!NOTE]
+> Please also have a look into our [helper_tools](bin/helper_tools) folder, which contains many helpful additional scripts for data preparation, quality control and visual inspection.
+
 <h2 id="processing-single-files-step-by-step">Processing single files step-by-step <a href="#contents"><span style="font-size: 1.35em;">↑</span></a></h2>
 
 Every script has arguments that can be specified when calling the script. For more information on the arguments, every script has a help page which can be accessed by calling the script with the `-h` flag. The following sections provide examples of how to process single files step-by-step.
@@ -642,11 +645,89 @@ python dsi_main.py -i .../dwi/testData_dwi.nii.gz
 
 By default, `dsi_main.py` uses matching `.bval` and `.bvec` files automatically. Optional parameters include the reconstruction method (`-r dti` or `-r gqi`), tracking settings (`-t`), in vivo or ex vivo settings (`-v`), isotropic resampling (`-m`) and the number of threads (`--thread-count`).
 
+Use `-t` or `--track-params` to select fiber tracking settings. Available presets are `default`, `rat`, `aidamriv2_set` and `test`; preset names are case-insensitive. If this option is omitted, `default` uses the stored DSI Studio tracking settings (`parameter_id`). For example:
+
+```bash
+python dsi_main.py -i .../dwi/testData_dwi.nii.gz -t rat
+```
+
+To supply your own values, use `name=value` assignments in any order. Unspecified values are taken from the `rat` preset:
+
+```bash
+python dsi_main.py -i .../dwi/testData_dwi.nii.gz \
+  --track-params tract_count=1000 step_size=0.05 turning_angle=55
+```
+
+Allowed names are `tract_count`, `step_size`, `turning_angle`, `check_ending`, `fa_threshold`, `smoothing`, `min_length` and `max_length`. Choose either one preset or named values.
+
+For batch processing, use the same values with `--dsi-track-param`:
+
+```bash
+python batchProc.py -i /path/to/proc_folder -t dwi \
+  --dsi-track-param tract_count=1000 step_size=0.05 turning_angle=55
+```
+
 The output is stored in the DTI folder. Diffusion metric maps such as FA, AD, RD and MD are stored in `.../dwi/DSI_studio`.
 
 Connectivity matrices are stored as `.txt` and `.mat` files in `.../dwi/connectivity`.
 
 DSI Studio creates matrices for different connectivity definitions, for example fibers passing through a region and fibers ending in a region.
+
+To extract a saved connectivity metric across a cohort, run the following from the repository root:
+
+```bash
+python bin/3.2_DTIConnectivity/extract_connectivity_metrics.py \
+  --input /path/to/proc_folder \
+  --atlas parental \
+  --connectivity pass \
+  --level t2r \
+  --metric number_of_tracts \
+  --group /path/to/group_tDCS_Sham.csv \
+  --output /path/to/parental_pass_track_counts.csv
+```
+
+This script reads existing `sub-*/ses-*/dwi/connectivity/*.connectivity.mat` files. It does not run tractography or change the source MAT files. Both original DSI MAT files and MATLAB-compatible files with sanitized variable names are supported.
+
+| Argument | Meaning |
+|---|---|
+| `--input` | BIDS-like processed cohort folder containing subject/session folders |
+| `--atlas` | `parental` (`AnnoSplit_parental`) or `detailed` (`AnnoSplit`) |
+| `--connectivity` | `pass` (regions touched along a track) or `end` (endpoint regions) |
+| `--level` | `t2r` (one column per region) or `r2r` (one column per unordered region pair) |
+| `--metric` | Metric name without the level suffix; default: `number_of_tracts`. Examples: `fa`, `md`, `mean_length_mm` |
+| `--group` | Optional CSV whose column headers are group names and whose cells contain subject folder names; omit to exclude the `group` column |
+| `--output` | Destination `.csv` file |
+| `--region1`, `--region2` | Optional pair selection using exact full region names from the atlas txt files, available together only with `--level r2r` |
+
+The group CSV has the following layout; blank cells are allowed when groups have different numbers of subjects. Comma, semicolon and tab delimiters are detected automatically.
+
+```csv
+tDCS,Sham
+sub-NR1042,sub-NR1037
+sub-NR1044,sub-NR1051
+```
+
+Each output row represents one subject/session and begins with `subject,session`. When `--group` is supplied, a `group` column is inserted after `session`; group membership is matched by the exact subject folder name and applies to all sessions, and every exported subject must have a group assignment. Without `--group`, the `group` column is omitted entirely. Region columns are aligned by their stored names, using the union of names across the selected cohort. Missing regions produce empty cells; a measured zero remains `0`.
+
+For all region pairs, use `--level r2r`. Each distinct pair appears once as `<region1>_x_<region2>`; reversed pairs and diagonal entries are excluded. Region names and pair order are sorted consistently. Matrices must be symmetric. For N regions, there are N(N-1)/2 metric columns. A complete detailed CSV is intended for automated analysis; it exceeds Excel's worksheet column limit.
+
+To extract only the left/right primary motor cortex pair:
+
+```bash
+python bin/3.2_DTIConnectivity/extract_connectivity_metrics.py \
+  --input /path/to/proc_folder \
+  --atlas parental --connectivity pass --level r2r \
+  --metric number_of_tracts \
+  --region1 L_Primary_motor_area --region2 R_Primary_motor_area \
+  --group /path/to/group_tDCS_Sham.csv \
+  --output /path/to/primary_motor_pair.csv
+```
+
+This produces four columns: `subject,session,group,L_Primary_motor_area_x_R_Primary_motor_area`. For the left motor cortex/corticospinal tract pair, replace `--region2 R_Primary_motor_area` with `--region2 L_corticospinal_tract`.
+
+Region selection requires the full region names exactly as stored in the MAT files, including capitalization, underscores and punctuation. Names are read from `region_names` or the original DSI `name` field. Abbreviations such as `L_MOp` or `L_cst` are not resolved; no external atlas tables are consulted. For a detailed cortical layer, use for example `--region1 'L_Primary_motor_area,_Layer_5' --region2 'R_Primary_motor_area,_Layer_5'`. Quote names containing spaces or shell-sensitive characters. Each name selects one stored region; cortical layers or child regions are not combined. Unknown regions, identical region pairs, duplicate group assignments, missing group assignments when a group CSV is supplied, unavailable metrics, and missing or duplicate matching MAT files are reported as errors. Only sessions with a `dwi` folder are considered; subjects/sessions without DWI are not added to the CSV.
+
+A export produces one cohort CSV for the selected metric, atlas, connectivity definition and level; no CSVs are automatically written beside the MAT files.
 
 The connectivity matrices can be visualized with:
 
@@ -660,7 +741,7 @@ Region-wise diffusion values can be extracted from a DSI Studio metric map and a
 python DTIdata_extract.py .../dwi/DSI_studio/<metric>.nii.gz .../dwi/<roi_file>.nii.gz
 ```
 
-Use this command from the `3.2.1_DTIdata_extract` folder. It saves region-wise FA, AD, RD or MD values together with the corresponding atlas region names. To process multiple subjects iteratively, use the provided `iterativeRun.py` helper.
+Use this command from the `3.2.1_DTIdata_extract` folder. It saves region-wise FA, AD, RD or MD values together with the corresponding atlas region names. To process multiple subjects iteratively, use the provided `batch_DTIdata_extract.py`.
 
 <h3 id="preprocessing-of-fmri-data">Preprocessing of fMRI data <a href="#contents"><span style="font-size: 1.35em;">↑</span></a></h3>
 
