@@ -12,6 +12,7 @@ For the script to work, it needs to be placed within the /bin folder of AIDAmri.
 
 Example:
 python batchProc.py -i /Volumes/Desktop/MRI/proc_data -t anat dwi func t2map
+latest Update: Julian Cramer
 """
 
 import argparse

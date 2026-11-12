@@ -18,6 +18,7 @@ initials (e.g. VVF for Victor Vera Frazao) and the date at application, denoted 
 the end of the comment line. If code segments need clearance the comment line will be prefaced 
 by '#?'. Changes are prefaced by '#>' and other comments are prefaced ordinalrily 
 by '#'.
+latest Update: Julian Cramer
 """
 
 import sys,os
