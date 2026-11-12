@@ -146,5 +146,4 @@ RUN test -x /aida/dsi_studio_ubuntu2204/dsi-studio-cpu/dsi_studio
 
 RUN pip install -c constraints.txt dipy scikit-learn
 RUN pip install -c constraints.txt fslpy
-RUN wget -O /aida/bin/common/bet4animal "https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false" && \
-    chmod +x /aida/bin/common/bet4animal
+RUN chmod +x /aida/bin/common/bet4animal

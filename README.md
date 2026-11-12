@@ -11,6 +11,7 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 <br/>
 <br/>
 Please read this README completely before using AIDAmri. Here you will find the detailed user <a href="./Manual.md"><strong>manual</strong></a>.
+Please also have a look into our <a href="./bin/helper_tools">helper_tools</a> folder, which contains many helpful additional scripts for data preparation, quality control and visual inspection.
 <br clear="left"/>
 
 ## Key Features of AIDA<em>mri</em>

@@ -4,6 +4,7 @@ The tracker takes a recursive snapshot of one modality directory when a stage
 starts and updates a dataset-local JSON manifest when the Python process exits.
 Only newly created paths are considered owned outputs. Existing files that were
 modified are recorded for provenance, but are deliberately not safe to delete.
+Stages run in order: preprocessing, registration, processing, extraction.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ LOCK_FILENAME = ".aidamri_manifest.lock"
 MANIFEST_VERSION = 1
 MANIFEST_FILE_MODE = 0o644
 MODES = ("anat", "dwi", "func", "t2map")
-STAGES = ("preprocessing", "registration", "processing")
+STAGES = ("preprocessing", "registration", "processing", "extraction")
 MANIFEST_TIMEZONE = ZoneInfo("Europe/Berlin")
 
 
@@ -79,6 +80,8 @@ def _canonical_stage(stage: str) -> str:
         "registration": "registration",
         "process": "processing",
         "processing": "processing",
+        "extract": "extraction",
+        "extraction": "extraction",
     }
     try:
         return aliases[stage.strip().lower()]

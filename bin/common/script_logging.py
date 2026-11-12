@@ -1,16 +1,29 @@
 """Mirror script output to a log file during standalone execution."""
 
 import atexit
+from calendar import month_name
+from datetime import datetime
 import os
 import shlex
 import sys
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 DISABLE_LOG_ENV = "AIDAMRI_DISABLE_SCRIPT_LOG"
 GIT_INFO_FILENAME = "AIDAmri_git_information.txt"
 BUILD_GIT_INFO_PATH = Path("/aida/build") / GIT_INFO_FILENAME
 _LOG_FILES = []
+
+
+def format_script_log_header(script_name):
+    """Return a step header with batchProc.py's Europe/Berlin timestamp format."""
+    timestamp = datetime.now(ZoneInfo("Europe/Berlin"))
+    return (
+        f"=== {script_name} {timestamp.day:02d} "
+        f"{month_name[timestamp.month]} {timestamp.year} "
+        f"{timestamp:%H:%M:%S} {timestamp.tzname()} ==="
+    )
 
 
 def _git_information_paths(output_dir):

@@ -13,6 +13,7 @@ created next to the raw data folder. If you wish to save the output elsewhere yo
 
 Example:
 python conv2Nifti_auto.py -i /Volumes/Desktop/MRI/raw_data
+latest Update: Julian Cramer
 """
 
 import os
