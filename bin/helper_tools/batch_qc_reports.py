@@ -554,6 +554,92 @@ def _write_report(entries, out_dir, title, report_name, custom_parameters=None, 
     return html_path
 
 
+def _plot_conversion_image(nifti_path, out_dir, project_dir, n_slices):
+    img = nib.load(str(nifti_path))
+    data = img.get_fdata()
+    if data.ndim == 4:
+        data = data[..., 0]
+    if data.ndim != 3:
+        raise ValueError(f"Expected 3D or 4D NIfTI data, got shape {img.shape}")
+    zooms = img.header.get_zooms()[:3]
+    axis_codes = nib.orientations.aff2axcodes(img.affine)
+    opposites = {"L": "R", "R": "L", "A": "P", "P": "A", "S": "I", "I": "S"}
+    orientations = ("Axial", "Sagittal", "Coronal")
+    view_axes = ((0, 1), (1, 2), (0, 2))
+    vmin, vmax = _display_limits(data)
+    fig, axes = plt.subplots(3, n_slices, figsize=(3 * n_slices, 9), squeeze=False)
+    try:
+        for row, (orientation, indices, (ax1, ax2)) in enumerate(
+            zip(orientations, _slice_indices(data, n_slices), view_axes)
+        ):
+            for col, index in enumerate(indices):
+                ax = axes[row, col]
+                # With rot90 and a lower origin, positive axes point right/down.
+                img_slice = np.rot90(_slice(data, orientation, index))
+                extent, _, _ = _display_geometry(img_slice, orientation, zooms)
+                ax.imshow(img_slice, cmap="gray", vmin=vmin, vmax=vmax,
+                          extent=extent, origin="lower", aspect="equal")
+                ax.set_title(f"{orientation} slice {index}", fontsize=9)
+                ax.axis("off")
+                for label, xy, ha, va in (
+                    (opposites.get(axis_codes[ax1], "?"), (0, 0.5), "left", "center"),
+                    (axis_codes[ax1], (1, 0.5), "right", "center"),
+                    (opposites.get(axis_codes[ax2], "?"), (0.5, 1), "center", "top"),
+                    (axis_codes[ax2], (0.5, 0), "center", "bottom"),
+                ):
+                    ax.annotate(label, xy=xy, xycoords="axes fraction",
+                                ha=ha, va=va, fontsize=12, color="lime")
+        fig.suptitle(f"Slices: {Path(nifti_path).name}", fontsize=14)
+        fig.tight_layout(rect=[0, 0, 1, 0.96])
+        png_path = Path(out_dir) / _safe_png_name(nifti_path, project_dir, "conversion_report")
+        fig.savefig(png_path, dpi=120)
+    finally:
+        plt.close(fig)
+    return png_path, img.shape, img.header.get_zooms()[:3]
+
+
+def build_conversion_qc_report(project_dir, n_slices=7):
+    """Render converted inputs without overlays using the shared HTML viewer."""
+    if n_slices < 1:
+        raise ValueError("n_slices must be positive")
+    project_dir = Path(project_dir)
+    out_dir = project_dir / "Report" / "Convert2Nifti"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    files = set()
+    for modality in ("anat", "dwi", "func"):
+        patterns = [f"sub-*/ses-*/{modality}/sub-*"]
+        if modality == "dwi":
+            patterns.append("sub-*/ses-*/dwi/*/sub-*")
+        for pattern in patterns:
+            for extension in (".nii", ".nii.gz"):
+                files.update(path for path in project_dir.glob(pattern + extension) if path.is_file())
+    entries = []
+    for nifti_path in sorted(files):
+        try:
+            png_path, shape, zooms = _plot_conversion_image(
+                nifti_path, out_dir, project_dir, n_slices
+            )
+            rel, subject, session, modality = _entry_metadata(nifti_path, project_dir)
+            entries.append({
+                "subject": subject, "session": session, "modality": modality,
+                "report_img_path": png_path.name, "image_alt": nifti_path.name,
+                "info": [
+                    ("File Name", nifti_path.name), ("File", rel), ("Modality", modality),
+                    ("Dimensions", shape),
+                    ("Voxel size", tuple(round(float(z), 4) for z in zooms)),
+                    ("# Volumes", shape[3] if modality in ("dwi", "func") and len(shape) > 3 else 1),
+                ],
+            })
+        except Exception as exc:
+            logging.warning("Could not create conversion Report for %s: %s", nifti_path, exc)
+    if not entries:
+        return None, 0
+    html_path = _write_report(
+        entries, out_dir, "Convert2Nifti_Report", "Convert2Nifti_Report.html"
+    )
+    return html_path, len(entries)
+
+
 def build_bet_qc_report(project_dir, n_slices=10, custom_parameters=None, group=None):
     project_dir = Path(project_dir)
     group_names, memberships = _load_groups(group) if group is not None else (None, {})
