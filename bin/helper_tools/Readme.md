@@ -14,13 +14,12 @@ environment so that relative paths to `lib/` resources resolve as expected.
 | `MRI_files_summarizer.py` | Create a CSV inventory of NIfTI files found below `**/brkraw/*.nii.gz`. |
 | `ReorientBatch.py` | Reorient NIfTI files to a target orientation while mirroring the input folder tree. |
 | `adjustbvecRep.py` | Repeat DWI `.bval` and `.bvec` sidecars to match the number of image volumes. |
-| `batch_qc_reports.py` | Python helper module for project-level BET, registration, and corpus callosum HTML QC reports. |
+| `batch_qc_reports.py` | Python helper module for conversion, BET, registration, and corpus callosum HTML QC reports. |
 | `display_nifti_report.py` | Display arbitrary NIfTI filename suffixes as single images or geometry-checked overlays in an HTML report. |
 | `crop_T2.py` | Crop T2-weighted images in x/y using FSL through Nipype and write quick-look PNGs. |
 | `fieldmap_json_edit.py` | Populate BIDS fieldmap JSON `IntendedFor` entries for DWI and functional files. |
 | `getAtlasRegionSize_BIDS.py` | Compute per-annotation atlas region volumes in BIDS-style folder trees. |
 | `getAtlasRegionSize_noBIDS.py` | Compute aggregate atlas region volumes for non-BIDS T2w folders. |
-| `plot_sourcedata_niftis.py` | Generate per-session NIfTI mosaic PNGs and an HTML QC report. |
 | `remove_carets_spaces.sh` | Remove spaces and caret (`^`) characters from a plain-text file. |
 | `Reset_proc_folder.py` | Safely reset processing stages using runtime-generated output manifests. |
 | `reset_naming.py` | Clean Bruker `subject` files before PV-to-NIfTI conversion. |
@@ -304,34 +303,26 @@ CSV columns:
 - `SubjectID`
 - `RunNumber`
 
-### `plot_sourcedata_niftis.py`
-
-Creates mosaic PNG files and an HTML report for NIfTI files in one
-`sub-*/ses-*` folder.
-
-Usage:
-
-```bash
-python plot_sourcedata_niftis.py /path/to/sub-001/ses-001 /path/to/qc_output
-```
-
-Optional argument:
-
-- `--n_slices`: number of slices per orientation. Default: `10`.
-
-Behavior:
-
-- Scans `dwi`, `anat`, and `func` directories.
-- Also scans subfolders inside `dwi`.
-- Uses the first volume for 4D images.
-- Adds orientation labels from the NIfTI affine.
-- Writes `*_report.png` images and
-  `sub-<subject>_ses-<session>_report.html` into the output directory.
-
 ### `batch_qc_reports.py`
 
-Python helper module for project-level QC reports. 
-Direct command-line use:
+Python helper module for project-level QC reports.
+
+`conv2Nifti_auto.py` automatically creatse the conversion
+report. It scans `anat`, `dwi`, and `func` directories, including one additional
+subfolder level inside `dwi`, and shows the first volume of 4D images without
+overlays. Each image contains seven slices per view with orientation labels
+derived from the NIfTI affine. The HTML report provides Subject, Session, and
+Modality filters, full-width images, and a viewer with zoom and pan.
+
+Conversion output, relative to the conversion output directory:
+
+```text
+Report/Convert2Nifti/Convert2Nifti_Report.html
+Report/Convert2Nifti/*_conversion_report.png
+```
+
+The conversion report is available through the Python function; it is not a
+`--report` CLI option. Direct command-line use for the other QC reports:
 
 ```bash
 python bin/helper_tools/batch_qc_reports.py -i /path/to/proc_data

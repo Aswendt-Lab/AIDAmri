@@ -40,7 +40,7 @@ import openpyxl
 import contextlib
 import io
 
-from helper_tools.plot_sourcedata_niftis import process_subject, write_html_report
+from helper_tools.batch_qc_reports import build_conversion_qc_report
 
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
 
@@ -553,6 +553,45 @@ def print_conversion_summary(output_dir, postprocess_status):
     print(f"t2map       {t2map_count}       {postprocess_status.get('t2map', 'not checked')}")
 
 
+def warn_if_niftis_not_lip(output_dir):
+    """Check output headers, excluding fieldmap and magnitude images by name."""
+    output_dir = Path(output_dir)
+    mismatches = []
+    unreadable = []
+    for path in sorted(output_dir.rglob("*")):
+        if not path.is_file() or not path.name.endswith((".nii", ".nii.gz")):
+            continue
+        if any(name in path.name.lower() for name in ("fieldmap", "magnitude")):
+            continue
+        relative_path = path.relative_to(output_dir)
+        try:
+            image = nii.load(str(path))
+            orientation = "".join(code or "?" for code in nii.aff2axcodes(image.affine))
+        except Exception as exc:
+            unreadable.append(relative_path)
+            logging.warning("Could not check NIfTI orientation for %s: %s", path, exc)
+            continue
+        if orientation != "LIP":
+            mismatches.append((relative_path, orientation))
+            logging.warning("NIfTI is not in LIP orientation: %s (%s)", path, orientation)
+
+    if mismatches:
+        message = (
+            f"WARNING: {len(mismatches)} NIfTI file(s) are not in LIP orientation. "
+            "Use bin/helper_tools/ReorientBatch.py from the Helpertools folder "
+            "to reorient the NIfTI files to LIP."
+        )
+        print(f"\n{message}")
+        logging.warning(message)
+        for relative_path, orientation in mismatches:
+            print(f" - {relative_path}: {orientation} (expected LIP)")
+    if unreadable:
+        message = f"WARNING: Orientation could not be checked for {len(unreadable)} NIfTI file(s)."
+        print(f"\n{message}")
+        for relative_path in unreadable:
+            print(f" - {relative_path}")
+
+
 def run_with_logged_output(func, *args, log_prefix=None, **kwargs):
     stdout_buffer = io.StringIO()
     stderr_buffer = io.StringIO()
@@ -721,15 +760,9 @@ if __name__ == "__main__":
 
     # plot QC images for nifti files
     print("Plotting Report images for nifti files \33[5m...\33[0m (wait!)")
-    report_output_dir = os.path.join(output_dir, "Report", "Convert2Nifti")
-    os.makedirs(report_output_dir, exist_ok=True)
-    report_entries = []
-    for subject_dir in glob.glob(os.path.join(output_dir, "sub-*")):
-        subject_id = os.path.basename(subject_dir)
-        print(f"Processing subject: {subject_id}")
-        report_entries.extend(process_subject(subject_dir, report_output_dir, n_slices=10))
-    if report_entries:
-        write_html_report(report_entries, report_output_dir)
+    report_path, report_count = build_conversion_qc_report(output_dir, n_slices=7)
+    if report_path:
+        print(f"Conversion report written to {report_path} ({report_count} image(s))")
     else:
         print("No NIfTI files found for reporting.")
         logging.warning("No NIfTI files found for reporting.")
@@ -888,4 +921,6 @@ if __name__ == "__main__":
     print("\n")
     print("###")
     print("Thank you for using AIDAmri!")
+
+    warn_if_niftis_not_lip(output_dir)
   
