@@ -41,7 +41,7 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 
 ## Version history
 
-[Information latest Version 3.0](Release_note.md)
+[Information about Version 3.0](https://github.com/Aswendt-Lab/AIDAmri/releases/tag/v3.0)
 
 [Information about Version 2.0](https://github.com/maswendt/AIDAmri/releases/tag/v2.0)
 <br/>
