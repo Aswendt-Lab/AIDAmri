@@ -1,3 +1,4 @@
+import atexit
 import nibabel as nii
 import numpy as np
 import argparse
@@ -8,6 +9,7 @@ import sys  # Added import statement for sys module
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import append_git_information
 
 def getOutfile(atlas_type, img_file, suffix):
     imgName = os.path.basename(img_file)
@@ -72,6 +74,10 @@ if __name__ == '__main__':
     requiredNamed = parser.add_argument_group('Required named arguments')
     requiredNamed.add_argument('-i', '--input', help='Input T2w file, should be a nifti file')
     args = parser.parse_args()
+    atexit.register(
+        append_git_information,
+        output_dir=os.path.dirname(os.path.abspath(args.input)) if args.input else None,
+    )
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     acronyms_files = sorted(glob.glob(os.path.join(script_dir, "*.txt")))

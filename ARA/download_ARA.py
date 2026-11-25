@@ -9,6 +9,7 @@ University Hospital Cologne
 
 More information can be found here:
 http://alleninstitute.github.io/AllenSDK/_modules/allensdk/api/queries/reference_space_api.html
+latest Update: Julian Cramer
 """
 
 import os

@@ -360,7 +360,10 @@ class Spinner(object):
                 self.delay = float(delay)
             except ValueError:
                 pass
-        self.quiet = quiet
+        self.quiet = (
+            quiet or not sys.stdout.isatty()
+            or os.environ.get("AIDAMRI_DISABLE_SPINNER") == "1"
+        )
 
     def spin_it(self):
         while self.busy:

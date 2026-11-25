@@ -12,6 +12,7 @@ For the script to work, it needs to be placed within the /bin folder of AIDAmri.
 
 Example:
 python batchProc.py -i /Volumes/Desktop/MRI/proc_data -t anat dwi func t2map
+latest Update: Julian Cramer
 """
 
 import argparse
@@ -34,6 +35,8 @@ import sys
 import shutil
 
 from common.artifact_manifest import OutputTracker
+from common.script_logging import build_script_log_path
+from common.fmri_metadata import positive_tr
 
 FATAL_LIP_HEADER_EXIT_CODE = 86
 REPORT_TIMEZONE = ZoneInfo("Europe/Berlin")
@@ -157,12 +160,12 @@ def run_subprocess(command, datatype, step, anat_process=False):
         output_tracker = OutputTracker.start(base, datatype, step)
 
     # default location
-    log_file = os.path.join(base, f"{step}.log")
+    log_name = f"{step}.log"
 
     # special case: anat/process wants different filenames
     if datatype == "anat" and step == "process":
         log_name = f"{step}.log" if anat_process else f"{step}_par.log"
-        log_file = os.path.join(base, log_name)
+    log_file = build_script_log_path(base, log_name)
 
     #Determine sub / ses
     normalized_path = os.path.normpath(inp)
@@ -344,7 +347,11 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg):
                 currentFile = sorted(currentPath_wData.glob("*EPI.nii.gz"))
                 if len(currentFile)>0:
                     os.chdir(os.path.join(cwd, '3.3_fMRIActivity'))
-                    command = f'python process_fMRI.py -i {_quote(currentFile[0])} --bet {cfg["func_bet"]}'
+                    command = f'python process_fMRI.py -i {_quote(currentFile[0])}'
+                    if cfg.get("func_tr") is not None:
+                        command += f' --tr {positive_tr(cfg["func_tr"])}'
+                    if cfg.get("func_bet") is not None:
+                        command += f' --bet {cfg["func_bet"]}'
                     if cfg.get("func_stc") is True:
                         command += ' -stc'
                     if cfg.get("func_frac") is not None:
@@ -477,7 +484,11 @@ def executeScripts(currentPath_wData, dataFormat, step, cfg):
             elif step == "process":
                 currentFile = sorted(currentPath_wData.glob("*dwi.nii.gz"))
                 if cfg.get("dwi_denoiser") == "patch2self":
-                    currentFile = sorted(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
+                    currentFile = sorted(currentPath_wData.glob("*P2SDenoised.nii.gz"))
+                    if not currentFile:
+                        currentFile = sorted(currentPath_wData.glob("*Patch2SelfDenoised.nii.gz"))
+                elif cfg.get("dwi_denoiser") == "mrtrix3":
+                    currentFile = sorted(currentPath_wData.glob("*MR3Denoised.nii.gz"))
                 # Appends optional (fa0, nii_gz) flags to DTI main process if passed
                 if len(currentFile)>0:
                     # Pull values from cfg (with defaults)
@@ -554,6 +565,7 @@ def create_qc_reports(project_path, steps, custom_parameters=None):
     try:
         from helper_tools.batch_qc_reports import (
             build_bet_qc_report,
+            build_cc_qc_report,
             build_registration_qc_report,
         )
     except Exception as exc:
@@ -599,6 +611,24 @@ def create_qc_reports(project_path, steps, custom_parameters=None):
             logging.warning("Registration report generation failed: %s", exc)
             print(f"Registration report generation failed: {exc}")
 
+        try:
+            print("Creating CC report...")
+            logging.info("Creating CC report...")
+            html_path, count = build_cc_qc_report(
+                project_path,
+                n_slices=7,
+                custom_parameters=custom_parameters,
+            )
+            if html_path:
+                print(f"CC report written to {html_path} ({count} image(s))")
+                logging.info("CC report written to %s (%s images)", html_path, count)
+            else:
+                print("CC report skipped: no BET/AnnoSplit_parental pairs found.")
+                logging.info("CC report skipped: no BET/AnnoSplit_parental pairs found.")
+        except Exception as exc:
+            logging.warning("CC report generation failed: %s", exc)
+            print(f"CC report generation failed: {exc}")
+
 
 def format_step_label(step):
     labels = {
@@ -616,6 +646,7 @@ CLI_DEFAULT_DESCRIPTIONS = {
     "exemptionlist": "no exemptionlist",
     "cpu_percent": "use cpu_cores",
     "func_atlas_mask_t2": "disabled",
+    "func_tr": "JSON RepetitionTime, otherwise 1.42 s",
 }
 
 CLI_DEFAULT_SOURCES = {
@@ -1173,9 +1204,9 @@ if __name__ == "__main__":
     dwi = parser.add_argument_group("DWI options")
     dwi.add_argument(
         "--dwi-denoiser",
-        choices=["patch2self"],
+        choices=["patch2self", "mrtrix3"],
         type=str.lower,
-        help="DWI denoising method"
+        help="DWI denoising method: patch2self or MRtrix3 (MP-PCA)"
     )
     dwi.add_argument(
         "--dwi-average-b0",
@@ -1221,6 +1252,10 @@ if __name__ == "__main__":
     # fMRI OPTIONS
     # ============================================================
     func = parser.add_argument_group("fMRI options")
+    func.add_argument(
+        "--func-tr", type=positive_tr,
+        help="fMRI TR in seconds; priority: --func-tr > JSON RepetitionTime > fallback 1.42 s"
+    )
     func.add_argument(
         "--func-bias-method",
         choices=["skip", "ants"],
@@ -1340,7 +1375,8 @@ if __name__ == "__main__":
     dsi.add_argument(
         "--dsi-track-param",
         nargs="+",
-        help="Tracking parameter preset or 8 custom values; omitted uses dsi_main.py default"
+        metavar="PRESET_OR_NAME=VALUE",
+        help="Tracking preset (default, mouse, aidamriv2_set, test) or named values, e.g. --dsi-track-param tract_count=1000 step_size=0.05. Unspecified custom values use the mouse preset; omitted uses dsi_main.py default"
     )
     dsi.add_argument(
         "--dsi-skip-motion-correction",
@@ -1372,6 +1408,7 @@ if __name__ == "__main__":
     #configurate the logging module
     log_file_path = os.path.join(pathToData, "batchproc_log.txt")
     configure_logging(log_file_path)
+    logging.info("Explicit command line options: %s", shlex.join(sys.argv[1:]))
     copy_aidamri_git_information_to_proc(pathToData)
 
     if args.data_types is None:

@@ -6,6 +6,7 @@ Created on 10/08/2017
 Neuroimaging & Neuroengineering
 Department of Neurology
 University Hospital Cologne
+latest Update: Julian Cramer
 """
 from __future__ import print_function
 
@@ -20,9 +21,16 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 from common.artifact_manifest import start_output_tracking
+from common.script_logging import (
+    append_git_information,
+    build_script_log_path,
+    log_explicit_cli_options,
+    script_logging_disabled,
+)
 
 
 def enable_process_log(log_path):
+    output_dir = os.path.dirname(os.path.abspath(log_path))
     # Mirror stdout/stderr into a dataset-local log file so debugging works the
     # same whether the script is launched from the image or a mounted checkout.
     tee_proc = subprocess.Popen(["tee", "-a", log_path], stdin=subprocess.PIPE)
@@ -35,6 +43,7 @@ def enable_process_log(log_path):
         try:
             sys.stdout.flush()
             sys.stderr.flush()
+            append_git_information(sys.stdout, output_dir=output_dir)
         finally:
             try:
                 tee_proc.stdin.close()
@@ -49,24 +58,17 @@ def enable_process_log(log_path):
 
 
 def should_enable_process_log():
-    # batchProc.py already redirects stdout/stderr into its own step log. In
-    # that case dsi_main.py should not create an additional process.log or tee
-    # the same lines twice. Allow an explicit override via environment variable
-    # and otherwise fall back to a TTY check for direct interactive runs.
-    if os.environ.get("AIDAMRI_DISABLE_PROCESS_LOG", "").lower() in {"1", "true", "yes"}:
-        return False
-    return os.isatty(sys.stdout.fileno()) and os.isatty(sys.stderr.fileno())
+    # Direct runs also create a log when stdout/stderr are redirected.
+    # batchProc.py captures the output itself and disables this side log.
+    return not script_logging_disabled()
 
 
 def normalize_track_params(values):
-    if len(values) == 1:
-        return values[0]
-    if len(values) != 8:
-        raise argparse.ArgumentTypeError(
-            "-t/--track-params expects one preset name or exactly 8 custom values: "
-            "tract_count step_size turning_angle check_ending fa_threshold smoothing min_length max_length"
-        )
-    return values
+    import dsi_tools
+    try:
+        return dsi_tools.normalize_tracking_params(values)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
 
 
 def positive_int(value):
@@ -119,7 +121,8 @@ if __name__ == '__main__':
                         '--track-params',
                         nargs='+',
                         default=['default'],
-                        help='Specify tracking parameters from a pre-defined set ("aida_optimized", "rat", or "mouse") or as a list of values for tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, and max_length.',
+                        metavar='PRESET_OR_NAME=VALUE',
+                        help='Use a preset (default, mouse, aidamriv2_set, test) or named values, e.g. -t tract_count=1000 step_size=0.05. Unspecified custom values use the mouse preset. Allowed names: tract_count, step_size, turning_angle, check_ending, fa_threshold, smoothing, min_length, max_length.',
                         required=False
                        )
     parser.add_argument('--thread-count',
@@ -180,12 +183,16 @@ if __name__ == '__main__':
     # Connectivity outputs are written relative to the DWI directory.
     connectivity_dir_name = r'connectivity'
 
+    args.file_in = os.path.abspath(args.file_in)
     dwi_dir = os.path.dirname(args.file_in)
     start_output_tracking(dwi_dir, "dwi", "processing")
-    process_log = os.path.join(dwi_dir, "process.log")
+    process_log = build_script_log_path(dwi_dir, "process.log")
     if should_enable_process_log():
         enable_process_log(process_log)
+        log_explicit_cli_options()
         print(f"Writing process log to {process_log}")
+    else:
+        atexit.register(append_git_information, output_dir=os.path.abspath(dwi_dir))
         
     # Determine the gradient source based on the -b option.
     if str(args.b_table).lower() == 'auto':
@@ -244,6 +251,9 @@ if __name__ == '__main__':
         args.legacy,
         gradient_pair=gradient_pair,
     )
+    if make_isotropic == 'auto':
+        # Use the same diffusion-derived spacing for reconstruction and ROIs.
+        make_isotropic = voxel_size
     fib_dir = os.path.join(dwi_dir, 'fib_map')
 
     tracking_params = args.track_params
@@ -254,9 +264,8 @@ if __name__ == '__main__':
         dsi_studio,
         fib_dir,
         tracking_params,
-        voxel_size,
-        args.thread_count,
-        args.legacy
+        thread_count=args.thread_count,
+        legacy=args.legacy,
     )
 
     # Calculating connectivity

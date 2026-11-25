@@ -11,6 +11,7 @@ Atlas-based Imaging Data Analysis Pipeline (AIDA) for structural and functional 
 <br/>
 <br/>
 Please read this README completely before using AIDAmri. Here you will find the detailed user <a href="./Manual.md"><strong>manual</strong></a>.
+Please also have a look into our <a href="./bin/helper_tools">helper_tools</a> folder, which contains many helpful additional scripts for data preparation, quality control and visual inspection.
 <br clear="left"/>
 
 ## Key Features of AIDA<em>mri</em>
@@ -40,7 +41,7 @@ Pipeline overview from [Pallast et al.](https://doi.org/10.3389/fninf.2019.00042
 
 ## Version history
 
-[Information latest Version 3.0](Release_note.md)
+[Information about Version 3.0](https://github.com/Aswendt-Lab/AIDAmri/releases/tag/v3.0)
 
 [Information about Version 2.0](https://github.com/maswendt/AIDAmri/releases/tag/v2.0)
 <br/>
@@ -111,7 +112,7 @@ For this reason, we recommend FSL Eyes, as this tool provides more information a
 <details>
 <summary><strong>This section lists frequently encountered problems when using AIDAmri and possible solutions.</strong></summary>
 	
-If your problem is not listed here, please use our Gitter Chat or open an issue on GitHub and include:
+If your problem is not listed here, please use open an issue on GitHub and include:
 - OS
 - Docker version
 - Command used
@@ -263,15 +264,15 @@ fslhd input.nii.gz
 [Matlab script](ARA/) to generate a custom version of the Allen Mouse Brain Atlas.
 
 ## CONTACT
-If you encounter problems, report directly in [![Gitter](https://badges.gitter.im/AIDA_tools/community.svg)](https://gitter.im/AIDA_tools/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+Join our open office hour every **Thursday at 3:00 pm German local time (CET/CEST)** to ask questions and discuss AIDAmri with the team.
 
-or 
+[![Join on Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
 
-join our Open Office Hour - each Thursday 3:00 pm (UTC+2) [![Zoom](https://img.shields.io/badge/Zoom-2D8CFF?style=for-the-badge&logo=zoom&logoColor=white)](https://uni-frankfurt.zoom-x.de/j/63112745009?pwd=JBTjMVbuaTw9cZvFnppTwCPjGdQEyx.1)
+Sessions may be cancelled on public holidays in Germany.
 
-Please note that the Open Office Hour may not take place on public holidays in Germany.
+If you encounter a bug or technical issue, please open an issue on GitHub.
 
-For all other inquiries: Markus Aswendt (aswendtATmed.uni-frankfurt.de)
+For all other inquiries, please contact **Markus Aswendt** at aswendtATmed.uni-frankfurt.de (replace AT with @).
 
 ## LICENSE/CITATION
 GNU General Public License v3.0

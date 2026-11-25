@@ -99,6 +99,13 @@ RUN wget https://github.com/ANTsX/ANTs/releases/download/v2.6.2/ants-2.6.2-ubunt
 ENV PATH=$PATH:/aida/ants-2.6.2/ants-2.6.2/bin
 RUN N4BiasFieldCorrection --version
 
+# Ubuntu 22.04's MRtrix3 package supplies dwidenoise for optional DWI MP-PCA.
+ARG MRTRIX3_VERSION=3.0.3-1
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends mrtrix3=${MRTRIX3_VERSION} && \
+    dwidenoise -version && \
+    rm -rf /var/lib/apt/lists/*
+
 # Python setup (Default for Ubuntu 22.04 is Python 3.10)
 ENV VIRTUAL_ENV=/opt/env
 RUN python3 -m venv $VIRTUAL_ENV
@@ -127,7 +134,7 @@ ENV PATH=${FSLDIR}/bin:${PATH}
 # copy bin/ and lib/ from AIDAmri into image
 COPY bin/ bin/
 RUN chmod u+x bin/3.2_DTIConnectivity/dsi_main.py
-ENV PATH=/aida/bin:/aida/bin/3.2_DTIConnectivity:$PATH
+ENV PATH=/aida/bin:/aida/bin/common:/aida/bin/3.2_DTIConnectivity:$PATH
 RUN cp bin/3.2_DTIConnectivity/dsi_main.py dsi_main
 COPY lib/ lib/
 # make install_immv executable and run it
@@ -139,5 +146,4 @@ RUN test -x /aida/dsi_studio_ubuntu2204/dsi-studio-cpu/dsi_studio
 
 RUN pip install -c constraints.txt dipy scikit-learn
 RUN pip install -c constraints.txt fslpy
-RUN wget -O /aida/bin/bet4animal "https://git.fmrib.ox.ac.uk/fsl/bet2/-/raw/master/bet4animal?ref_type=heads&inline=false" && \
-    chmod +x /aida/bin/bet4animal
+RUN chmod +x /aida/bin/common/bet4animal

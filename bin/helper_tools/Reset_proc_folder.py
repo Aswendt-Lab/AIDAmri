@@ -1,4 +1,4 @@
-"""Reset AIDAmri modality folders using runtime-generated output manifests."""
+"""Reset modality folders to base, preprocessing, registration, processing or extraction."""
 
 from __future__ import annotations
 
@@ -28,6 +28,7 @@ STAGE_ORDER = {
     "preprocessing": 1,
     "registration": 2,
     "processing": 3,
+    "extraction": 4,
 }
 NIFTI_SUFFIXES = (".nii", ".nii.gz")
 MUTED_SUMMARY_SUFFIXES = (
@@ -56,6 +57,8 @@ def normalize_phase(phase):
         "registration": "registration",
         "process": "processing",
         "processing": "processing",
+        "extract": "extraction",
+        "extraction": "extraction",
     }
     try:
         return aliases[phase.strip().lower()]
@@ -983,7 +986,7 @@ def parse_args(argv=None):
         "-p",
         "--phase",
         required=True,
-        choices=("base", "preprocessing", "registration", "processing"),
+        choices=tuple(STAGE_ORDER),
         help="Processing phase to reset to",
     )
     parser.add_argument(
