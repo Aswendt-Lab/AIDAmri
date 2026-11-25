@@ -1,0 +1,104 @@
+[
+  {
+    "session": "20261125T110659Z_aa6cb8e2",
+    "case_id": "new_001",
+    "scan": "GV_T3_3_2_1_2_20181121_091427",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110711Z_25772da3",
+    "case_id": "new_000",
+    "scan": "GV_T3_3_1_1_2_20181121_082244",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110724Z_5ed84e96",
+    "case_id": "new_002",
+    "scan": "GV_T3_3_3_1_2_20181121_102307",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": [
+      "native: No positive seed intersects the network prediction. No lesion was selected; place another seed or review the network miss.",
+      "mirrored: No positive seed intersects the network prediction. No lesion was selected; place another seed or review the network miss."
+    ]
+  },
+  {
+    "session": "20261125T110742Z_6c06582a",
+    "case_id": "new_002",
+    "scan": "GV_T3_3_3_1_2_20181121_102307",
+    "seeds": 2,
+    "avoidance": 2,
+    "warnings": [
+      "native: Some positive seeds were missed or cannot belong to one continuous region per slice. Review the seed-hit indicators; add avoidance ROIs or revise conflicting seeds.",
+      "mirrored: Some positive seeds were missed or cannot belong to one continuous region per slice. Review the seed-hit indicators; add avoidance ROIs or revise conflicting seeds."
+    ]
+  },
+  {
+    "session": "20261125T110751Z_770c479c",
+    "case_id": "new_003",
+    "scan": "GV_T3_4_1_1_3_20181121_125526",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110851Z_da06d4f7",
+    "case_id": "new_004",
+    "scan": "GV_T3_4_2_1_2_20181121_133734",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110901Z_1769e4c7",
+    "case_id": "new_005",
+    "scan": "GV_T3_4_3_1_2_20181121_143641",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110912Z_38cbf123",
+    "case_id": "new_006",
+    "scan": "GV_T3_8_2_1_2_20190206_092529",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110923Z_15dfc097",
+    "case_id": "new_007",
+    "scan": "GV_T3_8_4_1_2_20190206_104319",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110932Z_b03a5ba4",
+    "case_id": "new_008",
+    "scan": "GV_T3_9_1_1_2_20190206_112248",
+    "seeds": 1,
+    "avoidance": 0,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110941Z_5e0cd60b",
+    "case_id": "new_009",
+    "scan": "GV_T3_9_3_1_2_20190206_130351",
+    "seeds": 1,
+    "avoidance": 1,
+    "warnings": []
+  },
+  {
+    "session": "20261125T110954Z_920f603a",
+    "case_id": "new_010",
+    "scan": "SP_V1_2_1_1_1_20171013_144832",
+    "seeds": 2,
+    "avoidance": 1,
+    "warnings": []
+  }
+]

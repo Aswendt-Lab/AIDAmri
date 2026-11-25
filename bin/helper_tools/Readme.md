@@ -10,6 +10,7 @@ environment so that relative paths to `lib/` resources resolve as expected.
 
 | Script | Purpose |
 | --- | --- |
+| [`lesion_segmentation/`](lesion_segmentation/README.md) | Standalone mouse-stroke segmentation interface with a guided example demo, T2w/manual-mask file loading, seed/avoidance refinement, and Dice/containment reports. |
 | `DistributeStrokeMasks.py` | Propagate existing stroke masks across subject timepoints with NiftyReg `reg_resample`. |
 | `MRI_files_summarizer.py` | Create a CSV inventory of NIfTI files found below `**/brkraw/*.nii.gz`. |
 | `ReorientBatch.py` | Reorient NIfTI files to a target orientation while mirroring the input folder tree. |
@@ -25,6 +26,13 @@ environment so that relative paths to `lib/` resources resolve as expected.
 | `reset_naming.py` | Clean Bruker `subject` files before PV-to-NIfTI conversion. |
 
 ## Dependencies
+
+The [lesion segmentation helper](lesion_segmentation/README.md) has its own
+environment and setup launchers. Open its folder and double-click
+`Setup-demo.command`, then `Start.command`, to learn with the bundled examples.
+Use `Setup.command` for new-scan detection. Its frozen model, reference masks,
+saved guidance, predictions, quantitative report and reproduction checks are
+included; the demo requires neither PyTorch nor a GPU.
 
 The scripts use a mix of Python packages and external neuroimaging tools:
 

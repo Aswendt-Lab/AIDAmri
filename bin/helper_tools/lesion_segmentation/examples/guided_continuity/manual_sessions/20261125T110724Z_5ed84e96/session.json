@@ -1,0 +1,87 @@
+{
+  "case": "new_002",
+  "seeds": [
+    [
+      95,
+      95,
+      14
+    ]
+  ],
+  "avoidance": [
+    {
+      "point": [
+        181,
+        159,
+        14
+      ],
+      "radius_mm": 0.5
+    }
+  ],
+  "source_session": null,
+  "guidance_saved_before_refinement": true,
+  "model": "frozen clean nnU-Net v2",
+  "checkpoint_sha256": "f9bc7637b7aabf42ee3378e78d98b09f57bfd3f20a590d128d1e52f62552d33f",
+  "baseline_prediction_sha256": {
+    "native": "ff06e584ae3621ba93d1f137933684edf9e7d4f4d039ab86d7460a882a03cc32",
+    "mirrored": "3bc3c81f9178f6c52bf3f0b4579895b9a6f9b7376cf076bd5137c2d75a9428d4"
+  },
+  "algorithm": "continuous_seeded_region_v1",
+  "algorithm_sha256": "2b13379fead31c7e88fc447bf5a268f52c6ed9b52a65049bea54151f8a19da3d",
+  "baseline_inference_reused": true,
+  "network_adapted": false,
+  "reference_used_for_selection": false,
+  "source": {
+    "case_id": "new_002",
+    "group": "P1",
+    "case": "GV_T3_3_3_1_2_20181121_102307",
+    "animal_id": "GV_T3_3_3_1_2",
+    "image": "examples/inputs/new_002/image.nii.gz",
+    "mask": "examples/inputs/new_002/reference.nii.gz",
+    "source_variant": "BiasBet",
+    "status": "ready",
+    "status_reason": "",
+    "shape": "(256, 256, 28)",
+    "mask_shape": "(256, 256, 28)",
+    "spacing_mm": "[0.068359375, 0.068359375, 0.5]",
+    "affine_max_difference": "0.0",
+    "axis_codes": "RAS",
+    "reference_labels": "[0.0, 1.0]",
+    "reference_voxels": "6379",
+    "image_sha256": "2b91b87df83ec57f287657b5d03254fb6d4b8659322877bbf719db0fed8e67a9",
+    "mask_sha256": "5670d21703fac6063d82bbe22b082e33e3f3d10007142d45e2c277d9c9c222ea",
+    "development_role": "train",
+    "novelty": "training_or_image_overlap",
+    "matching_previous_image_cases": "[\"GV_T3_3_3_1_2_20181121_102307\"]",
+    "matching_previous_mask_cases": "[\"GV_T3_3_3_1_2_20181121_102307\"]",
+    "near_previous_animal_ids": "[]",
+    "identity_uncertain": "False",
+    "mask_interpretation": "positive voxels are stroke; source labels unchanged"
+  },
+  "versions": {
+    "native": {
+      "seed_hits": [
+        false
+      ],
+      "warnings": [
+        "No positive seed intersects the network prediction. No lesion was selected; place another seed or review the network miss."
+      ],
+      "selected_slices": [],
+      "anchor": null
+    },
+    "mirrored": {
+      "seed_hits": [
+        false
+      ],
+      "warnings": [
+        "No positive seed intersects the network prediction. No lesion was selected; place another seed or review the network miss."
+      ],
+      "selected_slices": [],
+      "anchor": null
+    }
+  },
+  "warnings": [
+    "native: No positive seed intersects the network prediction. No lesion was selected; place another seed or review the network miss.",
+    "mirrored: No positive seed intersects the network prediction. No lesion was selected; place another seed or review the network miss."
+  ],
+  "note": "Post-validation manual refinement. One continuous 3D track, at most one 8-connected region per native slice, no jumps across blank slices. Cannot add network-missed tissue."
+}

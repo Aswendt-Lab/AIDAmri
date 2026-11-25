@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "case": "new_001",
+  "scan": "GV_T3_3_2_1_2_20181121_091427",
+  "session_id": "20261125T110659Z_aa6cb8e2",
+  "slice": 14,
+  "seeds": [
+    [
+      95,
+      89,
+      14
+    ]
+  ],
+  "avoidance": [
+    {
+      "point": [
+        178,
+        149,
+        14
+      ],
+      "radius_mm": 0.5
+    }
+  ],
+  "guidance_origin": "Preserved original human session; previously reviewed tutorial example"
+}

@@ -1,0 +1,35 @@
+{
+  "confirmed_no_stroke": [
+    {
+      "case": "PT/SP_V1_6_2_1_3_20180117_135539",
+      "status": "no_stroke",
+      "source": "user confirmation 2026-11-19",
+      "action": "excluded from active catalog; primary native and mirrored predictions removed; source image/mask unchanged"
+    },
+    {
+      "case": "PT/SP_V1_8_2_1_3_20180523_101352",
+      "status": "no_stroke",
+      "source": "user confirmation 2026-11-19",
+      "action": "excluded from active catalog; primary native and mirrored predictions removed; source image/mask unchanged"
+    },
+    {
+      "case": "PT/SP_V1_10_1_1_4_20180808_064443",
+      "status": "no_stroke",
+      "source": "user confirmation",
+      "action": "removed from active catalog and primary prediction folders; historical training preserved; checkpoint was trained on this case and requires corrected retraining"
+    }
+  ],
+  "already_withheld_unresolved": [
+    {
+      "case": "SP_T1_4_3_1_3_20180117_112413",
+      "reason": "Earlier user no-stroke classification conflicts with nonempty mask; no subsequent reviewed guidance"
+    }
+  ],
+  "removed_from_previous_run": [
+    {
+      "case": "PT/SP_V1_10_1_1_4_20180808_064443",
+      "original_role": "train",
+      "reason": "confirmed no stroke / excluded"
+    }
+  ]
+}

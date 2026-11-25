@@ -1,0 +1,8 @@
+PASS: confirmed no-stroke IDs absent from clean split, raw training and preprocessed training.
+PASS: validation/test identities and source reference hashes match v1.
+PASS: duplicate references and animal IDs do not cross roles.
+PASS: 2D architecture, patch size, spacing and normalization rules match v1.
+PASS: all retained image arrays/affines match archived v1 inputs exactly.
+PASS: current checkpoint checksum unchanged; clean checkpoint checksum is distinct.
+PASS: all 48 raw comparisons preserve native geometry; fixed-guidance masks preserve native geometry.
+PASS: all 12 active paired cases and four validation/test visual figures present.

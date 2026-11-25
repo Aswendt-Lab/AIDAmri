@@ -1,0 +1,36 @@
+{
+  "requested_folder": "data/validation",
+  "resolved_folder": "inputs/",
+  "model": "frozen clean nnU-Net 2D v2",
+  "checkpoint": "../model/fold_0/checkpoint_best.pth",
+  "checkpoint_sha256": "f9bc7637b7aabf42ee3378e78d98b09f57bfd3f20a590d128d1e52f62552d33f",
+  "source_preference": [
+    "BiasBet",
+    "BiasMicoThresBet",
+    "ThresBet",
+    "Bet"
+  ],
+  "native_input_is_primary": true,
+  "compute_both_versions": true,
+  "no_guidance": true,
+  "no_training": true,
+  "no_threshold_tuning": true,
+  "case_status_counts": {
+    "ready": 11
+  },
+  "novelty_counts": {
+    "new_by_available_ids_and_hashes": 30,
+    "training_or_image_overlap": 3,
+    "previous_image_overlap": 1,
+    "prior_manifest_only_unrun": 4,
+    "previously_reviewed_case": 1
+  },
+  "folder_counts": {
+    "P1": 11
+  },
+  "unpaired_image_count": 11,
+  "previous_source_images_audited": 16,
+  "identity_rule": "prefix before timestamp; near-ID flags provisional until user confirms animal identity mapping",
+  "groups": "P1/P7 are folder labels, not assumed timepoint meanings",
+  "bundle_examples_are_selected_reviewed_subset": true
+}

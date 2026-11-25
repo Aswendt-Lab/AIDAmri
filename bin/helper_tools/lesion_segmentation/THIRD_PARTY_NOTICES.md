@@ -1,0 +1,3 @@
+# Third-party attribution
+
+This workflow uses official nnU-Net v2 (DKFZ, https://github.com/MIC-DKFZ/nnUNet), installed separately; its Apache-2.0 license is included in licenses/. The clean-v2 checkpoint was trained from scratch in this project using official nnUNetTrainer; it is not the An et al. pretrained model. The handoff does not bundle An weights or code. NumPy, SciPy, NiBabel, PyTorch and nnU-Net dependencies retain their respective package licenses when installed. Example animal MRI images and manual labels were supplied by the project owner and are retained for this local reproducibility handoff. No new license for the owner data or checkpoint is assigned here.

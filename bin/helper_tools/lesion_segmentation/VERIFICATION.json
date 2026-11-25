@@ -1,0 +1,31 @@
+{
+  "version": "1.2.0",
+  "demo": {
+    "version": "1.2.0",
+    "relocation": true,
+    "five_step_tutorial": true,
+    "real_canvas_guidance": true,
+    "recorded_guidance_helpers": true,
+    "practice_matches_original_metrics_exactly": true,
+    "read_only_replay": true,
+    "demo_sessions_isolated": true,
+    "prior_drafts_restored": true,
+    "original_sessions_unchanged": true,
+    "browser_errors": 0
+  },
+  "file_picker_previous_verification": {
+    "release_version": "1.1.0",
+    "relocation": true,
+    "file_picker": true,
+    "optional_reference": true,
+    "corrupt_and_mismatched_files_rejected": true,
+    "imports_persist": true,
+    "frozen_examples_unchanged": true,
+    "new_scan_inference_after_guidance": true,
+    "both_baselines_reproduced_exactly": true,
+    "browser_errors": 0
+  },
+  "example_scans": 11,
+  "original_saved_masks_verified": 24,
+  "original_saved_metric_rows_verified": 48
+}

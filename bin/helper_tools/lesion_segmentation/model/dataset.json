@@ -1,0 +1,11 @@
+{
+    "channel_names": {
+        "0": "T2w"
+    },
+    "labels": {
+        "background": 0,
+        "lesion": 1
+    },
+    "numTraining": 9,
+    "file_ending": ".nii.gz"
+}

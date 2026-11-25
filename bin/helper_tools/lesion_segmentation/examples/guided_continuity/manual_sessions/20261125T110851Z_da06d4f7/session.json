@@ -1,0 +1,104 @@
+{
+  "case": "new_004",
+  "seeds": [
+    [
+      96,
+      119,
+      14
+    ]
+  ],
+  "avoidance": [
+    {
+      "point": [
+        171,
+        177,
+        14
+      ],
+      "radius_mm": 0.5
+    }
+  ],
+  "source_session": null,
+  "guidance_saved_before_refinement": true,
+  "model": "frozen clean nnU-Net v2",
+  "checkpoint_sha256": "f9bc7637b7aabf42ee3378e78d98b09f57bfd3f20a590d128d1e52f62552d33f",
+  "baseline_prediction_sha256": {
+    "native": "64287320849c64cb248236904c108d02c536e9912b4ffe854ec188aca6cc301e",
+    "mirrored": "64287320849c64cb248236904c108d02c536e9912b4ffe854ec188aca6cc301e"
+  },
+  "algorithm": "continuous_seeded_region_v1",
+  "algorithm_sha256": "2b13379fead31c7e88fc447bf5a268f52c6ed9b52a65049bea54151f8a19da3d",
+  "baseline_inference_reused": true,
+  "network_adapted": false,
+  "reference_used_for_selection": false,
+  "source": {
+    "case_id": "new_004",
+    "group": "P1",
+    "case": "GV_T3_4_2_1_2_20181121_133734",
+    "animal_id": "GV_T3_4_2_1_2",
+    "image": "examples/inputs/new_004/image.nii.gz",
+    "mask": "examples/inputs/new_004/reference.nii.gz",
+    "source_variant": "BiasBet",
+    "status": "ready",
+    "status_reason": "",
+    "shape": "(256, 256, 28)",
+    "mask_shape": "(256, 256, 28)",
+    "spacing_mm": "[0.068359375, 0.068359375, 0.5]",
+    "affine_max_difference": "0.0",
+    "axis_codes": "RAS",
+    "reference_labels": "[0.0, 1.0]",
+    "reference_voxels": "8436",
+    "image_sha256": "21b234857cd96e65e86b8c8d62d6af1f06161a48d694d173d3104a4e665394df",
+    "mask_sha256": "a78a27234802e26335db8182a858f66a261b1e3a447566023b53ea1bcb1a682b",
+    "development_role": "train",
+    "novelty": "training_or_image_overlap",
+    "matching_previous_image_cases": "[\"GV_T3_4_2_1_2_20181121_133734\"]",
+    "matching_previous_mask_cases": "[\"GV_T3_4_2_1_2_20181121_133734\"]",
+    "near_previous_animal_ids": "[]",
+    "identity_uncertain": "False",
+    "mask_interpretation": "positive voxels are stroke; source labels unchanged"
+  },
+  "versions": {
+    "native": {
+      "seed_hits": [
+        true
+      ],
+      "warnings": [],
+      "selected_slices": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "anchor": [
+        14,
+        1
+      ],
+      "rule": "one 8-connected region per native z slice; adjacent regions must be 26-connected; no gaps or snapping"
+    },
+    "mirrored": {
+      "seed_hits": [
+        true
+      ],
+      "warnings": [],
+      "selected_slices": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "anchor": [
+        14,
+        1
+      ],
+      "rule": "one 8-connected region per native z slice; adjacent regions must be 26-connected; no gaps or snapping"
+    }
+  },
+  "warnings": [],
+  "note": "Post-validation manual refinement. One continuous 3D track, at most one 8-connected region per native slice, no jumps across blank slices. Cannot add network-missed tissue."
+}

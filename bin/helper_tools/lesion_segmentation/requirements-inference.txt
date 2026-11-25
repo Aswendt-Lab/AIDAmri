@@ -1,0 +1,7 @@
+-r requirements.txt
+torch==2.10.0
+nunetv2==2.8.1
+dynamic-network-architectures==0.4.4
+batchgenerators==0.25.6
+batchgeneratorsv2==0.3.8
+SimpleITK==2.5.8

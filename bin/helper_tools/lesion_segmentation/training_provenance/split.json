@@ -1,0 +1,215 @@
+{
+  "seed": 20261119,
+  "cases": [
+    {
+      "group": "MCAO",
+      "case": "CH_30237_w1.yM1",
+      "prefix": "CH_30237_w1",
+      "image": "historical_training_inputs/MCAO/CH_30237_w1.yM1/T2w/CH_30237_w1BiasBet.nii.gz",
+      "mask": "historical_training_inputs/MCAO/CH_30237_w1.yM1/T2w/CH_30237_w1Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "CH_30237",
+      "role": "train",
+      "mask_sha256": "c32974dfa6d577d0f572057dabe371ca7277641e1d11f63a5829d6f90e1a4e21",
+      "nnunet_id": "mouse_000"
+    },
+    {
+      "group": "MCAO",
+      "case": "CH_30238_w1.yM1",
+      "prefix": "CH_30238_w1",
+      "image": "historical_training_inputs/MCAO/CH_30238_w1.yM1/T2w/CH_30238_w1BiasBet.nii.gz",
+      "mask": "historical_training_inputs/MCAO/CH_30238_w1.yM1/T2w/CH_30238_w1Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "CH_30238",
+      "role": "train",
+      "mask_sha256": "fe7b4b749c77255a29bcee41ac5b7e2381d5493e73b6ed32dcb1b4ad89ce0742",
+      "nnunet_id": "mouse_001"
+    },
+    {
+      "group": "MCAO",
+      "case": "CH_30238_w1.yO1",
+      "prefix": "CH_30238_w1",
+      "image": "historical_training_inputs/MCAO/CH_30238_w1.yO1/T2w/CH_30238_w1BiasBet.nii.gz",
+      "mask": "historical_training_inputs/MCAO/CH_30238_w1.yO1/T2w/CH_30238_w1Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "CH_30238",
+      "role": "train",
+      "mask_sha256": "fe7b4b749c77255a29bcee41ac5b7e2381d5493e73b6ed32dcb1b4ad89ce0742",
+      "nnunet_id": "mouse_002"
+    },
+    {
+      "group": "MCAO",
+      "case": "CH_30367_w1.AC1",
+      "prefix": "CH_30367_w1",
+      "image": "historical_training_inputs/MCAO/CH_30367_w1.AC1/T2w/CH_30367_w1BiasBet.nii.gz",
+      "mask": "historical_training_inputs/MCAO/CH_30367_w1.AC1/T2w/CH_30367_w1Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "CH_30367",
+      "role": "train",
+      "mask_sha256": "b1d24b869f95a12cd993e3f95c6d32fe1db5cdaab2191c39179eca9c31f0fb42",
+      "nnunet_id": "mouse_003"
+    },
+    {
+      "group": "MCAO",
+      "case": "CH_30368_w1.AC1",
+      "prefix": "CH_30368_w1",
+      "image": "historical_training_inputs/MCAO/CH_30368_w1.AC1/T2w/CH_30368_w1BiasBet.nii.gz",
+      "mask": "historical_training_inputs/MCAO/CH_30368_w1.AC1/T2w/CH_30368_w1Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "CH_30368",
+      "role": "validation",
+      "mask_sha256": "1bc643a89efed967045d7c2d2a553d7c341a8e458944c683ac9c0c1a3f6c957e",
+      "nnunet_id": "mouse_004"
+    },
+    {
+      "group": "MCAO",
+      "case": "CH_30371_w1.AC1",
+      "prefix": "CH_30371_w1",
+      "image": "historical_training_inputs/MCAO/CH_30371_w1.AC1/T2w/CH_30371_w1BiasBet.nii.gz",
+      "mask": "historical_training_inputs/MCAO/CH_30371_w1.AC1/T2w/CH_30371_w1Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "CH_30371",
+      "role": "test",
+      "mask_sha256": "889027099df98f1c80e133280c1ae4bd9412a330aca1caa3389230ea890e0bdc",
+      "nnunet_id": "mouse_005"
+    },
+    {
+      "group": "PT",
+      "case": "GV_T3_3_3_1_2_20181121_102307",
+      "prefix": "GV_T3_3_3_1_2_20181121_102307",
+      "image": "historical_training_inputs/PT/GV_T3_3_3_1_2_20181121_102307/T2w/GV_T3_3_3_1_2_20181121_102307BiasBet.nii.gz",
+      "mask": "historical_training_inputs/PT/GV_T3_3_3_1_2_20181121_102307/T2w/GV_T3_3_3_1_2_20181121_102307Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "GV_T3_3_3_1_2",
+      "role": "train",
+      "mask_sha256": "75ffd10db2fc37ba65d75fc3b25a926ed7faea60a7ae2fd7641cdcad8577f783",
+      "nnunet_id": "mouse_006"
+    },
+    {
+      "group": "PT",
+      "case": "GV_T3_4_2_1_2_20181121_133734",
+      "prefix": "GV_T3_4_2_1_2_20181121_133734",
+      "image": "historical_training_inputs/PT/GV_T3_4_2_1_2_20181121_133734/T2w/GV_T3_4_2_1_2_20181121_133734BiasBet.nii.gz",
+      "mask": "historical_training_inputs/PT/GV_T3_4_2_1_2_20181121_133734/T2w/GV_T3_4_2_1_2_20181121_133734Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "GV_T3_4_2_1_2",
+      "role": "train",
+      "mask_sha256": "473f83ea088ff985e5e17b04c2008dba57baa472d476f7a97991730344347f94",
+      "nnunet_id": "mouse_007"
+    },
+    {
+      "group": "PT",
+      "case": "GV_T3_8_4_1_2_20190206_104319",
+      "prefix": "GV_T3_8_4_1_2_20190206_104319",
+      "image": "historical_training_inputs/PT/GV_T3_8_4_1_2_20190206_104319/T2w/GV_T3_8_4_1_2_20190206_104319BiasBet.nii.gz",
+      "mask": "historical_training_inputs/PT/GV_T3_8_4_1_2_20190206_104319/T2w/GV_T3_8_4_1_2_20190206_104319Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "GV_T3_8_4_1_2",
+      "role": "validation",
+      "mask_sha256": "f5da7167c4fa994a9ca4c7f152eb94c9287a2a447fd764b5fc21986ecc29c6c5",
+      "nnunet_id": "mouse_008"
+    },
+    {
+      "group": "PT",
+      "case": "SP_T1_4_2_1_3_20180117_094809",
+      "prefix": "SP_T1_4_2_1_3_20180117_094809",
+      "image": "historical_training_inputs/PT/SP_T1_4_2_1_3_20180117_094809/T2w/SP_T1_4_2_1_3_20180117_094809BiasBet.nii.gz",
+      "mask": "historical_training_inputs/PT/SP_T1_4_2_1_3_20180117_094809/T2w/SP_T1_4_2_1_3_20180117_094809Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "SP_T1_4_2_1_3",
+      "role": "train",
+      "mask_sha256": "e66b0f2d7a0776698526cd1bfc23105fae7f7cac6d6f684184f3a88d85bef1c5",
+      "nnunet_id": "mouse_009"
+    },
+    {
+      "group": "PT",
+      "case": "SP_V1_1_1_1_2_20171017_081228",
+      "prefix": "SP_V1_1_1_1_2_20171017_081228",
+      "image": "historical_training_inputs/PT/SP_V1_1_1_1_2_20171017_081228/T2w/SP_V1_1_1_1_2_20171017_081228BiasBet.nii.gz",
+      "mask": "historical_training_inputs/PT/SP_V1_1_1_1_2_20171017_081228/T2w/SP_V1_1_1_1_2_20171017_081228Stroke_mask.nii.gz",
+      "status": "matched",
+      "animal": "SP_V1_1_1_1_2",
+      "role": "test",
+      "mask_sha256": "bb9a008feeeac745224a5e444f48ec607054bd37a85e7e7819be16394e3c5541",
+      "nnunet_id": "mouse_011"
+    }
+  ],
+  "excluded": [
+    {
+      "case": "SP_T1_4_3_1_3_20180117_112413",
+      "reason": "Earlier user no-stroke classification conflicts with nonempty mask; no subsequent reviewed guidance"
+    }
+  ],
+  "role_animals": {
+    "train": [
+      "CH_30237",
+      "CH_30238",
+      "CH_30367",
+      "GV_T3_3_3_1_2",
+      "GV_T3_4_2_1_2",
+      "SP_T1_4_2_1_3"
+    ],
+    "validation": [
+      "CH_30368",
+      "GV_T3_8_4_1_2"
+    ],
+    "test": [
+      "CH_30371",
+      "SP_V1_1_1_1_2"
+    ]
+  },
+  "policy": "Fixed before new fitting. Test CH_30371 and SP_V1_1_1 are previously reviewed stress-test animals, not independent external validation. CH_30238 acquisitions stay together. No no-stroke controls with verified empty masks available.",
+  "deferred": "No new orientation harmonization or label correction; use existing image/mask geometry. An training uses established physical resampling and random in-plane x mirroring; evaluate both versions with MCAO mirrored/PT native primary.",
+  "planned_an": {
+    "steps": 400,
+    "validation_every": 50,
+    "learning_rate": 0.0001,
+    "threshold": 0.8,
+    "loss": "3-class cross entropy + lesion soft Dice",
+    "full_network": true
+  },
+  "planned_nnunet": {
+    "package": "nnunetv2 2.8.1",
+    "configuration": "2d",
+    "epochs": 20,
+    "iterations_per_epoch": 25,
+    "validation_iterations_per_epoch": 5,
+    "note": "Short supervised pilot; not default 1000-epoch training or five-fold cross-validation"
+  },
+  "removed_from_previous_run": [
+    {
+      "case": "PT/SP_V1_10_1_1_4_20180808_064443",
+      "original_role": "train",
+      "reason": "confirmed no stroke / excluded"
+    }
+  ],
+  "confirmed_exclusions": [
+    {
+      "case": "PT/SP_V1_6_2_1_3_20180117_135539",
+      "status": "no_stroke",
+      "source": "user confirmation 2026-11-19",
+      "action": "excluded from active catalog; primary native and mirrored predictions removed; source image/mask unchanged"
+    },
+    {
+      "case": "PT/SP_V1_8_2_1_3_20180523_101352",
+      "status": "no_stroke",
+      "source": "user confirmation 2026-11-19",
+      "action": "excluded from active catalog; primary native and mirrored predictions removed; source image/mask unchanged"
+    },
+    {
+      "case": "PT/SP_V1_10_1_1_4_20180808_064443",
+      "status": "no_stroke",
+      "source": "user confirmation",
+      "action": "removed from active catalog and primary prediction folders; historical training preserved; checkpoint was trained on this case and requires corrected retraining"
+    }
+  ],
+  "prior_excluded_unresolved": [
+    {
+      "case": "SP_T1_4_3_1_3_20180117_112413",
+      "reason": "Earlier user no-stroke classification conflicts with nonempty mask; no subsequent reviewed guidance"
+    }
+  ],
+  "comparison_policy": "Same seed, 2D architecture, batch size, 500 optimizer steps, loss, optimizer, checkpoint rule and inference as v1. Fresh random initialization; never initialized from the contaminated checkpoint. No guidance in primary comparison.",
+  "current_model_checkpoint": "historical_project/training/pilot_v1/nnunet/results/Dataset501_MouseStroke/nnUNetTrainer__nnUNetPlansPilot__2d/fold_0/checkpoint_best.pth",
+  "current_model_sha256": "5c1d21b2171436aca9b04dadbb1964421b4b3425c3163b35b991c2f2ac566a0f"
+}

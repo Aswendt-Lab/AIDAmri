@@ -1,0 +1,13 @@
+{
+  "case": "new_008",
+  "seeds": [
+    [
+      99,
+      94,
+      14
+    ]
+  ],
+  "avoidance": [],
+  "source_session": null,
+  "guidance_saved_before_refinement": true
+}

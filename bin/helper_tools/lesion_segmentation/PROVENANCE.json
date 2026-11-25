@@ -1,0 +1,37 @@
+{
+  "version": "1.2.0-research-pilot",
+  "checkpoint_sha256": "f9bc7637b7aabf42ee3378e78d98b09f57bfd3f20a590d128d1e52f62552d33f",
+  "selected_case_ids": [
+    "new_000",
+    "new_001",
+    "new_002",
+    "new_003",
+    "new_004",
+    "new_005",
+    "new_006",
+    "new_007",
+    "new_008",
+    "new_009",
+    "new_010"
+  ],
+  "examples": 11,
+  "saved_human_sessions": 12,
+  "training": "500 updates, short official 2D nnU-Net pilot, clean no-stroke exclusions, initialized from scratch",
+  "network_reference_free": true,
+  "manual_guidance_used_only_for_selection": true,
+  "review_dependencies": {
+    "numpy": "1.26.4",
+    "scipy": "1.15.3",
+    "nibabel": "5.4.2"
+  },
+  "historical_absolute_paths": "Publication metadata uses portable references. historical_project/ and historical_training_inputs/ identify original development inputs or audit records not included in the example bundle. Runtime uses relative examples/manifest.csv and protocol.json.",
+  "port": 8780,
+  "guided_demo": true,
+  "demo_config": "examples/demo.json",
+  "practice_sessions": "examples/guided_continuity/demo_sessions/",
+  "demo_source": "Original frozen human session, not generated reference-based guidance",
+  "file_picker": true,
+  "setup_installs_inference_dependencies": true,
+  "publication_repository": "Aswendt-Lab/AIDAmri",
+  "publication_path": "bin/helper_tools/lesion_segmentation"
+}

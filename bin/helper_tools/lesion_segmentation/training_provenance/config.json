@@ -1,0 +1,14 @@
+{
+  "package": "nnunetv2 2.8.1",
+  "configuration": "2d",
+  "epochs": 20,
+  "iterations_per_epoch": 25,
+  "validation_iterations_per_epoch": 5,
+  "note": "Short supervised pilot; not default 1000-epoch training or five-fold cross-validation",
+  "device": "mps",
+  "batch_size": 2,
+  "trainer": "official nnUNetTrainer",
+  "checkpoint": "model/fold_0/checkpoint_best.pth",
+  "seed": 20261119,
+  "test_labels_used_for_training": false
+}

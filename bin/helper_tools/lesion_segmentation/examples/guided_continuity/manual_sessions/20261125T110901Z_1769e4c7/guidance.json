@@ -1,0 +1,22 @@
+{
+  "case": "new_005",
+  "seeds": [
+    [
+      92,
+      101,
+      14
+    ]
+  ],
+  "avoidance": [
+    {
+      "point": [
+        161,
+        175,
+        14
+      ],
+      "radius_mm": 0.5
+    }
+  ],
+  "source_session": null,
+  "guidance_saved_before_refinement": true
+}
