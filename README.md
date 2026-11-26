@@ -68,6 +68,12 @@ Use git switch to change between branches:
 git switch rat
 ```
 
+## Multiverse rat nuisance regression
+
+The [standalone regression helper](bin/helper_tools/regression_auto/README.md)
+documents the method, before/after results, and three reproducible examples
+for evaluation before integrating it into AIDAmri 2.3.
+
 ## EXAMPLE FILES
 
 Download the example dataset [**here**](https://next.hessenbox.de/index.php/s/3tRzc5rCC8GWCAc).
